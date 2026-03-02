@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ch 11: Training &amp; Optimization &mdash; DSP to AI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Outfit:wght@300;400;500;600;700;800;900&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../style/global.css">
+  <link rel="stylesheet" href="../../style/theme-dark.css">
+  <link rel="stylesheet" href="../../style/theme-light.css">
+  <link rel="stylesheet" href="../../style/components.css">
+  <link rel="stylesheet" href="../../style/chapter.css">
+  <script src="../../js/core/theme-switcher.js"></script>
+</head>
+<body>
+
+<div class="noise"></div>
+
+<!-- Navigation -->
+<nav class="site-nav">
+  <a href="../../index.html" class="site-nav__logo">DSP <span class="arrow">&rarr;</span> AI</a>
+  <ul class="site-nav__links">
+    <li><a href="../../index.html#part1">Part I</a></li>
+    <li><a href="../../index.html#part2" class="active">Part II</a></li>
+    <li><a href="../../index.html#part3">Part III</a></li>
+    <li><a href="../../index.html#part4">Part IV</a></li>
+    <li><a href="../../gallery/index.html">Gallery</a></li>
+    <li><a href="../../reference/glossary.html">Reference</a></li>
+  </ul>
+  <button class="search-toggle" aria-label="Search site (press /)">🔍</button>
+  <button class="theme-toggle" aria-label="Toggle theme"></button>
+  <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false">&#9776;</button>
+</nav>
+<div class="progress-bar"></div>
+
+<!-- Page Layout -->
+<div class="chapter-page" data-chapter-id="ch11">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar__part-label">Part II: AI Foundations</div>
+    <ul class="sidebar__chapters">
+      <li><a class="sidebar__chapter-link" href="ch09-neuron.html"><span class="sidebar__chapter-num">09</span> The Neuron</a></li>
+      <li><a class="sidebar__chapter-link" href="ch10-backprop.html"><span class="sidebar__chapter-num">10</span> Networks &amp; Backprop</a></li>
+      <li><a class="sidebar__chapter-link active" href="ch11-training.html"><span class="sidebar__chapter-num">11</span> Training &amp; Optimization</a>
+        <ul class="sidebar__sections">
+          <li><a class="sidebar__section-link" href="#loss-landscape">The Loss Landscape</a></li>
+          <li><a class="sidebar__section-link" href="#sgd">Stochastic Gradient Descent</a></li>
+          <li><a class="sidebar__section-link" href="#momentum">Momentum</a></li>
+          <li><a class="sidebar__section-link" href="#adam">Adam &amp; Friends</a></li>
+          <li><a class="sidebar__section-link" href="#lr-schedules">Learning Rate Schedules</a></li>
+          <li><a class="sidebar__section-link" href="#regularization">Regularization</a></li>
+          <li><a class="sidebar__section-link" href="#bridge">Bridge: DSP Optimization</a></li>
+          <li><a class="sidebar__section-link" href="#tool-landscape">Loss Landscape Explorer</a></li>
+          <li><a class="sidebar__section-link" href="#tool-lrfinder">Learning Rate Finder</a></li>
+        </ul>
+      </li>
+      <li><a class="sidebar__chapter-link" href="ch12-sequences.html"><span class="sidebar__chapter-num">12</span> RNNs &amp; LSTMs</a></li>
+      <li><a class="sidebar__chapter-link" href="ch13-embeddings.html"><span class="sidebar__chapter-num">13</span> Embeddings</a></li>
+      <li><a class="sidebar__chapter-link" href="ch14-attention.html"><span class="sidebar__chapter-num">14</span> Attention</a></li>
+      <li><a class="sidebar__chapter-link" href="ch15-transformer.html"><span class="sidebar__chapter-num">15</span> The Transformer</a></li>
+    </ul>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="chapter-content">
+
+    <nav class="breadcrumb" aria-label="Breadcrumb"></nav>
+
+    <header class="chapter-header">
+      <div class="chapter-header__part">Part II &mdash; AI Foundations</div>
+      <div class="chapter-header__number">Chapter 11</div>
+      <h1 class="chapter-header__title">Training &mdash; Gradient Descent, Loss, Optimization</h1>
+      <p class="chapter-header__subtitle">
+        Backpropagation tells us which direction to move. <em>Optimization</em> decides how far and
+        how fast. The difference between a model that trains in hours and one that never converges
+        often comes down to the optimizer and learning rate. These are the same tradeoffs DSP
+        engineers face with adaptive filter step sizes.
+      </p>
+    </header>
+
+    <!-- ============================================================
+         11.1 — The Loss Landscape
+         ============================================================ -->
+    <section class="content-section" id="loss-landscape">
+      <h2 class="section-heading"><span class="section-number">11.1</span> The Loss Landscape</h2>
+
+      <p>
+        Imagine the loss as a surface in a high-dimensional space where each axis is a weight.
+        Training is rolling a ball downhill on this surface. The landscape determines everything:
+      </p>
+
+      <div class="card-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+        <div class="concept-card" style="border-color: var(--color-math);">
+          <h3 class="concept-card__title">Convex Bowl</h3>
+          <p class="concept-card__body">
+            One global minimum, no traps. Any downhill path leads to the solution.
+            Linear regression has this property. Neural networks do not.
+          </p>
+        </div>
+        <div class="concept-card" style="border-color: var(--color-bridge);">
+          <h3 class="concept-card__title">Saddle Points</h3>
+          <p class="concept-card__body">
+            Points where the gradient is zero but it&rsquo;s not a minimum &mdash; a valley in
+            one direction, a ridge in another. In high dimensions, these are far more common
+            than local minima.
+          </p>
+        </div>
+        <div class="concept-card" style="border-color: var(--color-danger);">
+          <h3 class="concept-card__title">Local Minima</h3>
+          <p class="concept-card__body">
+            Valleys that aren&rsquo;t the deepest point. The optimizer can get stuck here.
+            In practice, most local minima in deep networks are &ldquo;good enough&rdquo; &mdash;
+            the loss is similar to the global minimum.
+          </p>
+        </div>
+        <div class="concept-card" style="border-color: var(--color-dsp);">
+          <h3 class="concept-card__title">Narrow Ravines</h3>
+          <p class="concept-card__body">
+            The landscape is steep in one direction and flat in another.
+            Standard SGD oscillates across the ravine instead of rolling down it.
+            This is where momentum and Adam shine.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         11.2 — Stochastic Gradient Descent
+         ============================================================ -->
+    <section class="content-section" id="sgd">
+      <h2 class="section-heading"><span class="section-number">11.2</span> Stochastic Gradient Descent</h2>
+
+      <p>
+        <strong>Gradient descent</strong> computes the gradient over the entire dataset and takes
+        one step. <strong>Stochastic gradient descent</strong> (SGD) approximates this with a
+        single random sample (or mini-batch), trading accuracy for speed:
+      </p>
+
+      <div class="math-block">
+        <div class="math-block__label">SGD Update</div>
+        <p class="math-block__content">
+          <strong>w</strong><sub>t+1</sub> = <strong>w</strong><sub>t</sub> &minus; &eta; &middot; &nabla;L(<strong>w</strong><sub>t</sub>; x<sub>i</sub>, y<sub>i</sub>)
+        </p>
+      </div>
+
+      <p>
+        The randomness in SGD is a feature, not a bug. The noise helps the optimizer escape
+        shallow local minima and saddle points that would trap full-batch gradient descent.
+      </p>
+
+      <div class="progressive-section">
+        <button class="progressive-section__toggle" aria-expanded="false">Show the Math &mdash; Mini-Batch SGD</button>
+        <div class="progressive-section__content" hidden>
+          <p>Mini-batch SGD uses B samples (typically 32&ndash;512) per update:</p>
+          <div class="math-block">
+            <p class="math-block__content">
+              <strong>w</strong><sub>t+1</sub> = <strong>w</strong><sub>t</sub> &minus; &eta; &middot; (1/B) &sum;<sub>i&isin;batch</sub> &nabla;L(<strong>w</strong><sub>t</sub>; x<sub>i</sub>, y<sub>i</sub>)
+            </p>
+          </div>
+          <p>The variance of the gradient estimate scales as 1/B:</p>
+          <div class="math-block">
+            <p class="math-block__content">
+              Var[&nabla;L<sub>batch</sub>] = Var[&nabla;L<sub>single</sub>] / B
+            </p>
+          </div>
+          <p>
+            Larger batches give smoother gradients but fewer updates per epoch.
+            The optimal batch size depends on the hardware (GPU parallelism) and the
+            problem (some benefit from more noise, not less).
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         11.3 — Momentum
+         ============================================================ -->
+    <section class="content-section" id="momentum">
+      <h2 class="section-heading"><span class="section-number">11.3</span> Momentum</h2>
+
+      <p>
+        Plain SGD oscillates in narrow ravines because the gradient points across the ravine
+        rather than along it. <strong>Momentum</strong> adds a velocity term that accumulates
+        past gradients, smoothing out oscillations:
+      </p>
+
+      <div class="math-block">
+        <div class="math-block__label">Momentum Update</div>
+        <p class="math-block__content">
+          <strong>v</strong><sub>t</sub> = &beta; &middot; <strong>v</strong><sub>t-1</sub> + &eta; &middot; &nabla;L<br><br>
+          <strong>w</strong><sub>t+1</sub> = <strong>w</strong><sub>t</sub> &minus; <strong>v</strong><sub>t</sub>
+        </p>
+      </div>
+
+      <p>
+        The parameter &beta; (typically 0.9) acts like friction. With &beta;=0.9, the optimizer
+        &ldquo;remembers&rdquo; the last ~10 gradients. Consistent gradients in one direction
+        build up speed; oscillating gradients cancel out.
+      </p>
+
+      <div class="insight-box">
+        <div class="insight-box__label">Physical Analogy</div>
+        <p>
+          Momentum turns gradient descent from a blind person poking downhill with a stick
+          into a heavy ball rolling down the surface. The ball has inertia &mdash; it accelerates
+          in consistent directions and smooths over small bumps. This is exactly the
+          exponential moving average that DSP engineers use to smooth noisy signals.
+        </p>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         11.4 — Adam and Friends
+         ============================================================ -->
+    <section class="content-section" id="adam">
+      <h2 class="section-heading"><span class="section-number">11.4</span> Adam and Friends</h2>
+
+      <p>
+        <strong>Adam</strong> (Adaptive Moment Estimation) combines momentum with per-parameter
+        learning rate adaptation. It&rsquo;s the most popular optimizer in deep learning:
+      </p>
+
+      <div class="progressive-section">
+        <button class="progressive-section__toggle" aria-expanded="false">Show the Math &mdash; Full Adam Algorithm</button>
+        <div class="progressive-section__content" hidden>
+          <div class="math-block">
+            <div class="math-block__label">Adam Update (Kingma &amp; Ba, 2014)</div>
+            <p class="math-block__content">
+              g<sub>t</sub> = &nabla;L(<strong>w</strong><sub>t</sub>)<br><br>
+              m<sub>t</sub> = &beta;<sub>1</sub> m<sub>t-1</sub> + (1&minus;&beta;<sub>1</sub>) g<sub>t</sub> &ensp;&ensp; <em>(first moment / mean)</em><br><br>
+              v<sub>t</sub> = &beta;<sub>2</sub> v<sub>t-1</sub> + (1&minus;&beta;<sub>2</sub>) g<sub>t</sub>&sup2; &ensp;&ensp; <em>(second moment / variance)</em><br><br>
+              m&#770;<sub>t</sub> = m<sub>t</sub> / (1&minus;&beta;<sub>1</sub><sup>t</sup>) &ensp;&ensp; <em>(bias correction)</em><br><br>
+              v&#770;<sub>t</sub> = v<sub>t</sub> / (1&minus;&beta;<sub>2</sub><sup>t</sup>) &ensp;&ensp; <em>(bias correction)</em><br><br>
+              <strong>w</strong><sub>t+1</sub> = <strong>w</strong><sub>t</sub> &minus; &eta; &middot; m&#770;<sub>t</sub> / (&radic;v&#770;<sub>t</sub> + &epsilon;)
+            </p>
+          </div>
+          <p>
+            Default hyperparameters: &beta;<sub>1</sub>=0.9, &beta;<sub>2</sub>=0.999, &epsilon;=10<sup>&minus;8</sup>.
+            The bias correction terms compensate for the zero initialization of m and v,
+            which would otherwise make early updates too small.
+          </p>
+        </div>
+      </div>
+
+      <div class="card-grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));">
+        <div class="concept-card" style="border-color: #fb7185;">
+          <h3 class="concept-card__title">SGD</h3>
+          <p class="concept-card__body">
+            Simple: w &minus;= &eta; &middot; g. Oscillates in ravines, gets stuck at saddle points.
+            But with tuning, often generalizes best.
+          </p>
+        </div>
+        <div class="concept-card" style="border-color: #4ade80;">
+          <h3 class="concept-card__title">SGD + Momentum</h3>
+          <p class="concept-card__body">
+            Adds velocity. Smooths oscillations, accelerates in consistent directions.
+            One extra hyperparameter: &beta;.
+          </p>
+        </div>
+        <div class="concept-card" style="border-color: #a78bfa;">
+          <h3 class="concept-card__title">RMSProp</h3>
+          <p class="concept-card__body">
+            Adapts the learning rate per parameter using a running average of squared gradients.
+            Parameters with large gradients get smaller steps.
+          </p>
+        </div>
+        <div class="concept-card" style="border-color: #fbbf24;">
+          <h3 class="concept-card__title">Adam</h3>
+          <p class="concept-card__body">
+            Combines Momentum + RMSProp with bias correction.
+            Works well out-of-the-box. The default choice for most practitioners.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         11.5 — Learning Rate Schedules
+         ============================================================ -->
+    <section class="content-section" id="lr-schedules">
+      <h2 class="section-heading"><span class="section-number">11.5</span> Learning Rate Schedules</h2>
+
+      <p>
+        A fixed learning rate is rarely optimal throughout training. Early on, you want
+        large steps to make progress. Later, you want small steps for fine-tuning.
+        <strong>Learning rate schedules</strong> automate this:
+      </p>
+
+      <div class="card-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+        <div class="concept-card">
+          <h3 class="concept-card__title">Step Decay</h3>
+          <p class="concept-card__body">
+            Halve the learning rate every N epochs. Simple and effective.
+            Common in image classification.
+          </p>
+        </div>
+        <div class="concept-card">
+          <h3 class="concept-card__title">Cosine Annealing</h3>
+          <p class="concept-card__body">
+            &eta;(t) = &eta;<sub>min</sub> + &frac12;(&eta;<sub>max</sub>&minus;&eta;<sub>min</sub>)(1+cos(&pi;t/T)).
+            Smooth decay. Popular for Transformer training.
+          </p>
+        </div>
+        <div class="concept-card">
+          <h3 class="concept-card__title">Warmup + Decay</h3>
+          <p class="concept-card__body">
+            Start with a tiny LR, ramp up linearly over W steps, then decay.
+            Essential for Transformer training stability.
+          </p>
+        </div>
+        <div class="concept-card">
+          <h3 class="concept-card__title">One-Cycle</h3>
+          <p class="concept-card__body">
+            Ramp LR up to max, then down to near zero over training.
+            Often trains faster and reaches better solutions.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         11.6 — Regularization
+         ============================================================ -->
+    <section class="content-section" id="regularization">
+      <h2 class="section-heading"><span class="section-number">11.6</span> Regularization</h2>
+
+      <p>
+        A network that memorizes the training data perfectly but fails on new data is
+        <strong>overfitting</strong>. Regularization techniques constrain the network to
+        learn general patterns:
+      </p>
+
+      <div class="card-grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));">
+        <div class="concept-card">
+          <h3 class="concept-card__title">L2 / Weight Decay</h3>
+          <p class="concept-card__body">
+            Add &lambda;&#x2016;<strong>w</strong>&#x2016;&sup2; to the loss. Penalizes large weights,
+            encouraging simpler solutions. Equivalent to assuming a Gaussian prior on weights.
+          </p>
+        </div>
+        <div class="concept-card">
+          <h3 class="concept-card__title">Dropout</h3>
+          <p class="concept-card__body">
+            Randomly zero out neurons during training (typically 20&ndash;50%).
+            Forces the network to learn redundant representations. Like training an ensemble.
+          </p>
+        </div>
+        <div class="concept-card">
+          <h3 class="concept-card__title">Early Stopping</h3>
+          <p class="concept-card__body">
+            Monitor validation loss and stop when it starts rising, even if training loss
+            is still falling. The simplest and often most effective regularizer.
+          </p>
+        </div>
+        <div class="concept-card">
+          <h3 class="concept-card__title">Data Augmentation</h3>
+          <p class="concept-card__body">
+            Create new training examples by transforming existing ones (rotations, crops, noise).
+            More data is almost always the best regularizer.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         11.7 — Bridge: DSP Optimization
+         ============================================================ -->
+    <section class="content-section" id="bridge">
+      <h2 class="section-heading"><span class="section-number">11.7</span> Bridge: Optimization in DSP</h2>
+
+      <div class="bridge-teaser">
+        <div class="bridge-teaser__label">DSP &rarr; AI Connection</div>
+        <p>
+          Every optimizer in deep learning has a DSP ancestor. The mathematics of
+          minimizing prediction error is the same whether you&rsquo;re training a neural network
+          or adapting a filter.
+        </p>
+      </div>
+
+      <table class="comparison-table" style="width:100%; border-collapse: collapse; margin: 1.5rem 0;">
+        <thead>
+          <tr>
+            <th style="padding: 0.75rem; text-align: left; border-bottom: 2px solid var(--border); color: var(--color-dsp);">DSP</th>
+            <th style="padding: 0.75rem; text-align: left; border-bottom: 2px solid var(--border); color: var(--color-ai);">AI</th>
+            <th style="padding: 0.75rem; text-align: left; border-bottom: 2px solid var(--border); color: var(--color-bridge);">Connection</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style="padding: 0.6rem; border-bottom: 1px solid var(--border);">LMS: w += &mu;&middot;e&middot;x</td>
+            <td style="padding: 0.6rem; border-bottom: 1px solid var(--border);">SGD: w &minus;= &eta;&middot;&nabla;L</td>
+            <td style="padding: 0.6rem; border-bottom: 1px solid var(--border);">Same stochastic gradient descent</td>
+          </tr>
+          <tr>
+            <td style="padding: 0.6rem; border-bottom: 1px solid var(--border);">NLMS: normalize by input power</td>
+            <td style="padding: 0.6rem; border-bottom: 1px solid var(--border);">RMSProp / Adam: normalize by gradient magnitude</td>
+            <td style="padding: 0.6rem; border-bottom: 1px solid var(--border);">Adaptive step size per dimension</td>
+          </tr>
+          <tr>
+            <td style="padding: 0.6rem; border-bottom: 1px solid var(--border);">RLS: inverse correlation tracking</td>
+            <td style="padding: 0.6rem; border-bottom: 1px solid var(--border);">Natural gradient / K-FAC</td>
+            <td style="padding: 0.6rem; border-bottom: 1px solid var(--border);">Second-order methods using curvature</td>
+          </tr>
+          <tr>
+            <td style="padding: 0.6rem; border-bottom: 1px solid var(--border);">Step size &mu; stability bound</td>
+            <td style="padding: 0.6rem; border-bottom: 1px solid var(--border);">Learning rate warmup</td>
+            <td style="padding: 0.6rem; border-bottom: 1px solid var(--border);">Starting too fast causes divergence in both</td>
+          </tr>
+          <tr>
+            <td style="padding: 0.6rem; border-bottom: 1px solid var(--border);">Exponential moving average (EMA)</td>
+            <td style="padding: 0.6rem; border-bottom: 1px solid var(--border);">Momentum: v = &beta;v + &eta;g</td>
+            <td style="padding: 0.6rem; border-bottom: 1px solid var(--border);">Identical operation: smooth noisy estimates</td>
+          </tr>
+          <tr>
+            <td style="padding: 0.6rem; border-bottom: 1px solid var(--border);">Wiener filter (optimal MMSE)</td>
+            <td style="padding: 0.6rem; border-bottom: 1px solid var(--border);">Closed-form solution (linear regression)</td>
+            <td style="padding: 0.6rem; border-bottom: 1px solid var(--border);">Both are R<sup>&minus;1</sup>p (normal equations)</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- ============================================================
+         Tool 11.1 — Loss Landscape Explorer
+         ============================================================ -->
+    <section class="content-section" id="tool-landscape">
+      <h2 class="section-heading"><span class="section-number">11.8</span> Tool: Loss Landscape Explorer</h2>
+
+      <p>
+        Watch SGD, Momentum, and Adam race across different loss landscapes.
+        Each optimizer traces a different path &mdash; notice how Momentum accelerates
+        through ravines and Adam adapts its step size per dimension.
+      </p>
+
+      <div class="tool-container" id="lossLandscapeTool">
+        <div class="tool-header">
+          <span class="tool-header__label">Tool 11.1</span>
+          <span class="tool-header__title">Loss Landscape Explorer</span>
+        </div>
+        <div class="tool-body">
+          <div class="tool-controls" style="display: flex; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 0.75rem;">
+            <label class="tool-control">
+              <span class="tool-control__label">Landscape</span>
+              <select data-control="landscape-type" class="tool-select">
+                <option value="convex" selected>Convex Bowl</option>
+                <option value="saddle">Saddle Point</option>
+                <option value="local_minima">Local Minima</option>
+                <option value="ravine">Narrow Ravine</option>
+              </select>
+            </label>
+            <label class="tool-control">
+              <span class="tool-control__label">Learning Rate</span>
+              <input type="range" data-control="landscape-lr" min="0.001" max="0.2" step="0.001" value="0.05" class="tool-slider">
+              <span data-value="landscape-lr" class="tool-value">0.05</span>
+            </label>
+            <label class="tool-control" style="display: flex; align-items: center; gap: 0.3rem;">
+              <input type="checkbox" data-control="show-sgd" checked>
+              <span style="color: #fb7185;">SGD</span>
+            </label>
+            <label class="tool-control" style="display: flex; align-items: center; gap: 0.3rem;">
+              <input type="checkbox" data-control="show-momentum" checked>
+              <span style="color: #4ade80;">Momentum</span>
+            </label>
+            <label class="tool-control" style="display: flex; align-items: center; gap: 0.3rem;">
+              <input type="checkbox" data-control="show-adam" checked>
+              <span style="color: #fbbf24;">Adam</span>
+            </label>
+          </div>
+
+          <div class="tool-canvas-wrapper"></div>
+
+          <div class="tool-actions" style="display: flex; gap: 0.5rem; margin-top: 0.5rem; flex-wrap: wrap;">
+            <button data-action="landscape-run" class="tool-btn tool-btn--accent">&#9654; Run</button>
+            <button data-action="landscape-step" class="tool-btn">Step</button>
+            <button data-action="landscape-reset" class="tool-btn tool-btn--muted">Reset</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="insight-box">
+        <div class="insight-box__label">Try This</div>
+        <ul>
+          <li><strong>Narrow Ravine:</strong> SGD (red) oscillates wildly across the ravine. Momentum (green) dampens the oscillation. Adam (yellow) adapts and takes a direct path</li>
+          <li><strong>Saddle Point:</strong> Watch how SGD gets stuck near the saddle while Momentum&rsquo;s velocity carries it through</li>
+          <li><strong>Local Minima:</strong> Run multiple times with different LR &mdash; higher LR may escape local minima that trap lower LR</li>
+          <li>Set LR to 0.2 on the convex bowl &mdash; watch SGD diverge while Adam stays stable</li>
+          <li>Compare the final loss values in the legend &mdash; Adam usually wins but not always</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         Tool 11.2 — Learning Rate Finder
+         ============================================================ -->
+    <section class="content-section" id="tool-lrfinder">
+      <h2 class="section-heading"><span class="section-number">11.9</span> Tool: Learning Rate Finder</h2>
+
+      <p>
+        The learning rate is the single most important hyperparameter. This tool sweeps
+        the learning rate from 10<sup>&minus;4</sup> to 1, training a fresh network at each value.
+        The optimal LR is where the loss drops fastest before exploding.
+      </p>
+
+      <div class="tool-container" id="lrFinderTool">
+        <div class="tool-header">
+          <span class="tool-header__label">Tool 11.2</span>
+          <span class="tool-header__title">Learning Rate Finder</span>
+        </div>
+        <div class="tool-body">
+          <div class="tool-controls" style="display: flex; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 0.75rem;">
+            <label class="tool-control">
+              <span class="tool-control__label">Dataset</span>
+              <select data-control="lrf-dataset" class="tool-select">
+                <option value="xor" selected>XOR</option>
+                <option value="circles">Circles</option>
+                <option value="moons">Moons</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="tool-canvas-wrapper"></div>
+
+          <div class="tool-actions" style="display: flex; gap: 0.5rem; margin-top: 0.5rem; flex-wrap: wrap;">
+            <button data-action="lrf-sweep" class="tool-btn tool-btn--accent">Run Sweep</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="insight-box">
+        <div class="insight-box__label">Try This</div>
+        <ul>
+          <li>Click <strong>Run Sweep</strong> &mdash; the top plot shows loss vs learning rate. The green marker shows the &ldquo;sweet spot&rdquo;</li>
+          <li>The bottom plot shows training curves at three LRs: too slow (cyan), good (green), too fast (red)</li>
+          <li>Notice the &ldquo;too fast&rdquo; curve either diverges or oscillates without converging</li>
+          <li>The &ldquo;too slow&rdquo; curve barely decreases after 100 epochs &mdash; it would need thousands more</li>
+          <li>Try different datasets &mdash; the optimal LR shifts depending on the problem&rsquo;s complexity</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         Chapter Navigation
+         ============================================================ -->
+    <!-- Further Reading -->
+    <section class="content-section" id="further-reading">
+      <h2 class="section-heading">Further Reading</h2>
+      <ul class="further-reading-list">
+        <li>
+          <a href="https://arxiv.org/abs/1412.6980" target="_blank" rel="noopener">Adam: A Method for Stochastic Optimization</a>
+          <span class="further-reading__authors">Kingma &amp; Ba, 2015 — ICLR</span>
+          <span class="further-reading__note">The Adam optimizer paper — adaptive learning rates via first and second moment estimates</span>
+        </li>
+        <li>
+          <a href="https://arxiv.org/abs/1708.07120" target="_blank" rel="noopener">Super-Convergence: Very Fast Training Using Large Learning Rates</a>
+          <span class="further-reading__authors">Smith &amp; Topin, 2018</span>
+          <span class="further-reading__note">Learning rate scheduling and the 1-cycle policy for faster training</span>
+        </li>
+        <li>
+          <a href="https://www.deeplearningbook.org/contents/optimization.html" target="_blank" rel="noopener">Deep Learning — Chapter 8: Optimization</a>
+          <span class="further-reading__authors">Goodfellow, Bengio &amp; Courville, 2016</span>
+          <span class="further-reading__note">Comprehensive treatment of SGD, momentum, learning rate, and loss landscapes</span>
+        </li>
+      </ul>
+    </section>
+
+    <nav class="chapter-nav" aria-label="Chapter navigation">
+      <a class="chapter-nav__prev" href="ch10-backprop.html">
+        <span class="chapter-nav__dir">&larr; Previous</span>
+        <span class="chapter-nav__title">Ch 10: Networks &amp; Backprop</span>
+      </a>
+      <a class="chapter-nav__next" href="ch12-sequences.html">
+        <span class="chapter-nav__dir">Next &rarr;</span>
+        <span class="chapter-nav__title">Ch 12: RNNs &amp; LSTMs</span>
+      </a>
+    </nav>
+
+  </main>
+</div>
+
+<!-- Scripts -->
+<script src="../../js/core/navigation.js"></script>
+<script src="../../js/core/progressive-disclosure.js"></script>
+<script src="../../js/core/chapter-nav.js"></script>
+<script src="../../js/tools/shared/plot-utils.js"></script>
+<script src="../../js/tools/ch11-loss-landscape.js"></script>
+<script src="../../js/tools/ch11-lr-finder.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    DSPtoAI.LossLandscape.init('lossLandscapeTool');
+    DSPtoAI.LRFinder.init('lrFinderTool');
+  });
+</script>
+
+<script src="../../js/core/search-index.js"></script>
+<script src="../../js/core/search.js"></script>
+</body>
+</html>

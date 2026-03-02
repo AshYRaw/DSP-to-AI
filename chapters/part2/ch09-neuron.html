@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ch 9: The Neuron &amp; the Perceptron &mdash; DSP to AI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Outfit:wght@300;400;500;600;700;800;900&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../style/global.css">
+  <link rel="stylesheet" href="../../style/theme-dark.css">
+  <link rel="stylesheet" href="../../style/theme-light.css">
+  <link rel="stylesheet" href="../../style/components.css">
+  <link rel="stylesheet" href="../../style/chapter.css">
+  <script src="../../js/core/theme-switcher.js"></script>
+</head>
+<body>
+
+<div class="noise"></div>
+
+<!-- Navigation -->
+<nav class="site-nav">
+  <a href="../../index.html" class="site-nav__logo">DSP <span class="arrow">&rarr;</span> AI</a>
+  <ul class="site-nav__links">
+    <li><a href="../../index.html#part1">Part I</a></li>
+    <li><a href="../../index.html#part2" class="active">Part II</a></li>
+    <li><a href="../../index.html#part3">Part III</a></li>
+    <li><a href="../../index.html#part4">Part IV</a></li>
+    <li><a href="../../gallery/index.html">Gallery</a></li>
+    <li><a href="../../reference/glossary.html">Reference</a></li>
+  </ul>
+  <button class="search-toggle" aria-label="Search site (press /)">🔍</button>
+  <button class="theme-toggle" aria-label="Toggle theme"></button>
+  <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false">&#9776;</button>
+</nav>
+<div class="progress-bar"></div>
+
+<!-- Page Layout -->
+<div class="chapter-page" data-chapter-id="ch09">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar__part-label">Part II: AI Foundations</div>
+    <ul class="sidebar__chapters">
+      <li><a class="sidebar__chapter-link active" href="ch09-neuron.html"><span class="sidebar__chapter-num">09</span> The Neuron</a>
+        <ul class="sidebar__sections">
+          <li><a class="sidebar__section-link" href="#from-bio">From Biology to Math</a></li>
+          <li><a class="sidebar__section-link" href="#artificial-neuron">The Artificial Neuron</a></li>
+          <li><a class="sidebar__section-link" href="#activations">Activation Functions</a></li>
+          <li><a class="sidebar__section-link" href="#perceptron">The Perceptron</a></li>
+          <li><a class="sidebar__section-link" href="#xor-problem">The XOR Problem</a></li>
+          <li><a class="sidebar__section-link" href="#bridge">Bridge: Neuron as Matched Filter</a></li>
+          <li><a class="sidebar__section-link" href="#tool-neuron">Single Neuron Playground</a></li>
+          <li><a class="sidebar__section-link" href="#tool-activations">Activation Gallery</a></li>
+        </ul>
+      </li>
+      <li><a class="sidebar__chapter-link" href="ch10-backprop.html"><span class="sidebar__chapter-num">10</span> Neural Networks &amp; Backprop</a></li>
+      <li><a class="sidebar__chapter-link" href="ch11-training.html"><span class="sidebar__chapter-num">11</span> Training &amp; Optimization</a></li>
+      <li><a class="sidebar__chapter-link" href="ch12-sequences.html"><span class="sidebar__chapter-num">12</span> RNNs &amp; LSTMs</a></li>
+      <li><a class="sidebar__chapter-link" href="ch13-embeddings.html"><span class="sidebar__chapter-num">13</span> Embeddings</a></li>
+      <li><a class="sidebar__chapter-link" href="ch14-attention.html"><span class="sidebar__chapter-num">14</span> Attention</a></li>
+      <li><a class="sidebar__chapter-link" href="ch15-transformer.html"><span class="sidebar__chapter-num">15</span> The Transformer</a></li>
+    </ul>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="chapter-content">
+
+    <nav class="breadcrumb" aria-label="Breadcrumb"></nav>
+
+    <header class="chapter-header">
+      <div class="chapter-header__part">Part II &mdash; AI Foundations</div>
+      <div class="chapter-header__number">Chapter 09</div>
+      <h1 class="chapter-header__title">The Neuron and the Perceptron</h1>
+      <p class="chapter-header__subtitle">
+        Every deep learning architecture &mdash; from a simple classifier to GPT &mdash; is built
+        from one fundamental unit: the artificial neuron. It computes a weighted sum, applies
+        a nonlinearity, and outputs a number. If that sounds like a matched filter with a threshold,
+        you&rsquo;re already seeing the connection.
+      </p>
+    </header>
+
+    <!-- ============================================================
+         9.1 — From Biology to Math
+         ============================================================ -->
+    <section class="content-section" id="from-bio">
+      <h2 class="section-heading"><span class="section-number">9.1</span> From Biology to Math</h2>
+
+      <p>
+        A biological neuron receives electrical signals from thousands of other neurons via
+        <strong>dendrites</strong>, sums them in the cell body, and if the total exceeds a
+        threshold, fires an electrical pulse down its <strong>axon</strong> to other neurons.
+      </p>
+
+      <p>
+        In 1943, McCulloch and Pitts proposed a mathematical model that captures this behavior
+        with just three operations:
+      </p>
+
+      <div class="card-grid" style="grid-template-columns: repeat(3, 1fr);">
+        <div class="concept-card">
+          <div class="concept-card__icon" style="color: var(--color-dsp); font-size: 1.5rem;">1</div>
+          <h3 class="concept-card__title">Weigh</h3>
+          <p class="concept-card__body">
+            Each input x<sub>i</sub> is multiplied by a weight w<sub>i</sub>.
+            Strong connections have large weights; inhibitory connections have negative weights.
+          </p>
+        </div>
+        <div class="concept-card">
+          <div class="concept-card__icon" style="color: var(--color-ai); font-size: 1.5rem;">2</div>
+          <h3 class="concept-card__title">Sum</h3>
+          <p class="concept-card__body">
+            Add all weighted inputs plus a bias: z = &sum; w<sub>i</sub>x<sub>i</sub> + b.
+            This produces the neuron&rsquo;s &ldquo;pre-activation&rdquo; value.
+          </p>
+        </div>
+        <div class="concept-card">
+          <div class="concept-card__icon" style="color: var(--color-bridge); font-size: 1.5rem;">3</div>
+          <h3 class="concept-card__title">Activate</h3>
+          <p class="concept-card__body">
+            Apply a nonlinear function: y = &sigma;(z).
+            Without this nonlinearity, stacking layers would be pointless &mdash; the whole network
+            would collapse to a single linear transformation.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         9.2 — The Artificial Neuron
+         ============================================================ -->
+    <section class="content-section" id="artificial-neuron">
+      <h2 class="section-heading"><span class="section-number">9.2</span> The Artificial Neuron</h2>
+
+      <div class="math-block">
+        <div class="math-block__label">Neuron Computation</div>
+        <p class="math-block__content">
+          z = <strong>w</strong><sup>T</sup><strong>x</strong> + b = w<sub>1</sub>x<sub>1</sub> + w<sub>2</sub>x<sub>2</sub> + &hellip; + w<sub>n</sub>x<sub>n</sub> + b<br><br>
+          y = &sigma;(z)
+        </p>
+      </div>
+
+      <p>
+        The weighted sum z = <strong>w</strong><sup>T</sup><strong>x</strong> is a <em>dot product</em> &mdash;
+        the same operation at the heart of convolution, correlation, and every linear system
+        we studied in Part I.
+      </p>
+
+      <div class="progressive-section">
+        <button class="progressive-section__toggle" aria-expanded="false">Show the Math &mdash; Vector Form</button>
+        <div class="progressive-section__content" hidden>
+          <p>In vector notation, the neuron computes:</p>
+          <div class="math-block">
+            <p class="math-block__content">
+              y = &sigma;(<strong>w</strong><sup>T</sup><strong>x</strong> + b)
+            </p>
+          </div>
+          <p>Where:</p>
+          <ul>
+            <li><strong>x</strong> &isin; &reals;<sup>n</sup> &mdash; input vector</li>
+            <li><strong>w</strong> &isin; &reals;<sup>n</sup> &mdash; weight vector (learned parameters)</li>
+            <li>b &isin; &reals; &mdash; bias (learned)</li>
+            <li>&sigma;: &reals; &rarr; &reals; &mdash; nonlinear activation function</li>
+          </ul>
+          <p>
+            The dot product <strong>w</strong><sup>T</sup><strong>x</strong> = &#x2016;<strong>w</strong>&#x2016; &#x2016;<strong>x</strong>&#x2016; cos&theta;
+            measures the <em>alignment</em> between the input and the weight vector. Maximum output
+            occurs when <strong>x</strong> points in the same direction as <strong>w</strong>.
+          </p>
+          <p>
+            This is precisely the definition of a <strong>matched filter</strong> from DSP:
+            the filter that maximizes the output SNR when the input matches the template.
+          </p>
+        </div>
+      </div>
+
+      <h3>What the Bias Does</h3>
+      <p>
+        The bias b shifts the decision boundary away from the origin. Without it, the neuron&rsquo;s
+        decision boundary must pass through the origin &mdash; a severe limitation. With bias, the
+        neuron can separate any linearly separable dataset regardless of position.
+      </p>
+    </section>
+
+    <!-- ============================================================
+         9.3 — Activation Functions
+         ============================================================ -->
+    <section class="content-section" id="activations">
+      <h2 class="section-heading"><span class="section-number">9.3</span> Activation Functions</h2>
+
+      <p>
+        The activation function &sigma; is what makes neural networks <em>neural</em>. Without it,
+        every neuron is just a linear function, and a chain of linear functions is still linear.
+        The activation introduces the nonlinearity that gives networks their power.
+      </p>
+
+      <div class="card-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+        <div class="concept-card" style="border-color: #94a3b8;">
+          <h3 class="concept-card__title">Step</h3>
+          <p class="concept-card__body">
+            The original: output 0 or 1. Binary decision.
+            Problem: not differentiable, so we can&rsquo;t compute gradients.
+          </p>
+        </div>
+        <div class="concept-card" style="border-color: #22d3ee;">
+          <h3 class="concept-card__title">Sigmoid</h3>
+          <p class="concept-card__body">
+            Smooth S-curve mapping &reals; &rarr; (0,1). Differentiable everywhere.
+            Problem: saturates for large |z|, causing vanishing gradients.
+          </p>
+        </div>
+        <div class="concept-card" style="border-color: #a78bfa;">
+          <h3 class="concept-card__title">Tanh</h3>
+          <p class="concept-card__body">
+            Like sigmoid but zero-centered: &reals; &rarr; (&minus;1,1).
+            Better gradient properties but still saturates.
+          </p>
+        </div>
+        <div class="concept-card" style="border-color: #4ade80;">
+          <h3 class="concept-card__title">ReLU</h3>
+          <p class="concept-card__body">
+            max(0, z). The modern default. No saturation for z &gt; 0,
+            but &ldquo;dead neurons&rdquo; when z &lt; 0 permanently.
+          </p>
+        </div>
+        <div class="concept-card" style="border-color: #fb923c;">
+          <h3 class="concept-card__title">GELU</h3>
+          <p class="concept-card__body">
+            Gaussian Error Linear Unit. Smooth approximation of ReLU used in
+            Transformers (GPT, BERT). z &middot; &Phi;(z).
+          </p>
+        </div>
+        <div class="concept-card" style="border-color: #fb7185;">
+          <h3 class="concept-card__title">Swish</h3>
+          <p class="concept-card__body">
+            z &middot; &sigma;(z). Self-gated, non-monotonic.
+            Discovered by neural architecture search. Used in EfficientNet.
+          </p>
+        </div>
+      </div>
+
+      <div class="progressive-section">
+        <button class="progressive-section__toggle" aria-expanded="false">Show the Math &mdash; Why Nonlinearity is Essential</button>
+        <div class="progressive-section__content" hidden>
+          <p>Without activation functions, a two-layer network computes:</p>
+          <div class="math-block">
+            <p class="math-block__content">
+              y = <strong>W</strong><sub>2</sub>(<strong>W</strong><sub>1</sub><strong>x</strong> + <strong>b</strong><sub>1</sub>) + <strong>b</strong><sub>2</sub>
+                = <strong>W</strong><sub>2</sub><strong>W</strong><sub>1</sub><strong>x</strong> + <strong>W</strong><sub>2</sub><strong>b</strong><sub>1</sub> + <strong>b</strong><sub>2</sub>
+                = <strong>W</strong>&rsquo;<strong>x</strong> + <strong>b</strong>&rsquo;
+            </p>
+          </div>
+          <p>
+            This is just another linear transformation! No matter how many layers you stack,
+            without nonlinearity the network can only learn linear decision boundaries.
+            The <strong>Universal Approximation Theorem</strong> states that a single hidden layer
+            with a nonlinear activation can approximate any continuous function to arbitrary accuracy
+            (given enough neurons).
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         9.4 — The Perceptron
+         ============================================================ -->
+    <section class="content-section" id="perceptron">
+      <h2 class="section-heading"><span class="section-number">9.4</span> The Perceptron</h2>
+
+      <p>
+        The <strong>perceptron</strong> (Rosenblatt, 1958) is a single neuron with a step activation,
+        trained to classify inputs. It learns by a simple rule: if the prediction is wrong,
+        adjust the weights toward the correct answer.
+      </p>
+
+      <div class="math-block">
+        <div class="math-block__label">Perceptron Learning Rule</div>
+        <p class="math-block__content">
+          <strong>w</strong>[t+1] = <strong>w</strong>[t] + &eta;(y &minus; &ycirc;)<strong>x</strong>
+        </p>
+      </div>
+
+      <p>Where:</p>
+      <ul>
+        <li>y is the true label (0 or 1)</li>
+        <li>&ycirc; is the predicted label</li>
+        <li>&eta; is the learning rate</li>
+      </ul>
+
+      <p>
+        <strong>The Perceptron Convergence Theorem</strong> guarantees that if the data is
+        linearly separable, the algorithm will find a solution in a finite number of steps.
+        This was a landmark result &mdash; a machine that <em>provably</em> learns.
+      </p>
+
+      <div class="progressive-section">
+        <button class="progressive-section__toggle" aria-expanded="false">Show the Math &mdash; Geometric Interpretation</button>
+        <div class="progressive-section__content" hidden>
+          <p>
+            The perceptron defines a <strong>hyperplane</strong> in input space:
+          </p>
+          <div class="math-block">
+            <p class="math-block__content">
+              <strong>w</strong><sup>T</sup><strong>x</strong> + b = 0
+            </p>
+          </div>
+          <p>
+            In 2D, this is a line: w<sub>1</sub>x<sub>1</sub> + w<sub>2</sub>x<sub>2</sub> + b = 0.
+            The weight vector <strong>w</strong> is the normal to this line. Points on one side
+            (where <strong>w</strong><sup>T</sup><strong>x</strong> + b &gt; 0) are classified as class 1;
+            the other side as class 0.
+          </p>
+          <p>
+            The perceptron learning rule rotates and translates this hyperplane until all training
+            points are correctly classified. Each misclassified point pulls the hyperplane toward
+            the correct classification.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         9.5 — The XOR Problem
+         ============================================================ -->
+    <section class="content-section" id="xor-problem">
+      <h2 class="section-heading"><span class="section-number">9.5</span> The XOR Problem</h2>
+
+      <p>
+        In 1969, Minsky and Papert published <em>Perceptrons</em>, proving that a single perceptron
+        <strong>cannot learn XOR</strong>. The four XOR points require a nonlinear boundary &mdash;
+        no single line can separate the classes:
+      </p>
+
+      <table style="width: auto; margin: 1rem auto; border-collapse: collapse;">
+        <thead>
+          <tr>
+            <th style="padding: 0.5rem 1rem; border-bottom: 2px solid var(--border);">x<sub>1</sub></th>
+            <th style="padding: 0.5rem 1rem; border-bottom: 2px solid var(--border);">x<sub>2</sub></th>
+            <th style="padding: 0.5rem 1rem; border-bottom: 2px solid var(--border);">XOR</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td style="padding: 0.4rem 1rem; text-align: center; border-bottom: 1px solid var(--border);">0</td><td style="padding: 0.4rem 1rem; text-align: center; border-bottom: 1px solid var(--border);">0</td><td style="padding: 0.4rem 1rem; text-align: center; color: var(--color-dsp); border-bottom: 1px solid var(--border);">0</td></tr>
+          <tr><td style="padding: 0.4rem 1rem; text-align: center; border-bottom: 1px solid var(--border);">0</td><td style="padding: 0.4rem 1rem; text-align: center; border-bottom: 1px solid var(--border);">1</td><td style="padding: 0.4rem 1rem; text-align: center; color: var(--color-ai); border-bottom: 1px solid var(--border);">1</td></tr>
+          <tr><td style="padding: 0.4rem 1rem; text-align: center; border-bottom: 1px solid var(--border);">1</td><td style="padding: 0.4rem 1rem; text-align: center; border-bottom: 1px solid var(--border);">0</td><td style="padding: 0.4rem 1rem; text-align: center; color: var(--color-ai); border-bottom: 1px solid var(--border);">1</td></tr>
+          <tr><td style="padding: 0.4rem 1rem; text-align: center;">1</td><td style="padding: 0.4rem 1rem; text-align: center;">1</td><td style="padding: 0.4rem 1rem; text-align: center; color: var(--color-dsp);">0</td></tr>
+        </tbody>
+      </table>
+
+      <p>
+        This result triggered the first &ldquo;AI winter&rdquo; &mdash; funding dried up because people
+        conflated the limitation of a single neuron with the limitation of neural networks as a whole.
+        The fix is simple: <strong>add more layers</strong>. Two neurons can each draw a line,
+        and a third can combine them to solve XOR. We&rsquo;ll see this in Chapter 10.
+      </p>
+    </section>
+
+    <!-- ============================================================
+         9.6 — Bridge: Neuron as Matched Filter
+         ============================================================ -->
+    <section class="content-section" id="bridge">
+      <h2 class="section-heading"><span class="section-number">9.6</span> Bridge: The Neuron IS a Matched Filter</h2>
+
+      <div class="bridge-teaser">
+        <div class="bridge-teaser__label">DSP &rarr; AI Connection</div>
+        <p>
+          The artificial neuron performs the same computation as a matched filter followed by
+          a threshold detector &mdash; the fundamental building block of radar, sonar, and
+          communication systems.
+        </p>
+      </div>
+
+      <table class="comparison-table" style="width:100%; border-collapse: collapse; margin: 1.5rem 0;">
+        <thead>
+          <tr>
+            <th style="padding: 0.75rem; text-align: left; border-bottom: 2px solid var(--border); color: var(--color-dsp);">DSP: Matched Filter</th>
+            <th style="padding: 0.75rem; text-align: left; border-bottom: 2px solid var(--border); color: var(--color-ai);">AI: Neuron</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style="padding: 0.6rem; border-bottom: 1px solid var(--border);">Template signal h[n]</td>
+            <td style="padding: 0.6rem; border-bottom: 1px solid var(--border);">Weight vector <strong>w</strong></td>
+          </tr>
+          <tr>
+            <td style="padding: 0.6rem; border-bottom: 1px solid var(--border);">Input signal x[n]</td>
+            <td style="padding: 0.6rem; border-bottom: 1px solid var(--border);">Input features <strong>x</strong></td>
+          </tr>
+          <tr>
+            <td style="padding: 0.6rem; border-bottom: 1px solid var(--border);">Cross-correlation &sum; h[k]x[k]</td>
+            <td style="padding: 0.6rem; border-bottom: 1px solid var(--border);">Dot product <strong>w</strong><sup>T</sup><strong>x</strong></td>
+          </tr>
+          <tr>
+            <td style="padding: 0.6rem; border-bottom: 1px solid var(--border);">Threshold detector</td>
+            <td style="padding: 0.6rem; border-bottom: 1px solid var(--border);">Activation function &sigma;(z)</td>
+          </tr>
+          <tr>
+            <td style="padding: 0.6rem; border-bottom: 1px solid var(--border);">Fixed template (designed)</td>
+            <td style="padding: 0.6rem; border-bottom: 1px solid var(--border);">Learned weights (trained)</td>
+          </tr>
+          <tr>
+            <td style="padding: 0.6rem; border-bottom: 1px solid var(--border);">Max output when signal matches template</td>
+            <td style="padding: 0.6rem; border-bottom: 1px solid var(--border);">Max output when input aligns with weights</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <p>
+        The key difference: in DSP, the template h[n] is <strong>designed</strong> by an engineer
+        who knows what signal to look for. In AI, the weights <strong>w</strong> are <strong>learned from
+        data</strong> &mdash; the network discovers what patterns are important. This shift from
+        designed to learned templates is one of the fundamental transitions from classical DSP to modern AI.
+      </p>
+
+      <div class="insight-box">
+        <div class="insight-box__label">Looking Ahead</div>
+        <p>
+          In Chapter 14, we&rsquo;ll see that attention&rsquo;s Q&middot;K<sup>T</sup> operation is just
+          a bank of learned matched filters running in parallel. The neuron you&rsquo;re exploring
+          here is the atomic unit of that entire mechanism.
+        </p>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         Tool 9.1 — Single Neuron Playground
+         ============================================================ -->
+    <section class="content-section" id="tool-neuron">
+      <h2 class="section-heading"><span class="section-number">9.7</span> Tool: Single Neuron Playground</h2>
+
+      <p>
+        Drag the weights and bias to see how the decision boundary moves. Try the perceptron
+        learning rule on different datasets. Notice what happens with XOR.
+      </p>
+
+      <div class="tool-container" id="singleNeuronTool">
+        <div class="tool-header">
+          <span class="tool-header__label">Tool 9.1</span>
+          <span class="tool-header__title">Single Neuron Playground</span>
+        </div>
+        <div class="tool-body">
+          <div class="tool-controls" style="display: flex; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 0.75rem;">
+            <label class="tool-control">
+              <span class="tool-control__label">Dataset</span>
+              <select data-control="neuron-dataset" class="tool-select">
+                <option value="linear" selected>Linear</option>
+                <option value="diagonal">Diagonal</option>
+                <option value="xor">XOR</option>
+                <option value="circle">Circle</option>
+              </select>
+            </label>
+            <label class="tool-control">
+              <span class="tool-control__label">Activation</span>
+              <select data-control="neuron-activation" class="tool-select">
+                <option value="sigmoid" selected>Sigmoid</option>
+                <option value="step">Step</option>
+                <option value="tanh">Tanh</option>
+                <option value="relu">ReLU</option>
+                <option value="leaky-relu">Leaky ReLU</option>
+              </select>
+            </label>
+            <label class="tool-control">
+              <span class="tool-control__label">w<sub>1</sub></span>
+              <input type="range" data-control="neuron-w1" min="-5" max="5" step="0.1" value="1" class="tool-slider">
+              <span data-value="neuron-w1" class="tool-value">1.00</span>
+            </label>
+            <label class="tool-control">
+              <span class="tool-control__label">w<sub>2</sub></span>
+              <input type="range" data-control="neuron-w2" min="-5" max="5" step="0.1" value="1" class="tool-slider">
+              <span data-value="neuron-w2" class="tool-value">1.00</span>
+            </label>
+            <label class="tool-control">
+              <span class="tool-control__label">bias</span>
+              <input type="range" data-control="neuron-bias" min="-5" max="5" step="0.1" value="0" class="tool-slider">
+              <span data-value="neuron-bias" class="tool-value">0.00</span>
+            </label>
+          </div>
+
+          <div class="tool-canvas-wrapper"></div>
+
+          <div class="tool-actions" style="display: flex; gap: 0.5rem; margin-top: 0.5rem; flex-wrap: wrap;">
+            <button data-action="neuron-train" class="tool-btn tool-btn--accent">Train (50 epochs)</button>
+            <button data-action="neuron-reset" class="tool-btn tool-btn--muted">Reset Weights</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="insight-box">
+        <div class="insight-box__label">Try This</div>
+        <ul>
+          <li>Select &ldquo;Linear&rdquo; dataset and click &ldquo;Train&rdquo; &mdash; watch the accuracy jump to ~100%</li>
+          <li>Now select &ldquo;XOR&rdquo; and train &mdash; the accuracy stays around 50%. No line can separate these classes</li>
+          <li>Try &ldquo;Circle&rdquo; dataset &mdash; also impossible for a single neuron. This motivates multilayer networks</li>
+          <li>Manually drag w<sub>1</sub> and w<sub>2</sub> to see how the decision boundary rotates. Drag bias to see it translate</li>
+          <li>Points with red rings are misclassified. For linear data, you can get 0 misclassifications</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         Tool 9.2 — Activation Function Gallery
+         ============================================================ -->
+    <section class="content-section" id="tool-activations">
+      <h2 class="section-heading"><span class="section-number">9.8</span> Tool: Activation Function Gallery</h2>
+
+      <p>
+        Explore every major activation function and its derivative. Hover to see exact values.
+        Pay attention to the derivative &mdash; where it&rsquo;s near zero, gradients vanish during training.
+      </p>
+
+      <div class="tool-container" id="activationGalleryTool">
+        <div class="tool-header">
+          <span class="tool-header__label">Tool 9.2</span>
+          <span class="tool-header__title">Activation Function Gallery</span>
+        </div>
+        <div class="tool-body">
+          <div class="activation-buttons" style="display: flex; flex-wrap: wrap; gap: 0.35rem; margin-bottom: 0.75rem;"></div>
+
+          <div class="tool-canvas-wrapper"></div>
+        </div>
+      </div>
+
+      <div class="insight-box">
+        <div class="insight-box__label">Try This</div>
+        <ul>
+          <li>Select <strong>Sigmoid</strong> and hover toward z=5 or z=&minus;5 &mdash; notice the derivative drops to nearly 0. This is the vanishing gradient problem</li>
+          <li>Switch to <strong>ReLU</strong> &mdash; the derivative is exactly 1 for all z &gt; 0. No vanishing gradient, but exactly 0 for z &lt; 0 (dead neurons)</li>
+          <li>Compare <strong>GELU</strong> and <strong>Swish</strong> &mdash; both are smooth approximations of ReLU with small negative regions. GELU is used in GPT/BERT, Swish in EfficientNet</li>
+          <li>Click <strong>All</strong> to overlay every activation for direct comparison</li>
+          <li>Notice how every activation is roughly linear near z=0. The nonlinearity matters most for large |z|</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         Chapter Navigation
+         ============================================================ -->
+    <!-- Further Reading -->
+    <section class="content-section" id="further-reading">
+      <h2 class="section-heading">Further Reading</h2>
+      <ul class="further-reading-list">
+        <li>
+          <a href="https://link.springer.com/article/10.1007/BF02478259" target="_blank" rel="noopener">A Logical Calculus of the Ideas Immanent in Nervous Activity</a>
+          <span class="further-reading__authors">McCulloch &amp; Pitts, 1943 — Bulletin of Mathematical Biophysics</span>
+          <span class="further-reading__note">The original mathematical model of a neuron — where it all began</span>
+        </li>
+        <li>
+          <a href="https://www.deeplearningbook.org/contents/mlp.html" target="_blank" rel="noopener">Deep Learning — Chapter 6: Deep Feedforward Networks</a>
+          <span class="further-reading__authors">Goodfellow, Bengio &amp; Courville, 2016 — MIT Press (free online)</span>
+          <span class="further-reading__note">Modern treatment of neurons, activation functions, and network architecture</span>
+        </li>
+        <li>
+          <a href="https://cs231n.github.io/neural-networks-1/" target="_blank" rel="noopener">CS231n: Neural Networks Part 1</a>
+          <span class="further-reading__authors">Stanford — Course Notes</span>
+          <span class="further-reading__note">Clear walkthrough of biological motivation, single neurons, and activation choices</span>
+        </li>
+      </ul>
+    </section>
+
+    <nav class="chapter-nav" aria-label="Chapter navigation">
+      <a class="chapter-nav__prev" href="../part1/ch08-advanced-dsp.html">
+        <span class="chapter-nav__dir">&larr; Previous</span>
+        <span class="chapter-nav__title">Ch 8: Adaptive Filters</span>
+      </a>
+      <a class="chapter-nav__next" href="ch10-backprop.html">
+        <span class="chapter-nav__dir">Next &rarr;</span>
+        <span class="chapter-nav__title">Ch 10: Neural Networks &amp; Backprop</span>
+      </a>
+    </nav>
+
+  </main>
+</div>
+
+<!-- Scripts -->
+<script src="../../js/core/navigation.js"></script>
+<script src="../../js/core/progressive-disclosure.js"></script>
+<script src="../../js/core/chapter-nav.js"></script>
+<script src="../../js/tools/shared/plot-utils.js"></script>
+<script src="../../js/tools/ch09-single-neuron.js"></script>
+<script src="../../js/tools/ch09-activations.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    DSPtoAI.SingleNeuron.init('singleNeuronTool');
+    DSPtoAI.ActivationGallery.init('activationGalleryTool');
+  });
+</script>
+
+<style>
+  .act-btn {
+    font-size: 0.7rem;
+    font-family: 'JetBrains Mono', monospace;
+    padding: 0.25rem 0.6rem;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: transparent;
+    color: var(--text-dim);
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .act-btn.active {
+    color: var(--text);
+    background: rgba(255,255,255,0.08);
+  }
+  .act-btn:hover {
+    background: rgba(255,255,255,0.05);
+  }
+  .act-btn--all {
+    border-color: var(--text-dim);
+    font-weight: 500;
+  }
+</style>
+
+<script src="../../js/core/search-index.js"></script>
+<script src="../../js/core/search.js"></script>
+</body>
+</html>

@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ch 21: SSM Evolution Timeline &mdash; DSP to AI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Outfit:wght@300;400;500;600;700;800;900&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../style/global.css">
+  <link rel="stylesheet" href="../../style/theme-dark.css">
+  <link rel="stylesheet" href="../../style/theme-light.css">
+  <link rel="stylesheet" href="../../style/components.css">
+  <link rel="stylesheet" href="../../style/chapter.css">
+  <script src="../../js/core/theme-switcher.js"></script>
+</head>
+<body>
+
+<div class="noise"></div>
+
+<!-- Navigation -->
+<nav class="site-nav">
+  <a href="../../index.html" class="site-nav__logo">DSP <span class="arrow">&rarr;</span> AI</a>
+  <ul class="site-nav__links">
+    <li><a href="../../index.html#part1">Part I</a></li>
+    <li><a href="../../index.html#part2">Part II</a></li>
+    <li><a href="../../index.html#part3">Part III</a></li>
+    <li><a href="../../index.html#part4" class="active">Part IV</a></li>
+    <li><a href="../../gallery/index.html">Gallery</a></li>
+    <li><a href="../../reference/glossary.html">Reference</a></li>
+  </ul>
+  <button class="search-toggle" aria-label="Search site (press /)">🔍</button>
+  <button class="theme-toggle" aria-label="Toggle theme"></button>
+  <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false">&#9776;</button>
+</nav>
+<div class="progress-bar"></div>
+
+<!-- Page Layout -->
+<div class="chapter-page" data-chapter-id="ch21">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar__part-label">Part IV: The Frontier</div>
+    <ul class="sidebar__chapters">
+      <li><a class="sidebar__chapter-link active" href="ch21-ssm-evolution.html"><span class="sidebar__chapter-num">21</span> SSM Evolution Timeline</a>
+        <ul class="sidebar__sections">
+          <li><a class="sidebar__section-link" href="#era1">Era 1: Foundations</a></li>
+          <li><a class="sidebar__section-link" href="#era2">Era 2: Architecture</a></li>
+          <li><a class="sidebar__section-link" href="#era3">Era 3: Mamba</a></li>
+          <li><a class="sidebar__section-link" href="#era4">Era 4: Hybrids</a></li>
+          <li><a class="sidebar__section-link" href="#era5">Era 5: Edge &amp; Future</a></li>
+          <li><a class="sidebar__section-link" href="#dsp-thread">The DSP Thread</a></li>
+          <li><a class="sidebar__section-link" href="#tool-timeline">Timeline Explorer</a></li>
+        </ul>
+      </li>
+      <li><a class="sidebar__chapter-link" href="ch22-hybrid-architectures.html"><span class="sidebar__chapter-num">22</span> Hybrid Architectures</a></li>
+      <li><a class="sidebar__chapter-link" href="ch23-capstone.html"><span class="sidebar__chapter-num">23</span> Capstone Project</a></li>
+    </ul>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="chapter-content">
+
+    <nav class="breadcrumb" aria-label="Breadcrumb"></nav>
+
+    <header class="chapter-header">
+      <div class="chapter-header__part">Part IV &mdash; The Frontier</div>
+      <div class="chapter-header__number">Chapter 21</div>
+      <h1 class="chapter-header__title">SSM Evolution Timeline</h1>
+      <p class="chapter-header__subtitle">
+        From HiPPO (2020) to production hybrids (2025): the state-space model revolution
+        happened in just five years. Each breakthrough solved a specific limitation of the
+        previous generation &mdash; and at every step, the connection to classical DSP deepened.
+        This chapter maps the complete evolution, era by era, with the DSP insight that each
+        milestone reveals.
+      </p>
+    </header>
+
+    <!-- ============================================================
+         21.1 — Era 1: Foundations (2020–2021)
+         ============================================================ -->
+    <section class="content-section" id="era1">
+      <h2 class="section-heading"><span class="section-number">21.1</span> Era 1 &mdash; Foundations (2020&ndash;2021)</h2>
+
+      <div class="card-grid" style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));">
+        <div class="concept-card">
+          <h3 class="concept-card__title">HiPPO (NeurIPS 2020)</h3>
+          <p class="concept-card__body">
+            <strong>Problem:</strong> RNNs struggle with long-range dependencies.<br>
+            <strong>Insight:</strong> Design the state matrix A analytically so the state
+            vector stores optimal polynomial projections of input history.<br>
+            <strong>Impact:</strong> Provided the theoretical foundation &mdash; a principled way
+            to compress sequential history into a fixed-size state.<br>
+            <strong>DSP lens:</strong> HiPPO is a specific IIR filter bank where each channel
+            tracks a Legendre polynomial coefficient. It&rsquo;s the optimal basis for
+            history compression, analogous to how the DFT is optimal for frequency analysis.
+          </p>
+        </div>
+        <div class="concept-card">
+          <h3 class="concept-card__title">LSSL (NeurIPS 2021)</h3>
+          <p class="concept-card__body">
+            <strong>Problem:</strong> HiPPO gives great theory but no efficient implementation.<br>
+            <strong>Insight:</strong> Combine HiPPO with the state-space model framework.
+            Show that the discretized SSM can be computed as either convolution (for training)
+            or recurrence (for inference).<br>
+            <strong>Impact:</strong> Established the convolution-recurrence duality &mdash; the
+            central idea that makes SSMs practical.<br>
+            <strong>DSP lens:</strong> This is the same IIR impulse-response truncation technique
+            that DSP engineers have used for decades: compute the IIR&rsquo;s impulse response,
+            then use it as a FIR kernel.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         21.2 — Era 2: Architecture (2021–2023)
+         ============================================================ -->
+    <section class="content-section" id="era2">
+      <h2 class="section-heading"><span class="section-number">21.2</span> Era 2 &mdash; Efficient Architecture (2021&ndash;2023)</h2>
+
+      <div class="card-grid" style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));">
+        <div class="concept-card">
+          <h3 class="concept-card__title">S4 (ICLR 2022)</h3>
+          <p class="concept-card__body">
+            <strong>Problem:</strong> Computing C&middot;A&#x0305;^n&middot;B for the convolution kernel
+            is expensive with a dense A matrix.<br>
+            <strong>Solution:</strong> DPLR (Diagonal Plus Low-Rank) parameterization of A,
+            enabling O(N) kernel computation via Cauchy kernel evaluation.<br>
+            <strong>Impact:</strong> First SSM to beat Transformers on the Long Range Arena benchmark (tasks up to 4K tokens; Path-X extended to 16K).
+            Proved SSMs are viable at scale.<br>
+            <strong>DSP lens:</strong> DPLR is the partial fraction expansion of the transfer
+            function H(z). Computing the kernel via Cauchy evaluation is equivalent to
+            evaluating H(z) on the unit circle &mdash; the frequency response.
+          </p>
+        </div>
+        <div class="concept-card">
+          <h3 class="concept-card__title">DSS / S4D (2022)</h3>
+          <p class="concept-card__body">
+            <strong>Insight:</strong> Diagonalizing A (discarding the low-rank correction) loses
+            almost no performance while massively simplifying the code.<br>
+            <strong>Impact:</strong> Each state dimension becomes an independent first-order
+            system. The implementation reduces to element-wise operations.<br>
+            <strong>DSP lens:</strong> Diagonalization IS the parallel first-order IIR section
+            decomposition. Each diagonal entry is one pole. Standard textbook DSP, independently
+            rediscovered by ML researchers.
+          </p>
+        </div>
+        <div class="concept-card">
+          <h3 class="concept-card__title">H3 (ICLR 2023)</h3>
+          <p class="concept-card__body">
+            <strong>Insight:</strong> Stack two SSM layers with a multiplicative gate.
+            Approach Transformer quality on language modeling.<br>
+            <strong>Critical finding:</strong> LTI SSMs cannot do content-based selection &mdash;
+            the &ldquo;selective copy&rdquo; failure. If you ask an LTI SSM to copy only
+            certain tokens, it fails completely because it applies the same transform to all inputs.<br>
+            <strong>DSP lens:</strong> Fixed filters can&rsquo;t select based on content.
+            You need <em>adaptive</em> filtering (Chapter 8) &mdash; this is the gap H3
+            identified.
+          </p>
+        </div>
+        <div class="concept-card">
+          <h3 class="concept-card__title">Hyena (ICML 2023)</h3>
+          <p class="concept-card__body">
+            <strong>Insight:</strong> Replace explicit convolution kernels with <em>implicit</em>
+            long convolutions &mdash; a small neural network generates the kernel on the fly.
+            Sub-quadratic sequence mixing without the LTI limitation of S4.<br>
+            <strong>DSP lens:</strong> Learned FIR kernel via implicit parameterization. The
+            kernel adapts to the data distribution (though not per-token like Mamba). A stepping
+            stone between fixed S4 kernels and fully adaptive Mamba.
+          </p>
+        </div>
+        <div class="concept-card">
+          <h3 class="concept-card__title">RWKV (2023&ndash;2024)</h3>
+          <p class="concept-card__body">
+            <strong>Insight:</strong> Combine linear attention with RNN-like recurrence via the
+            WKV (Weighted Key Value) operator. Fully open-source, trained up to 14B parameters.<br>
+            <strong>Impact:</strong> O(T) training and O(1) inference, like Mamba but via a
+            different path. Demonstrated that the community could build efficient sub-quadratic
+            models outside the SSM framework.<br>
+            <strong>DSP lens:</strong> The exponentially-decaying WKV operator is an exponentially-windowed
+            moving average &mdash; a classic DSP structure.
+          </p>
+        </div>
+        <div class="concept-card">
+          <h3 class="concept-card__title">RetNet (Microsoft, 2023)</h3>
+          <p class="concept-card__body">
+            <strong>Insight:</strong> Replace softmax attention with a <em>retention</em> mechanism
+            using exponential decay: R = (QK<sup>T</sup> &odot; D) V. Supports three compute modes:
+            parallel (training), recurrent (inference), chunkwise (hybrid).<br>
+            <strong>DSP lens:</strong> Retention IS an exponentially-windowed FIR filter &mdash;
+            attention with a built-in decay that favors recent tokens. Bridges linear attention
+            and SSMs.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         21.3 — Era 3: The Mamba Breakthrough (2023–2024)
+         ============================================================ -->
+    <section class="content-section" id="era3">
+      <h2 class="section-heading"><span class="section-number">21.3</span> Era 3 &mdash; The Mamba Breakthrough (2023&ndash;2024)</h2>
+
+      <div class="card-grid" style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));">
+        <div class="concept-card">
+          <h3 class="concept-card__title">Mamba / S6 (Dec 2023)</h3>
+          <p class="concept-card__body">
+            <strong>The breakthrough:</strong> Make B, C, &Delta; input-dependent, breaking
+            the LTI assumption. Hardware-aware parallel scan replaces FFT convolution.<br>
+            <strong>Results:</strong> First SSM to match Transformers at language modeling.
+            5&times; throughput, O(1) inference memory per step.<br>
+            <strong>DSP lens:</strong> Converts the fixed IIR filter bank into a
+            <em>learnable, adaptive</em> one. &Delta;[n] moves the poles at every timestep &mdash;
+            the network learns content-dependent filtering in real time.
+          </p>
+        </div>
+        <div class="concept-card">
+          <h3 class="concept-card__title">Mamba-2 / SSD (May 2024)</h3>
+          <p class="concept-card__body">
+            <strong>The unification:</strong> Proves selective SSMs and masked linear attention
+            are mathematically equivalent via semiseparable matrices.<br>
+            <strong>Algorithm:</strong> Chunked computation &mdash; quadratic attention within
+            small chunks, SSM state propagation between chunks. 2&ndash;8&times; faster training.<br>
+            <strong>Impact:</strong> State dim jumps from N=16 to N=128+ by exploiting tensor
+            cores. Closes the theory gap: Attention and SSMs are different views of the same
+            matrix structure.
+          </p>
+        </div>
+      </div>
+
+      <div class="progressive-section">
+        <button class="progressive-toggle" aria-expanded="false">Show the Math</button>
+        <div class="progressive-content">
+          <p><strong>Mamba-2&rsquo;s semiseparable matrix connection:</strong></p>
+          <p>A causal attention matrix M has entry M[i,j] = q[i]&middot;k[j] for j &le; i. This
+            is a <em>rank-d</em> lower-triangular matrix (d = head dimension).</p>
+          <p>The selective SSM&rsquo;s equivalent &ldquo;attention matrix&rdquo; has entries:</p>
+          <div class="math-block">
+            <code>
+              M[i,j] = C[i] &middot; (A&#x0305;[i] &middot; A&#x0305;[i-1] &middot;&hellip;&middot; A&#x0305;[j+1]) &middot; B[j] &nbsp; for j &le; i
+            </code>
+          </div>
+          <p>
+            This is a <strong>semiseparable matrix</strong> of rank N (state dimension). Every
+            contiguous submatrix has rank &le; N. Standard attention has rank T; Mamba has rank
+            N. Since N &lt;&lt; T (typically 16&ndash;128 vs 4K&ndash;128K), the matrix can be
+            represented and multiplied in O(TN) instead of O(T&sup2;).
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         21.4 — Era 4: Hybrid Revolution (2024)
+         ============================================================ -->
+    <section class="content-section" id="era4">
+      <h2 class="section-heading"><span class="section-number">21.4</span> Era 4 &mdash; The Hybrid Revolution (2024)</h2>
+
+      <p>
+        The field converged rapidly on mixing attention and SSM layers:
+      </p>
+
+      <div class="card-grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));">
+        <div class="concept-card">
+          <h3 class="concept-card__title">Jamba (AI21)</h3>
+          <p class="concept-card__body">
+            52B params, 256K context. Establishes the <strong>1:7 attention-to-Mamba ratio</strong>.
+            KV-cache drops from 32 GB to 4 GB. Key finding: &ldquo;never put attention at the
+            front&rdquo; &mdash; let Mamba layers do initial feature extraction.
+          </p>
+        </div>
+        <div class="concept-card">
+          <h3 class="concept-card__title">Griffin (DeepMind)</h3>
+          <p class="concept-card__body">
+            Gated linear recurrences + local sliding-window attention. Each layer combines
+            both recurrence and local attention (not separate interleaved layers). Matches
+            Llama-1 quality at comparable scale, proving recurrence + local attention is
+            a winning combination.
+          </p>
+        </div>
+        <div class="concept-card">
+          <h3 class="concept-card__title">Bamba (IBM, 9B)</h3>
+          <p class="concept-card__body">
+            Mamba-2 layers with just 3 attention layers in a 32-layer stack. Competitive with
+            fully-attention models at fraction of the KV-cache cost.
+          </p>
+        </div>
+        <div class="concept-card">
+          <h3 class="concept-card__title">ConMamba (ICASSP 2025)</h3>
+          <p class="concept-card__body">
+            Replaces attention in Conformer with bidirectional Mamba for ASR. 3.9% WER on
+            LibriSpeech clean, 45% less training time, 50% less memory. Critical: Mamba alone
+            underperforms &mdash; needs the convolutional module.
+          </p>
+        </div>
+        <div class="concept-card">
+          <h3 class="concept-card__title">GLA (Yang et al., 2024)</h3>
+          <p class="concept-card__body">
+            <strong>Gated Linear Attention</strong> &mdash; replaces softmax attention with a
+            data-dependent gating mechanism on linear attention. Hardware-efficient chunk-wise
+            algorithm enables training at transformer speed while keeping O(1) inference memory.
+            Bridges the gap between linear attention theory and practical training efficiency.
+          </p>
+        </div>
+        <div class="concept-card">
+          <h3 class="concept-card__title">Based (Arora et al., 2024)</h3>
+          <p class="concept-card__body">
+            Combines <strong>linear attention</strong> (global, low-rank) with
+            <strong>sliding-window attention</strong> (local, full-rank) in each layer. Linear
+            attention handles bulk context; local window handles precise recall. Shows that
+            even simple linear-attention variants outperform pure softmax when paired with
+            short convolutions for recall-intensive tasks.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         21.5 — Era 5: Edge & Future (2025+)
+         ============================================================ -->
+    <section class="content-section" id="era5">
+      <h2 class="section-heading"><span class="section-number">21.5</span> Era 5 &mdash; Edge Deployment &amp; Future (2025+)</h2>
+
+      <div class="card-grid" style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));">
+        <div class="concept-card">
+          <h3 class="concept-card__title">Edge SSMs (XAMBA, eMamba)</h3>
+          <p class="concept-card__body">
+            First frameworks optimizing Mamba for commodity NPUs and FPGAs. Replace SiLU with
+            piecewise-linear, cumsum with MatMul. 260 tok/s on Intel NPU, 11.6&times; perf/area
+            on ASIC. Fixed state + no softmax + static shapes = ideal for edge hardware.
+          </p>
+        </div>
+        <div class="concept-card">
+          <h3 class="concept-card__title">Production Hybrids at Scale</h3>
+          <p class="concept-card__body">
+            <strong>Jamba 1.5</strong> (398B total, 94B active MoE),
+            <strong>Falcon Mamba 7B</strong> (5.5T training tokens, pure Mamba),
+            <strong>Codestral Mamba</strong> (256K context for code),
+            <strong>Phi-4-mini-flash</strong> (Mamba + sliding-window attention, 10&times;
+            reasoning throughput). Hybrids are becoming the default architecture.
+          </p>
+        </div>
+      </div>
+
+      <p>
+        The trajectory is clear: the question is no longer &ldquo;attention vs SSM&rdquo; but
+        &ldquo;<strong>what ratio, and where?</strong>&rdquo; Each new model experiments with
+        different layer arrangements, always guided by the same principle: SSM for efficient
+        bulk processing, attention for precision retrieval when needed.
+      </p>
+    </section>
+
+    <!-- ============================================================
+         21.6 — The DSP Thread
+         ============================================================ -->
+    <section class="content-section bridge-teaser" id="dsp-thread">
+      <h2 class="section-heading"><span class="section-number">21.6</span> The DSP Thread Through Every Era</h2>
+
+      <p>
+        Every breakthrough in the SSM timeline maps to a concept from classical DSP:
+      </p>
+
+      <table class="comparison-table">
+        <thead>
+          <tr>
+            <th>SSM Milestone</th>
+            <th>DSP Equivalent</th>
+            <th>Chapter Reference</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>HiPPO (optimal A matrix)</td>
+            <td>Optimal basis functions (like DFT, but for time)</td>
+            <td>Ch 4 (Fourier), Ch 18 (HiPPO)</td>
+          </tr>
+          <tr>
+            <td>LSSL (conv-recurrence duality)</td>
+            <td>IIR impulse response used as FIR kernel</td>
+            <td>Ch 7 (FIR/IIR), Ch 18 (Duality)</td>
+          </tr>
+          <tr>
+            <td>S4 (DPLR parameterization)</td>
+            <td>Partial fraction expansion of H(z)</td>
+            <td>Ch 5 (Z-Transform), Ch 6 (Poles/Zeros)</td>
+          </tr>
+          <tr>
+            <td>S4D (diagonal A)</td>
+            <td>Parallel first-order IIR sections</td>
+            <td>Ch 7 (Filter Design)</td>
+          </tr>
+          <tr>
+            <td>H3 (LTI limitation)</td>
+            <td>Fixed filter can&rsquo;t do content selection</td>
+            <td>Ch 2 (LTI Systems), Ch 8 (Adaptive)</td>
+          </tr>
+          <tr>
+            <td>Mamba (input-dependent &Delta;,B,C)</td>
+            <td>Adaptive IIR filter bank (LMS/RLS analogy)</td>
+            <td>Ch 8 (Adaptive), Ch 19 (Mamba)</td>
+          </tr>
+          <tr>
+            <td>Mamba-2 (semiseparable matrices)</td>
+            <td>Structured matrix = low-rank transfer function</td>
+            <td>Ch 20 (Attention vs Mamba)</td>
+          </tr>
+          <tr>
+            <td>Hybrid architectures</td>
+            <td>Cascading FIR + IIR stages</td>
+            <td>Ch 7, Ch 22 (Hybrids)</td>
+          </tr>
+          <tr>
+            <td>Edge SSMs (quantized, hardware-optimized)</td>
+            <td>Fixed-point DSP on embedded processors</td>
+            <td>Ch 22 (Edge Deployment)</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <p>
+        The SSM revolution is, in many ways, the <strong>ML community independently
+        rediscovering signal processing</strong>. Every technique that makes SSMs work &mdash;
+        diagonalization, partial fractions, IIR-to-FIR conversion, adaptive filtering &mdash;
+        has existed in DSP textbooks for decades. The new contribution is
+        <em>learning these structures end-to-end with gradient descent</em> instead of
+        designing them by hand.
+      </p>
+    </section>
+
+    <!-- ============================================================
+         TOOL 21.1 — Timeline Explorer
+         ============================================================ -->
+    <section class="content-section" id="tool-timeline">
+      <h2 class="section-heading"><span class="section-number">Tool 21.1</span> Interactive Timeline Explorer</h2>
+
+      <p>
+        Navigate the SSM evolution visually. Click an era to expand its milestones.
+        Each milestone shows its key metrics, DSP connection, and impact.
+      </p>
+
+      <div class="tool-container" id="tool-timeline-viz">
+        <div class="tool-header">
+          <span class="tool-header__label">Tool 21.1</span>
+          <span class="tool-header__title">SSM Evolution Timeline</span>
+        </div>
+        <div class="tool-body">
+          <div class="tool-controls">
+            <div class="control-group">
+              <label class="control-label">View</label>
+              <select class="tool-select" data-control="tl-view">
+                <option value="timeline">Timeline (all eras)</option>
+                <option value="complexity">Complexity Over Time</option>
+                <option value="dsp">DSP Connections</option>
+              </select>
+            </div>
+            <div class="control-group">
+              <label class="control-label">Era Focus</label>
+              <select class="tool-select" data-control="tl-era">
+                <option value="all">All Eras</option>
+                <option value="0">Era 1: Foundations</option>
+                <option value="1">Era 2: Architecture</option>
+                <option value="2">Era 3: Mamba</option>
+                <option value="3">Era 4: Hybrids</option>
+                <option value="4">Era 5: Edge/Future</option>
+              </select>
+            </div>
+          </div>
+          <div class="tool-canvas-wrapper"></div>
+        </div>
+      </div>
+
+      <div class="insight-box">
+        <h3 class="insight-box__title">Try This</h3>
+        <ul>
+          <li>Start with <strong>Timeline (all eras)</strong> to see the full 5-year arc.</li>
+          <li>Switch to <strong>Complexity Over Time</strong> to see how training/inference costs dropped with each generation.</li>
+          <li>Switch to <strong>DSP Connections</strong> to see the classical DSP concept behind each milestone.</li>
+          <li>Use <strong>Era Focus</strong> to zoom into a specific era and see detailed metrics.</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- Further Reading -->
+    <section class="content-section" id="further-reading">
+      <h2 class="section-heading">Further Reading</h2>
+      <ul class="further-reading-list">
+        <li>
+          <a href="https://arxiv.org/abs/2111.00396" target="_blank" rel="noopener">Efficiently Modeling Long Sequences with Structured State Spaces (S4)</a>
+          <span class="further-reading__authors">Gu, Goel &amp; R&eacute;, 2022 — ICLR</span>
+          <span class="further-reading__note">The S4 paper that launched the modern SSM era</span>
+        </li>
+        <li>
+          <a href="https://arxiv.org/abs/2302.10866" target="_blank" rel="noopener">Hyena Hierarchy: Towards Larger Convolutional Language Models</a>
+          <span class="further-reading__authors">Poli et al., 2023 — ICML</span>
+          <span class="further-reading__note">Implicit long convolutions as an attention-free alternative</span>
+        </li>
+        <li>
+          <a href="https://arxiv.org/abs/2305.13048" target="_blank" rel="noopener">RWKV: Reinventing RNNs for the Transformer Era</a>
+          <span class="further-reading__authors">Peng et al., 2023</span>
+          <span class="further-reading__note">Linear attention with RNN-like recurrence via the WKV operator</span>
+        </li>
+        <li>
+          <a href="https://arxiv.org/abs/2307.08621" target="_blank" rel="noopener">Retentive Network: A Successor to Transformer for Large Language Models</a>
+          <span class="further-reading__authors">Sun et al., 2023 — Microsoft Research</span>
+          <span class="further-reading__note">RetNet: retention mechanism combining recurrence, parallel, and chunk-wise computation</span>
+        </li>
+        <li>
+          <a href="https://arxiv.org/abs/2312.06635" target="_blank" rel="noopener">Gated Linear Attention Transformers with Hardware-Efficient Training</a>
+          <span class="further-reading__authors">Yang et al., 2024</span>
+          <span class="further-reading__note">GLA: data-dependent gating on linear attention with chunk-wise training</span>
+        </li>
+      </ul>
+    </section>
+
+    <!-- Chapter Navigation -->
+    <nav class="chapter-nav">
+      <a class="chapter-nav__prev" href="../part3/ch20-attn-vs-mamba.html">
+        <span class="chapter-nav__dir">&larr; Previous</span>
+        <span class="chapter-nav__label">Ch 20: Attention vs Mamba</span>
+      </a>
+      <a class="chapter-nav__next" href="ch22-hybrid-architectures.html">
+        <span class="chapter-nav__dir">Next &rarr;</span>
+        <span class="chapter-nav__label">Ch 22: Hybrid Architectures</span>
+      </a>
+    </nav>
+
+  </main>
+</div>
+
+<!-- Scripts -->
+<script src="../../js/core/navigation.js"></script>
+<script src="../../js/core/progressive-disclosure.js"></script>
+<script src="../../js/core/chapter-nav.js"></script>
+<script src="../../js/tools/shared/plot-utils.js"></script>
+<script src="../../js/tools/ch21-timeline.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    if (window.DSPtoAI && window.DSPtoAI.Timeline) {
+      window.DSPtoAI.Timeline.init('tool-timeline-viz');
+    }
+  });
+</script>
+
+<script src="../../js/core/search-index.js"></script>
+<script src="../../js/core/search.js"></script>
+</body>
+</html>

@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ch 3: Convolution &mdash; The Universal Operation &mdash; DSP to AI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Outfit:wght@300;400;500;600;700;800;900&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../style/global.css">
+  <link rel="stylesheet" href="../../style/theme-dark.css">
+  <link rel="stylesheet" href="../../style/theme-light.css">
+  <link rel="stylesheet" href="../../style/components.css">
+  <link rel="stylesheet" href="../../style/chapter.css">
+  <script src="../../js/core/theme-switcher.js"></script>
+</head>
+<body>
+
+<div class="noise"></div>
+
+<!-- Navigation -->
+<nav class="site-nav">
+  <a href="../../index.html" class="site-nav__logo">DSP <span class="arrow">&rarr;</span> AI</a>
+  <ul class="site-nav__links">
+    <li><a href="../../index.html#part1" class="active">Part I</a></li>
+    <li><a href="../../index.html#part2">Part II</a></li>
+    <li><a href="../../index.html#part3">Part III</a></li>
+    <li><a href="../../index.html#part4">Part IV</a></li>
+    <li><a href="../../gallery/index.html">Gallery</a></li>
+    <li><a href="../../reference/glossary.html">Reference</a></li>
+  </ul>
+  <button class="search-toggle" aria-label="Search site (press /)">🔍</button>
+  <button class="theme-toggle" aria-label="Toggle theme"></button>
+  <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false">&#9776;</button>
+</nav>
+<div class="progress-bar"></div>
+
+<!-- Page Layout -->
+<div class="chapter-page" data-chapter-id="ch03">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar__part-label">Part I: DSP Foundations</div>
+    <ul class="sidebar__chapters">
+      <li><a class="sidebar__chapter-link" href="ch01-signals.html"><span class="sidebar__chapter-num">01</span> What Is a Signal?</a></li>
+      <li><a class="sidebar__chapter-link" href="ch02-systems.html"><span class="sidebar__chapter-num">02</span> Systems That Process Signals</a></li>
+      <li><a class="sidebar__chapter-link active" href="ch03-convolution.html"><span class="sidebar__chapter-num">03</span> Convolution</a>
+        <ul class="sidebar__sections">
+          <li><a class="sidebar__section-link" href="#intuition">Intuition</a></li>
+          <li><a class="sidebar__section-link" href="#sliding-sum">The Sliding Sum</a></li>
+          <li><a class="sidebar__section-link" href="#formula">The Formula</a></li>
+          <li><a class="sidebar__section-link" href="#properties">Properties</a></li>
+          <li><a class="sidebar__section-link" href="#in-action">Convolution in Action</a></li>
+          <li><a class="sidebar__section-link" href="#two-dimensions">2D Convolution</a></li>
+          <li><a class="sidebar__section-link" href="#tool-conv1d">Convolution Visualizer</a></li>
+          <li><a class="sidebar__section-link" href="#tool-conv2d">2D Convolution Viewer</a></li>
+        </ul>
+      </li>
+      <li><a class="sidebar__chapter-link" href="ch04-fourier.html"><span class="sidebar__chapter-num">04</span> The Fourier Transform</a></li>
+      <li><a class="sidebar__chapter-link" href="ch05-z-transform.html"><span class="sidebar__chapter-num">05</span> Z-Transform</a></li>
+      <li><a class="sidebar__chapter-link" href="ch06-poles-zeros.html"><span class="sidebar__chapter-num">06</span> Poles &amp; Zeros</a></li>
+      <li><a class="sidebar__chapter-link" href="ch07-filter-design.html"><span class="sidebar__chapter-num">07</span> FIR &amp; IIR Filters</a></li>
+      <li><a class="sidebar__chapter-link" href="ch08-advanced-dsp.html"><span class="sidebar__chapter-num">08</span> Adaptive Filters</a></li>
+    </ul>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="chapter-content">
+
+    <nav class="breadcrumb" aria-label="Breadcrumb"></nav>
+
+    <header class="chapter-header">
+      <div class="chapter-header__part">Part I &mdash; DSP Foundations</div>
+      <div class="chapter-header__number">Chapter 03</div>
+      <h1 class="chapter-header__title">Convolution &mdash; The Universal Operation</h1>
+      <p class="chapter-header__subtitle">
+        If you could only learn one operation in all of signal processing, this would be it.
+        Convolution is how LTI systems compute their output, how images are filtered, and
+        &mdash; under a different name &mdash; how convolutional neural networks see the world.
+      </p>
+    </header>
+
+    <!-- === Section 1: Intuition === -->
+    <section class="chapter-section" id="intuition">
+      <h2 class="chapter-section__title">3.1 &mdash; Intuition: Weighted Averaging</h2>
+
+      <div class="motivation-box">
+        <div class="motivation-box__title">Why should I care?</div>
+        <p>Convolution appears in almost every system that processes data sequentially: audio effects, image filters, neural networks, control systems, probability theory. Once you see it, you can't unsee it. The 1D convolution you learn here is the <em>same operation</em> that powers CNNs (2D) and transformers (as cross-correlation in attention). Master it once, use it everywhere.</p>
+      </div>
+
+      <p>Forget the formula for a moment. Here's what convolution <em>does</em>:</p>
+
+      <p>Imagine you're standing at a particular point in a signal. You have a small template &mdash; a set of weights called a <strong>kernel</strong> (or impulse response, or filter). You place the kernel on top of the signal, multiply each overlapping pair of values, and add up the results. That gives you <strong>one output value</strong>.</p>
+
+      <p>Then you slide the kernel one step to the right and repeat. Each step gives you the next output sample. By the time you've slid the kernel across the entire signal, you've built the complete output.</p>
+
+      <div class="insight-box">
+        <div class="insight-box__title">The Core Idea</div>
+        <div class="insight-box__content">
+          <strong>Convolution = Slide, Multiply, Sum.</strong> At each position, the kernel weights decide how much each nearby input sample contributes to the output. Different kernels produce different effects: smoothing, sharpening, edge detection, echo &mdash; all are convolution with different weights.
+        </div>
+      </div>
+
+      <p>This is why convolution is sometimes called a <strong>weighted moving average</strong>. The kernel defines the weights, and it moves across the signal, computing a local weighted sum at every position.</p>
+    </section>
+
+    <!-- === Section 2: The Sliding Sum === -->
+    <section class="chapter-section" id="sliding-sum">
+      <h2 class="chapter-section__title">3.2 &mdash; The Sliding Sum: How It Works Step by Step</h2>
+
+      <p>Let's trace through a tiny example. Suppose our input <span class="math-inline">x</span> is <code>[1, 3, 2, 0, 1]</code> and our kernel <span class="math-inline">h</span> is <code>[0.5, 1, 0.5]</code> (a simple smoothing kernel).</p>
+
+      <p><strong>Step by step:</strong></p>
+
+      <ol style="margin: var(--sp-sm) 0 var(--sp-lg); padding-left: var(--sp-lg); line-height: 2.2;">
+        <li><strong>Position 0:</strong> Kernel covers x[0]. Partial overlap: <code>0.5&times;0 + 1&times;1 + 0.5&times;3 = 2.5</code> (zero-padding for out-of-bounds)</li>
+        <li><strong>Position 1:</strong> Kernel covers x[0..2]. <code>0.5&times;1 + 1&times;3 + 0.5&times;2 = 4.5</code></li>
+        <li><strong>Position 2:</strong> Kernel covers x[1..3]. <code>0.5&times;3 + 1&times;2 + 0.5&times;0 = 3.5</code></li>
+        <li>...and so on until the kernel slides past the end.</li>
+      </ol>
+
+      <p>Notice two things:</p>
+      <ul style="margin: var(--sp-sm) 0 var(--sp-lg); padding-left: var(--sp-lg); line-height: 2;">
+        <li>The output length is <span class="math-inline">len(x) + len(h) &minus; 1</span>. A 5-sample signal convolved with a 3-tap kernel produces 7 output samples.</li>
+        <li>The kernel is <strong>flipped</strong> (reversed) before sliding. This is the difference between convolution and correlation. In the formula, the flip happens because we index <span class="math-inline">h[n &minus; k]</span> instead of <span class="math-inline">h[k]</span>.</li>
+      </ul>
+
+      <div class="bridge-teaser">
+        <div class="bridge-teaser__label">Why flip?</div>
+        <div class="bridge-teaser__content">
+          The flip ensures that convolution is <strong>associative</strong> and <strong>commutative</strong> &mdash; properties that are essential for building complex systems from simpler ones. Without the flip, you get <em>cross-correlation</em>, which is what attention actually computes (it doesn't flip the keys). We'll explore this difference in Part III.
+        </div>
+      </div>
+    </section>
+
+    <!-- === Section 3: The Formula === -->
+    <section class="chapter-section" id="formula">
+      <h2 class="chapter-section__title">3.3 &mdash; The Convolution Formula</h2>
+
+      <p>The discrete convolution of signal <span class="math-inline">x[n]</span> and kernel <span class="math-inline">h[n]</span> is:</p>
+
+      <div class="math-block">
+        y[n] = (x * h)[n] = &sum;<sub>k=&minus;&infin;</sub><sup>&infin;</sup> x[k] &middot; h[n &minus; k]
+      </div>
+
+      <p>Read it as: "For each output sample <span class="math-inline">n</span>, walk through all input samples <span class="math-inline">k</span>, multiply each by the corresponding kernel weight <span class="math-inline">h[n &minus; k]</span>, and sum."</p>
+
+      <!-- Show the Math -->
+      <div class="progressive-section">
+        <button class="progressive-toggle" aria-expanded="false">
+          <span class="arrow">&#9654;</span> Show the Math &mdash; Deriving Convolution from First Principles
+        </button>
+        <div class="progressive-content">
+          <div class="progressive-content__inner">
+            <p>We derived this in Chapter 2, but it's worth repeating because of its importance. Start with the decomposition of any signal into shifted impulses:</p>
+            <div class="math-block">
+              x[n] = &sum;<sub>k</sub> x[k] &middot; &delta;[n &minus; k]
+            </div>
+
+            <p>For an LTI system with impulse response <span class="math-inline">h[n]</span>:</p>
+            <div class="math-block">
+              y[n] = T{x[n]} = T{ &sum;<sub>k</sub> x[k] &middot; &delta;[n &minus; k] }
+            </div>
+
+            <p>By <strong>linearity</strong>, the sum passes through:</p>
+            <div class="math-block">
+              = &sum;<sub>k</sub> x[k] &middot; T{ &delta;[n &minus; k] }
+            </div>
+
+            <p>By <strong>time invariance</strong>, <span class="math-inline">T{&delta;[n &minus; k]} = h[n &minus; k]</span>:</p>
+            <div class="math-block">
+              y[n] = &sum;<sub>k</sub> x[k] &middot; h[n &minus; k]
+            </div>
+
+            <p>This is the convolution sum. The computational cost is <strong>O(N &middot; M)</strong> where N is the signal length and M is the kernel length. For long signals, the <em>fast convolution</em> via FFT reduces this to <span class="math-inline">O(N log N)</span> &mdash; we'll see why in Chapter 4.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- === Section 4: Properties === -->
+    <section class="chapter-section" id="properties">
+      <h2 class="chapter-section__title">3.4 &mdash; Properties of Convolution</h2>
+
+      <p>Convolution has remarkable algebraic properties that make it a powerful building block:</p>
+
+      <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: var(--sp-md); margin: var(--sp-md) 0 var(--sp-lg);">
+        <div class="card card--math">
+          <h5>Commutative</h5>
+          <div class="math-block" style="font-size:13px; margin-top:var(--sp-sm);">x * h = h * x</div>
+          <p style="font-size:13px; color:var(--text-dim); margin-top:var(--sp-xs);">Order doesn't matter. You can think of the kernel sliding over the signal OR the signal sliding over the kernel &mdash; same result.</p>
+        </div>
+        <div class="card card--math">
+          <h5>Associative</h5>
+          <div class="math-block" style="font-size:13px; margin-top:var(--sp-sm);">(x * h<sub>1</sub>) * h<sub>2</sub> = x * (h<sub>1</sub> * h<sub>2</sub>)</div>
+          <p style="font-size:13px; color:var(--text-dim); margin-top:var(--sp-xs);">Cascading two filters is the same as convolving with their combined impulse response. You can merge a chain of filters into one.</p>
+        </div>
+        <div class="card card--math">
+          <h5>Distributive</h5>
+          <div class="math-block" style="font-size:13px; margin-top:var(--sp-sm);">x * (h<sub>1</sub> + h<sub>2</sub>) = x * h<sub>1</sub> + x * h<sub>2</sub></div>
+          <p style="font-size:13px; color:var(--text-dim); margin-top:var(--sp-xs);">Parallel filters can be combined by adding their impulse responses. This is why the Fourier transform simplifies convolution to multiplication.</p>
+        </div>
+        <div class="card card--dsp">
+          <h5>Identity Element</h5>
+          <div class="math-block" style="font-size:13px; margin-top:var(--sp-sm);">x * &delta; = x</div>
+          <p style="font-size:13px; color:var(--text-dim); margin-top:var(--sp-xs);">Convolving with an impulse returns the original signal unchanged. The impulse is the "do nothing" filter.</p>
+        </div>
+      </div>
+
+      <!-- Show the Math -->
+      <div class="progressive-section">
+        <button class="progressive-toggle" aria-expanded="false">
+          <span class="arrow">&#9654;</span> Show the Math &mdash; Why Commutativity Holds
+        </button>
+        <div class="progressive-content">
+          <div class="progressive-content__inner">
+            <p>To prove <span class="math-inline">x * h = h * x</span>, substitute <span class="math-inline">m = n &minus; k</span>:</p>
+            <div class="math-block">
+              (x * h)[n] = &sum;<sub>k</sub> x[k] &middot; h[n &minus; k]
+            </div>
+            <p>Let <span class="math-inline">m = n &minus; k</span>, so <span class="math-inline">k = n &minus; m</span>:</p>
+            <div class="math-block">
+              = &sum;<sub>m</sub> x[n &minus; m] &middot; h[m] = (h * x)[n]
+            </div>
+            <p>The substitution is valid because the infinite sum is over all integers. This simple change of variable establishes commutativity.</p>
+            <p><strong>Practical implication:</strong> In the convolution visualizer below, the kernel slides across the signal. But you'd get the <em>same result</em> sliding the signal across the kernel. The output is symmetric in the two inputs.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- === Section 5: Convolution in Action === -->
+    <section class="chapter-section" id="in-action">
+      <h2 class="chapter-section__title">3.5 &mdash; Convolution in Action</h2>
+
+      <p>Different kernels produce dramatically different effects on the same input signal:</p>
+
+      <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: var(--sp-md); margin: var(--sp-md) 0 var(--sp-lg);">
+        <div class="card card--dsp">
+          <h5>Averaging (Blur)</h5>
+          <p style="font-size:12px; font-family: var(--font-code); color:var(--color-dsp); margin:var(--sp-xs) 0;">h = [0.2, 0.2, 0.2, 0.2, 0.2]</p>
+          <p style="font-size:13px; color:var(--text-dim);">Every output is the average of 5 neighbors. Smooths noise, blurs edges. This is the simplest lowpass filter.</p>
+        </div>
+        <div class="card card--dsp">
+          <h5>Difference (Edge)</h5>
+          <p style="font-size:12px; font-family: var(--font-code); color:var(--color-dsp); margin:var(--sp-xs) 0;">h = [1, &minus;1]</p>
+          <p style="font-size:13px; color:var(--text-dim);">Subtracts each sample from the previous one. Detects changes. This is a discrete derivative &mdash; a highpass filter.</p>
+        </div>
+        <div class="card card--dsp">
+          <h5>Echo</h5>
+          <p style="font-size:12px; font-family: var(--font-code); color:var(--color-dsp); margin:var(--sp-xs) 0;">h = [1, 0, ..., 0, 0.6, 0, ..., 0.3]</p>
+          <p style="font-size:13px; color:var(--text-dim);">Non-zero taps at delays create echoes. Each non-zero weight adds a copy of the signal at that delay.</p>
+        </div>
+        <div class="card card--dsp">
+          <h5>Gaussian Smooth</h5>
+          <p style="font-size:12px; font-family: var(--font-code); color:var(--color-dsp); margin:var(--sp-xs) 0;">h = [.06, .12, .18, .24, .18, .12, .06]</p>
+          <p style="font-size:13px; color:var(--text-dim);">Bell-shaped weights give more influence to nearby samples. Smoother than box average. This is what Gaussian blur uses.</p>
+        </div>
+        <div class="card card--dsp">
+          <h5>Sharpen</h5>
+          <p style="font-size:12px; font-family: var(--font-code); color:var(--color-dsp); margin:var(--sp-xs) 0;">h = [&minus;0.25, 1.5, &minus;0.25]</p>
+          <p style="font-size:13px; color:var(--text-dim);">Negative side lobes amplify differences from neighbors, making transitions more abrupt. Enhances detail.</p>
+        </div>
+        <div class="card card--dsp">
+          <h5>Derivative</h5>
+          <p style="font-size:12px; font-family: var(--font-code); color:var(--color-dsp); margin:var(--sp-xs) 0;">h = [&minus;0.5, 0, 0.5]</p>
+          <p style="font-size:13px; color:var(--text-dim);">Central difference approximation. Measures slope. Output is large where signal changes rapidly.</p>
+        </div>
+      </div>
+
+      <p>The beauty is that <strong>all of these are the same operation</strong> &mdash; only the kernel differs. This is the power of convolution: one algorithm, infinitely many behaviors, determined entirely by a small set of weights.</p>
+
+      <div class="bridge-teaser">
+        <div class="bridge-teaser__label">Bridge to AI</div>
+        <div class="bridge-teaser__content">
+          In a Convolutional Neural Network (CNN), the kernel weights are not designed by hand &mdash; they are <strong>learned from data via backpropagation</strong>. The network discovers what features matter (edges, textures, shapes) by optimizing the kernel values. In DSP we design kernels; in deep learning, we learn them. Same operation, different design method.
+        </div>
+      </div>
+    </section>
+
+    <!-- === Section 6: 2D Convolution === -->
+    <section class="chapter-section" id="two-dimensions">
+      <h2 class="chapter-section__title">3.6 &mdash; Convolution in Two Dimensions</h2>
+
+      <p>Everything we've seen extends naturally to 2D. Instead of a 1D kernel sliding along a signal, a 2D kernel (typically 3&times;3 or 5&times;5) slides across an image:</p>
+
+      <div class="math-block">
+        y[r,c] = &sum;<sub>i</sub> &sum;<sub>j</sub> x[r+i, c+j] &middot; h[i, j]
+      </div>
+
+      <p>At each pixel position, the kernel weights are multiplied with the underlying image patch and summed to produce one output pixel. The concept is identical to 1D &mdash; just with an extra dimension.</p>
+
+      <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: var(--sp-md); margin: var(--sp-md) 0 var(--sp-lg);">
+        <div class="card card--dsp">
+          <h5>Blur (Average)</h5>
+          <p style="font-size:13px; color:var(--text-dim); margin-top:var(--sp-xs);">All weights equal. Each pixel becomes the average of its neighbors. Removes noise, softens details.</p>
+        </div>
+        <div class="card card--dsp">
+          <h5>Sharpen</h5>
+          <p style="font-size:13px; color:var(--text-dim); margin-top:var(--sp-xs);">Center weight &gt; 1, negative neighbors. Amplifies the difference between a pixel and its surroundings. Enhances edges.</p>
+        </div>
+        <div class="card card--ai">
+          <h5>Sobel Edge Detect</h5>
+          <p style="font-size:13px; color:var(--text-dim); margin-top:var(--sp-xs);">Detects horizontal or vertical edges. Output is large at boundaries. This is what early CNN layers learn to approximate.</p>
+        </div>
+        <div class="card card--ai">
+          <h5>Emboss</h5>
+          <p style="font-size:13px; color:var(--text-dim); margin-top:var(--sp-xs);">Asymmetric weights create a 3D shadow effect. Highlights directional intensity changes.</p>
+        </div>
+      </div>
+
+      <div class="insight-box">
+        <div class="insight-box__title">CNN Connection</div>
+        <div class="insight-box__content">
+          A convolutional layer in a CNN is <em>exactly</em> 2D convolution (technically cross-correlation, without the kernel flip) applied with multiple learned kernels in parallel. Each kernel detects a different feature. The first layer learns edges and textures; deeper layers compose these into increasingly abstract patterns (eyes, faces, objects). The operation itself is identical to what DSP engineers have used for decades &mdash; the revolution is in <strong>learning</strong> the kernels automatically.
+        </div>
+      </div>
+    </section>
+
+    <!-- === TOOL 3.1: Convolution Visualizer === -->
+    <section class="chapter-section" id="tool-conv1d">
+      <h2 class="chapter-section__title">Interactive Tool</h2>
+
+      <div class="tool-container" id="convolutionVizTool">
+        <div class="tool-header">
+          <span class="tool-header__icon">&#9733;</span>
+          <span class="tool-header__title">Tool 3.1 &mdash; Convolution Visualizer</span>
+          <span class="tool-header__badge">Crown Jewel</span>
+        </div>
+
+        <div class="tool-body">
+          <p style="font-size:14px; color:var(--text-dim); margin-bottom:var(--sp-md);">
+            Watch convolution happen step by step. The kernel (orange) slides across the input signal (cyan).
+            At each position, overlapping samples are multiplied and summed to produce one output sample (green).
+            The output builds progressively as the kernel moves. Use Play to animate or Step to advance one position at a time.
+          </p>
+          <div class="tool-canvas-wrapper"></div>
+        </div>
+
+        <div class="tool-controls">
+          <div class="control-group">
+            <label class="control-label">Input Signal</label>
+            <select class="control-select" data-control="input-preset">
+              <option value="sine" selected>Sine</option>
+              <option value="pulse-train">Pulse Train</option>
+              <option value="step">Step</option>
+              <option value="spike">Single Spike</option>
+              <option value="noisy-sine">Noisy Sine</option>
+            </select>
+          </div>
+          <div class="control-group">
+            <label class="control-label">Kernel</label>
+            <select class="control-select" data-control="kernel-preset">
+              <option value="averaging" selected>Averaging (Blur)</option>
+              <option value="difference">Difference (Edge)</option>
+              <option value="echo">Echo</option>
+              <option value="gaussian">Gaussian Smooth</option>
+              <option value="derivative">Derivative</option>
+              <option value="sharpen">Sharpen</option>
+            </select>
+          </div>
+          <div class="control-group">
+            <label class="control-label">Speed <span class="control-value" aria-live="polite" data-value="speed">150</span></label>
+            <input type="range" data-control="speed" min="10" max="280" value="150" step="10">
+          </div>
+          <div class="control-group" style="display:flex; gap:var(--sp-sm); justify-content:center; flex-wrap:wrap;">
+            <button class="btn" data-action="play-pause">&#9654; Play</button>
+            <button class="btn" data-action="step">Step &rarr;</button>
+            <button class="btn" data-action="reset">&#8634; Reset</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="insight-box" style="margin-top:var(--sp-lg);">
+        <div class="insight-box__title">Try this</div>
+        <div class="insight-box__content">
+          <strong>1.</strong> Start with Sine + Averaging (Blur). Press Play. Watch how the output is a smoothed version of the input &mdash; the averaging kernel acts as a lowpass filter.<br>
+          <strong>2.</strong> Switch kernel to Difference (Edge). Reset and Step through. Notice the output is large where the sine wave changes rapidly (zero crossings) and small at peaks &mdash; it's computing the derivative.<br>
+          <strong>3.</strong> Try Single Spike + Echo. The output IS the echo kernel itself &mdash; confirming that convolving with an impulse gives h[n].<br>
+          <strong>4.</strong> Try Noisy Sine + Gaussian Smooth. Watch the noise get cleaned up while the underlying sine wave is preserved.<br>
+          <strong>5.</strong> Experiment with Sharpen on the Step signal &mdash; see how it amplifies the transition edge.<br>
+          <strong>6.</strong> Use Step to advance one position at a time and read the multiplication formula in the top-right corner. This shows exactly how each output sample is computed.
+        </div>
+      </div>
+    </section>
+
+    <!-- === TOOL 3.2: 2D Convolution Viewer === -->
+    <section class="chapter-section" id="tool-conv2d">
+      <h2 class="chapter-section__title">Interactive Tool</h2>
+
+      <div class="tool-container" id="conv2DTool">
+        <div class="tool-header">
+          <span class="tool-header__icon">&#9638;</span>
+          <span class="tool-header__title">Tool 3.2 &mdash; 2D Convolution Viewer</span>
+          <span class="tool-header__badge">Interactive</span>
+        </div>
+
+        <div class="tool-body">
+          <p style="font-size:14px; color:var(--text-dim); margin-bottom:var(--sp-md);">
+            Hover over the input image to see a 3&times;3 kernel at work. The highlighted region shows which pixels
+            are being multiplied by the kernel weights. The output image updates in real-time.
+            Try different kernels to see how blur, sharpen, and edge detection work at the pixel level.
+          </p>
+          <div class="tool-canvas-wrapper"></div>
+        </div>
+
+        <div class="tool-controls">
+          <div class="control-group">
+            <label class="control-label">Kernel</label>
+            <select class="control-select" data-control="kernel-2d">
+              <option value="blur" selected>Blur (Average)</option>
+              <option value="sharpen">Sharpen</option>
+              <option value="edge-h">Edge Detect (Horizontal)</option>
+              <option value="edge-v">Edge Detect (Vertical)</option>
+              <option value="sobel">Sobel (Horizontal)</option>
+              <option value="emboss">Emboss</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="insight-box" style="margin-top:var(--sp-lg);">
+        <div class="insight-box__title">Try this</div>
+        <div class="insight-box__content">
+          <strong>1.</strong> Start with Blur. Hover across the image. The output is uniformly smoother &mdash; edges between dark and light regions become gradual transitions.<br>
+          <strong>2.</strong> Switch to Sharpen. The bright square in the center becomes more defined, with its edges enhanced.<br>
+          <strong>3.</strong> Try Edge Detect (Horizontal). Only horizontal boundaries appear in the output &mdash; vertical edges disappear because the kernel only responds to vertical intensity changes.<br>
+          <strong>4.</strong> Compare Edge Detect (Horizontal) vs (Vertical) &mdash; they detect perpendicular features.<br>
+          <strong>5.</strong> Try Sobel. This is a gradient operator used in computer vision &mdash; the same operator that early CNN layers often learn to approximate.<br>
+          <strong>6.</strong> Hover over a uniform region (all same values). The edge detection output is near zero &mdash; no edges to detect.
+        </div>
+      </div>
+    </section>
+
+    <!-- === Bridge Section === -->
+    <section class="chapter-section" id="bridge">
+      <h2 class="chapter-section__title">3.7 &mdash; Convolution: From DSP to Deep Learning</h2>
+
+      <p>Let's connect everything together:</p>
+
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap: var(--sp-md); margin: var(--sp-md) 0 var(--sp-lg);">
+        <div class="card card--dsp">
+          <h5>DSP Convolution</h5>
+          <ul style="font-size:13px; color:var(--text-dim); margin-top:var(--sp-xs); padding-left:var(--sp-md); line-height:1.8;">
+            <li>Kernels are <strong>designed</strong> (by engineers)</li>
+            <li>Kernel = impulse response h[n]</li>
+            <li>Uses kernel <strong>flip</strong> (true convolution)</li>
+            <li>One kernel per filter</li>
+            <li>Fixed weights (time-invariant)</li>
+          </ul>
+        </div>
+        <div class="card card--ai">
+          <h5>CNN Convolution</h5>
+          <ul style="font-size:13px; color:var(--text-dim); margin-top:var(--sp-xs); padding-left:var(--sp-md); line-height:1.8;">
+            <li>Kernels are <strong>learned</strong> (by backpropagation)</li>
+            <li>Kernel = learnable weight matrix</li>
+            <li>No flip (technically cross-correlation)</li>
+            <li>Multiple kernels per layer (feature maps)</li>
+            <li>Fixed weights after training</li>
+          </ul>
+        </div>
+      </div>
+
+      <p>The mathematical operation is virtually identical. The paradigm shift is going from <em>designing</em> kernels to <em>learning</em> them. And this shift &mdash; from hand-crafted to data-driven &mdash; is the central story of the DSP-to-AI evolution.</p>
+
+      <div class="bridge-teaser">
+        <div class="bridge-teaser__label">Looking Ahead</div>
+        <div class="bridge-teaser__content">
+          In <strong>Chapter 4</strong>, we'll discover that convolution in the time domain equals <em>multiplication</em> in the frequency domain. This is the <strong>Convolution Theorem</strong> &mdash; and it's the reason we care about the Fourier Transform. It also explains why large convolutions can be computed efficiently using the FFT, and connects to why attention mechanisms operate in a "frequency-like" space of learned representations.
+        </div>
+      </div>
+    </section>
+
+    <!-- Further Reading -->
+    <section class="content-section" id="further-reading">
+      <h2 class="section-heading">Further Reading</h2>
+      <ul class="further-reading-list">
+        <li>
+          <a href="https://www.dspguide.com/ch6.htm" target="_blank" rel="noopener">DSP Guide — Chapter 6: Convolution</a>
+          <span class="further-reading__authors">Smith, S.W. — Free online</span>
+          <span class="further-reading__note">Step-by-step visual explanation of convolution with animations</span>
+        </li>
+        <li>
+          <a href="https://www.youtube.com/watch?v=KuXjwB4LzSA" target="_blank" rel="noopener">But what is a convolution?</a>
+          <span class="further-reading__authors">3Blue1Brown, 2023 — YouTube</span>
+          <span class="further-reading__note">Beautiful visual intuition for convolution from polynomial multiplication to signal processing</span>
+        </li>
+        <li>
+          <a href="https://cs231n.github.io/convolutional-networks/" target="_blank" rel="noopener">CS231n: Convolutional Neural Networks</a>
+          <span class="further-reading__authors">Stanford — Course Notes</span>
+          <span class="further-reading__note">How convolution extends from 1D DSP to 2D image processing in deep learning</span>
+        </li>
+      </ul>
+    </section>
+
+    <!-- Chapter Navigation -->
+    <nav class="chapter-nav" aria-label="Chapter navigation"></nav>
+
+  </main>
+</div>
+
+<!-- Scripts -->
+<script src="../../js/core/navigation.js"></script>
+<script src="../../js/core/progressive-disclosure.js"></script>
+<script src="../../js/core/chapter-nav.js"></script>
+<script src="../../js/tools/shared/signal-generator.js"></script>
+<script src="../../js/tools/shared/plot-utils.js"></script>
+<script src="../../js/tools/shared/audio-engine.js"></script>
+<script src="../../js/tools/ch03-convolution.js"></script>
+<script src="../../js/tools/ch03-conv2d.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    DSPtoAI.ConvolutionViz.init('convolutionVizTool');
+    DSPtoAI.Conv2D.init('conv2DTool');
+  });
+</script>
+
+<script src="../../js/core/search-index.js"></script>
+<script src="../../js/core/search.js"></script>
+</body>
+</html>

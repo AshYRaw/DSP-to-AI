@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ch 8: Adaptive Filters &amp; Filter Banks &mdash; DSP to AI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Outfit:wght@300;400;500;600;700;800;900&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../style/global.css">
+  <link rel="stylesheet" href="../../style/theme-dark.css">
+  <link rel="stylesheet" href="../../style/theme-light.css">
+  <link rel="stylesheet" href="../../style/components.css">
+  <link rel="stylesheet" href="../../style/chapter.css">
+  <script src="../../js/core/theme-switcher.js"></script>
+</head>
+<body>
+
+<div class="noise"></div>
+
+<!-- Navigation -->
+<nav class="site-nav">
+  <a href="../../index.html" class="site-nav__logo">DSP <span class="arrow">&rarr;</span> AI</a>
+  <ul class="site-nav__links">
+    <li><a href="../../index.html#part1" class="active">Part I</a></li>
+    <li><a href="../../index.html#part2">Part II</a></li>
+    <li><a href="../../index.html#part3">Part III</a></li>
+    <li><a href="../../index.html#part4">Part IV</a></li>
+    <li><a href="../../gallery/index.html">Gallery</a></li>
+    <li><a href="../../reference/glossary.html">Reference</a></li>
+  </ul>
+  <button class="search-toggle" aria-label="Search site (press /)">🔍</button>
+  <button class="theme-toggle" aria-label="Toggle theme"></button>
+  <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false">&#9776;</button>
+</nav>
+<div class="progress-bar"></div>
+
+<!-- Page Layout -->
+<div class="chapter-page" data-chapter-id="ch08">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar__part-label">Part I: DSP Foundations</div>
+    <ul class="sidebar__chapters">
+      <li><a class="sidebar__chapter-link" href="ch01-signals.html"><span class="sidebar__chapter-num">01</span> What Is a Signal?</a></li>
+      <li><a class="sidebar__chapter-link" href="ch02-systems.html"><span class="sidebar__chapter-num">02</span> Systems That Process Signals</a></li>
+      <li><a class="sidebar__chapter-link" href="ch03-convolution.html"><span class="sidebar__chapter-num">03</span> Convolution</a></li>
+      <li><a class="sidebar__chapter-link" href="ch04-fourier.html"><span class="sidebar__chapter-num">04</span> The Fourier Transform</a></li>
+      <li><a class="sidebar__chapter-link" href="ch05-z-transform.html"><span class="sidebar__chapter-num">05</span> The Z-Transform</a></li>
+      <li><a class="sidebar__chapter-link" href="ch06-poles-zeros.html"><span class="sidebar__chapter-num">06</span> Poles &amp; Zeros</a></li>
+      <li><a class="sidebar__chapter-link" href="ch07-filter-design.html"><span class="sidebar__chapter-num">07</span> FIR &amp; IIR Filters</a></li>
+      <li><a class="sidebar__chapter-link active" href="ch08-advanced-dsp.html"><span class="sidebar__chapter-num">08</span> Adaptive Filters</a>
+        <ul class="sidebar__sections">
+          <li><a class="sidebar__section-link" href="#when-fixed-fail">When Fixed Filters Fail</a></li>
+          <li><a class="sidebar__section-link" href="#lms">The LMS Algorithm</a></li>
+          <li><a class="sidebar__section-link" href="#beyond-lms">Beyond LMS</a></li>
+          <li><a class="sidebar__section-link" href="#filter-banks">Filter Banks</a></li>
+          <li><a class="sidebar__section-link" href="#mel-scale">The Mel Scale</a></li>
+          <li><a class="sidebar__section-link" href="#bridge">Bridge: Adaptation in AI</a></li>
+          <li><a class="sidebar__section-link" href="#tool-adaptive">Adaptive Noise Canceller</a></li>
+          <li><a class="sidebar__section-link" href="#tool-bank">Filter Bank Decomposer</a></li>
+        </ul>
+      </li>
+    </ul>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="chapter-content">
+
+    <nav class="breadcrumb" aria-label="Breadcrumb"></nav>
+
+    <header class="chapter-header">
+      <div class="chapter-header__part">Part I &mdash; DSP Foundations</div>
+      <div class="chapter-header__number">Chapter 08</div>
+      <h1 class="chapter-header__title">Adaptive Filters &amp; Filter Banks</h1>
+      <p class="chapter-header__subtitle">
+        Fixed filters assume you know the signal statistics in advance. When conditions
+        change &mdash; noise drifts, channels shift, speakers vary &mdash; you need filters that <em>learn</em>.
+        Adaptive filters and filter banks are the DSP ancestors of modern AI's most powerful mechanisms.
+      </p>
+    </header>
+
+    <!-- ============================================================
+         8.1 — When Fixed Filters Fail
+         ============================================================ -->
+    <section class="content-section" id="when-fixed-fail">
+      <h2 class="section-heading"><span class="section-number">8.1</span> When Fixed Filters Fail</h2>
+
+      <p>
+        In Chapters 6&ndash;7, we designed beautiful filters: precise cutoff frequencies,
+        controlled passband ripple, guaranteed stability. But we assumed something crucial:
+        <strong>we knew which frequencies to keep and which to remove</strong>.
+      </p>
+
+      <p>
+        Real-world signals rarely cooperate:
+      </p>
+
+      <div class="card-grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));">
+        <div class="concept-card">
+          <div class="concept-card__icon" style="color: var(--color-dsp);">&#x1f3a4;</div>
+          <h3 class="concept-card__title">Changing Noise</h3>
+          <p class="concept-card__body">
+            Office background noise varies throughout the day. A fixed notch filter at 60&thinsp;Hz
+            won&rsquo;t adapt when the noise source changes frequency.
+          </p>
+        </div>
+        <div class="concept-card">
+          <div class="concept-card__icon" style="color: var(--color-ai);">&#x1f4f6;</div>
+          <h3 class="concept-card__title">Channel Variation</h3>
+          <p class="concept-card__body">
+            Wireless channels fade and shift unpredictably. Yesterday&rsquo;s equalizer
+            distorts today&rsquo;s signal.
+          </p>
+        </div>
+        <div class="concept-card">
+          <div class="concept-card__icon" style="color: var(--color-bridge);">&#x1f9e0;</div>
+          <h3 class="concept-card__title">Unknown Statistics</h3>
+          <p class="concept-card__body">
+            In echo cancellation, the room acoustics define the filter you need &mdash;
+            but you don&rsquo;t know them until you start listening.
+          </p>
+        </div>
+      </div>
+
+      <p>
+        The solution: let the filter <strong>adjust its own coefficients</strong> in real time,
+        driven by an error signal. This is the exact same idea as training a neural network,
+        just discovered decades earlier by DSP engineers.
+      </p>
+    </section>
+
+    <!-- ============================================================
+         8.2 — The LMS Algorithm
+         ============================================================ -->
+    <section class="content-section" id="lms">
+      <h2 class="section-heading"><span class="section-number">8.2</span> The LMS Algorithm</h2>
+
+      <p>
+        The <strong>Least Mean Squares (LMS)</strong> algorithm, invented by Widrow and Hoff in 1960,
+        is the simplest and most widely used adaptive filter. Its elegance lies in a single
+        update rule:
+      </p>
+
+      <div class="math-block">
+        <div class="math-block__label">LMS Update</div>
+        <p class="math-block__content">
+          <strong>w</strong>[n+1] = <strong>w</strong>[n] + 2&mu; &middot; e[n] &middot; <strong>x</strong>[n]
+        </p>
+      </div>
+
+      <p>Where:</p>
+      <ul>
+        <li><strong>w</strong>[n] &mdash; the filter coefficient vector at time n</li>
+        <li><strong>x</strong>[n] &mdash; the input signal vector (current and past samples)</li>
+        <li>e[n] = d[n] &minus; <strong>w</strong><sup>T</sup><strong>x</strong>[n] &mdash; the error (desired minus estimated)</li>
+        <li>&mu; &mdash; the step size (learning rate)</li>
+      </ul>
+
+      <div class="progressive-section">
+        <button class="progressive-section__toggle" aria-expanded="false">Show the Math</button>
+        <div class="progressive-section__content" hidden>
+          <p>The LMS algorithm approximates steepest descent on the mean-squared error surface:</p>
+          <div class="math-block">
+            <div class="math-block__label">Cost Function</div>
+            <p class="math-block__content">
+              J(<strong>w</strong>) = E[|e[n]|&sup2;] = E[|d[n] &minus; <strong>w</strong><sup>T</sup><strong>x</strong>[n]|&sup2;]
+            </p>
+          </div>
+          <p>The gradient of J with respect to <strong>w</strong> is:</p>
+          <div class="math-block">
+            <p class="math-block__content">
+              &nabla;J = &minus;2E[e[n] &middot; <strong>x</strong>[n]]
+            </p>
+          </div>
+          <p>
+            LMS replaces the expected value with the <em>instantaneous</em> estimate,
+            giving the stochastic gradient descent update:
+          </p>
+          <div class="math-block">
+            <p class="math-block__content">
+              <strong>w</strong>[n+1] = <strong>w</strong>[n] &minus; &mu;&nabla;J &asymp; <strong>w</strong>[n] + 2&mu; &middot; e[n] &middot; <strong>x</strong>[n]
+            </p>
+          </div>
+          <p>
+            <strong>Convergence condition:</strong> The step size must satisfy
+            0 &lt; &mu; &lt; 1/(&lambda;<sub>max</sub>) where &lambda;<sub>max</sub>
+            is the largest eigenvalue of the input autocorrelation matrix
+            <strong>R</strong> = E[<strong>x</strong><strong>x</strong><sup>T</sup>].
+            In practice, a safe bound is &mu; &lt; 1/(M &middot; P<sub>x</sub>) where M is the
+            filter order and P<sub>x</sub> is the input power.
+          </p>
+        </div>
+      </div>
+
+      <h3>The Step Size Dilemma</h3>
+
+      <p>
+        The step size &mu; controls the fundamental tradeoff:
+      </p>
+
+      <div class="card-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+        <div class="concept-card" style="border-color: var(--color-danger);">
+          <h3 class="concept-card__title">&mu; Too Large</h3>
+          <p class="concept-card__body">
+            Fast initial convergence but oscillates wildly. May diverge entirely &mdash;
+            coefficients blow up to infinity.
+          </p>
+        </div>
+        <div class="concept-card" style="border-color: var(--color-math);">
+          <h3 class="concept-card__title">&mu; Just Right</h3>
+          <p class="concept-card__body">
+            Smooth convergence to optimal coefficients. Noise cancellation improves
+            steadily. The &ldquo;sweet spot&rdquo; depends on signal statistics.
+          </p>
+        </div>
+        <div class="concept-card" style="border-color: var(--color-dsp);">
+          <h3 class="concept-card__title">&mu; Too Small</h3>
+          <p class="concept-card__body">
+            Stable but painfully slow. May not converge before conditions change.
+            The filter can&rsquo;t track a non-stationary environment.
+          </p>
+        </div>
+      </div>
+
+      <div class="insight-box">
+        <div class="insight-box__label">The AI Connection</div>
+        <p>
+          If &mu; reminds you of the learning rate in neural network training &mdash; that&rsquo;s
+          because it&rsquo;s <em>the same concept</em>. LMS (1960) predated backpropagation (1986)
+          by 26 years. The step-size/learning-rate tradeoff is universal in all gradient-based
+          optimization.
+        </p>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         8.3 — Beyond LMS
+         ============================================================ -->
+    <section class="content-section" id="beyond-lms">
+      <h2 class="section-heading"><span class="section-number">8.3</span> Beyond LMS</h2>
+
+      <p>
+        LMS is simple and robust, but more sophisticated algorithms trade complexity for performance:
+      </p>
+
+      <div class="card-grid" style="grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));">
+        <div class="concept-card">
+          <h3 class="concept-card__title">NLMS</h3>
+          <p class="concept-card__subtitle">Normalized LMS</p>
+          <p class="concept-card__body">
+            Normalizes the step size by the input power:
+            &mu;[n] = &mu;<sub>0</sub> / (&#x2016;<strong>x</strong>[n]&#x2016;&sup2; + &epsilon;).
+            Eliminates the gradient noise problem. More robust than LMS.
+          </p>
+        </div>
+        <div class="concept-card">
+          <h3 class="concept-card__title">RLS</h3>
+          <p class="concept-card__subtitle">Recursive Least Squares</p>
+          <p class="concept-card__body">
+            Uses the full inverse autocorrelation matrix. Converges much faster than LMS
+            (order of magnitude fewer samples). But O(M&sup2;) per sample vs O(M) for LMS.
+          </p>
+        </div>
+        <div class="concept-card">
+          <h3 class="concept-card__title">Kalman Filter</h3>
+          <p class="concept-card__subtitle">Optimal State Estimator</p>
+          <p class="concept-card__body">
+            Models the filter coefficients as a <em>state</em> that evolves over time.
+            Optimal for Gaussian processes. The gold standard when you have a state-space model.
+          </p>
+        </div>
+        <div class="concept-card">
+          <h3 class="concept-card__title">Affine Projection</h3>
+          <p class="concept-card__subtitle">APA</p>
+          <p class="concept-card__body">
+            Bridges LMS and RLS. Uses L past input vectors instead of just the current one.
+            L=1 gives NLMS, L=M gives RLS. Adjustable complexity/performance tradeoff.
+          </p>
+        </div>
+      </div>
+
+      <div class="progressive-section">
+        <button class="progressive-section__toggle" aria-expanded="false">Show the Math &mdash; RLS Update</button>
+        <div class="progressive-section__content" hidden>
+          <div class="math-block">
+            <div class="math-block__label">RLS Algorithm</div>
+            <p class="math-block__content">
+              <strong>k</strong>[n] = <strong>P</strong>[n&minus;1]<strong>x</strong>[n] / (&lambda; + <strong>x</strong><sup>T</sup>[n]<strong>P</strong>[n&minus;1]<strong>x</strong>[n])<br><br>
+              e[n] = d[n] &minus; <strong>w</strong><sup>T</sup>[n&minus;1]<strong>x</strong>[n]<br><br>
+              <strong>w</strong>[n] = <strong>w</strong>[n&minus;1] + <strong>k</strong>[n] &middot; e[n]<br><br>
+              <strong>P</strong>[n] = (1/&lambda;)(<strong>P</strong>[n&minus;1] &minus; <strong>k</strong>[n]<strong>x</strong><sup>T</sup>[n]<strong>P</strong>[n&minus;1])
+            </p>
+          </div>
+          <p>
+            Where &lambda; is the forgetting factor (typically 0.95&ndash;1.0), <strong>P</strong> is the
+            inverse correlation matrix estimate, and <strong>k</strong> is the Kalman gain vector.
+            Cost is O(M&sup2;) per sample due to the matrix update.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         8.4 — Filter Banks
+         ============================================================ -->
+    <section class="content-section" id="filter-banks">
+      <h2 class="section-heading"><span class="section-number">8.4</span> Filter Banks</h2>
+
+      <p>
+        A <strong>filter bank</strong> is a collection of bandpass filters that decompose a signal
+        into separate frequency bands. If the Fourier transform gives you a complete frequency
+        representation, a filter bank gives you a <em>structured, controllable</em> one.
+      </p>
+
+      <div class="math-block">
+        <div class="math-block__label">Analysis Filter Bank</div>
+        <p class="math-block__content">
+          x<sub>k</sub>[n] = (h<sub>k</sub> * x)[n], &ensp; k = 0, 1, &hellip;, K&minus;1
+        </p>
+      </div>
+
+      <p>
+        Each filter h<sub>k</sub> is a bandpass filter covering a different frequency range.
+        Together they tile the frequency axis:
+      </p>
+
+      <div class="card-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+        <div class="concept-card">
+          <h3 class="concept-card__title">Uniform Banks</h3>
+          <p class="concept-card__body">
+            Equal bandwidth per channel. Simple and efficient. Good for telecommunications
+            (OFDM, DMT).
+          </p>
+        </div>
+        <div class="concept-card">
+          <h3 class="concept-card__title">Octave Banks</h3>
+          <p class="concept-card__body">
+            Bandwidth doubles with each octave. Matches musical perception. Used in audio
+            equalization and wavelet analysis.
+          </p>
+        </div>
+        <div class="concept-card">
+          <h3 class="concept-card__title">Mel Banks</h3>
+          <p class="concept-card__body">
+            Perceptually spaced for human hearing. Narrow at low frequencies, wide at high.
+            The foundation of speech recognition features (MFCCs).
+          </p>
+        </div>
+        <div class="concept-card">
+          <h3 class="concept-card__title">Learned Banks</h3>
+          <p class="concept-card__body">
+            In modern AI, the filter bank is <em>learned from data</em>. CNNs learn convolutional
+            filters; Transformers learn attention projections that act as adaptive filter banks.
+          </p>
+        </div>
+      </div>
+
+      <p>
+        <strong>Perfect reconstruction:</strong> If the analysis and synthesis filter banks are
+        designed correctly, you can perfectly reconstruct the original signal from the band signals:
+      </p>
+      <div class="math-block">
+        <div class="math-block__label">Synthesis</div>
+        <p class="math-block__content">
+          x&#770;[n] = &sum;<sub>k</sub> (g<sub>k</sub> * x<sub>k</sub>)[n] = x[n]
+        </p>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         8.5 — The Mel Scale
+         ============================================================ -->
+    <section class="content-section" id="mel-scale">
+      <h2 class="section-heading"><span class="section-number">8.5</span> The Mel Scale</h2>
+
+      <p>
+        Human hearing doesn&rsquo;t perceive frequency linearly. The difference between
+        200&thinsp;Hz and 400&thinsp;Hz sounds much larger than between 5000&thinsp;Hz and 5200&thinsp;Hz,
+        even though both are 200&thinsp;Hz apart. The <strong>Mel scale</strong> captures this nonlinearity:
+      </p>
+
+      <div class="math-block">
+        <div class="math-block__label">Mel Conversion</div>
+        <p class="math-block__content">
+          m = 2595 &middot; log<sub>10</sub>(1 + f / 700)
+        </p>
+      </div>
+
+      <div class="progressive-section">
+        <button class="progressive-section__toggle" aria-expanded="false">Show the Math &mdash; MFCC Pipeline</button>
+        <div class="progressive-section__content" hidden>
+          <p>Mel-Frequency Cepstral Coefficients (MFCCs) are the classic speech feature extraction pipeline:</p>
+          <ol>
+            <li><strong>Frame</strong> the signal into overlapping windows (25ms, 10ms hop)</li>
+            <li><strong>FFT</strong> each frame to get the power spectrum</li>
+            <li>Apply <strong>Mel filter bank</strong> (typically 26&ndash;40 triangular filters)</li>
+            <li>Take the <strong>log</strong> of each filter bank energy</li>
+            <li>Apply the <strong>DCT</strong> (Discrete Cosine Transform) to decorrelate</li>
+            <li>Keep the first 12&ndash;13 coefficients as features</li>
+          </ol>
+          <p>
+            This pipeline dominated speech recognition for 30 years before end-to-end deep learning
+            replaced it &mdash; but the insight that perceptual frequency spacing matters lives on
+            in learned representations.
+          </p>
+        </div>
+      </div>
+
+      <div class="insight-box">
+        <div class="insight-box__label">Why This Matters for AI</div>
+        <p>
+          When modern speech models (Wav2Vec, Whisper) learn their first convolutional layer from
+          raw audio, the learned filters naturally converge to something resembling a Mel filter bank.
+          The network <em>rediscovers</em> what psychoacoustics already knew.
+        </p>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         8.6 — Bridge: Adaptation in AI
+         ============================================================ -->
+    <section class="content-section" id="bridge">
+      <h2 class="section-heading"><span class="section-number">8.6</span> Bridge: Adaptation in AI</h2>
+
+      <div class="bridge-teaser">
+        <div class="bridge-teaser__label">DSP &rarr; AI Connection</div>
+        <p>
+          Adaptive filters and filter banks map directly to the most important mechanisms in modern AI:
+        </p>
+      </div>
+
+      <table class="comparison-table" style="width:100%; border-collapse: collapse; margin: 1.5rem 0;">
+        <thead>
+          <tr>
+            <th style="padding: 0.75rem; text-align: left; border-bottom: 2px solid var(--border); color: var(--color-dsp);">DSP Concept</th>
+            <th style="padding: 0.75rem; text-align: left; border-bottom: 2px solid var(--border); color: var(--color-ai);">AI Analog</th>
+            <th style="padding: 0.75rem; text-align: left; border-bottom: 2px solid var(--border); color: var(--color-bridge);">Connection</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style="padding: 0.6rem; border-bottom: 1px solid var(--border);">LMS adaptive filter</td>
+            <td style="padding: 0.6rem; border-bottom: 1px solid var(--border);">SGD training</td>
+            <td style="padding: 0.6rem; border-bottom: 1px solid var(--border);">Same stochastic gradient descent: instantaneous gradient estimate, step size = learning rate</td>
+          </tr>
+          <tr>
+            <td style="padding: 0.6rem; border-bottom: 1px solid var(--border);">Step size &mu;</td>
+            <td style="padding: 0.6rem; border-bottom: 1px solid var(--border);">Learning rate &eta;</td>
+            <td style="padding: 0.6rem; border-bottom: 1px solid var(--border);">Same convergence/speed tradeoff, same divergence risks</td>
+          </tr>
+          <tr>
+            <td style="padding: 0.6rem; border-bottom: 1px solid var(--border);">Mamba&rsquo;s &Delta; parameter</td>
+            <td style="padding: 0.6rem; border-bottom: 1px solid var(--border);">Input-dependent step size</td>
+            <td style="padding: 0.6rem; border-bottom: 1px solid var(--border);">Like NLMS normalizing &mu; by input power &mdash; Mamba makes the discretization step input-dependent</td>
+          </tr>
+          <tr>
+            <td style="padding: 0.6rem; border-bottom: 1px solid var(--border);">Mel filter bank</td>
+            <td style="padding: 0.6rem; border-bottom: 1px solid var(--border);">Multi-head attention</td>
+            <td style="padding: 0.6rem; border-bottom: 1px solid var(--border);">Both decompose input into parallel channels, each sensitive to different &ldquo;frequencies&rdquo; (features)</td>
+          </tr>
+          <tr>
+            <td style="padding: 0.6rem; border-bottom: 1px solid var(--border);">Kalman filter</td>
+            <td style="padding: 0.6rem; border-bottom: 1px solid var(--border);">State-space model</td>
+            <td style="padding: 0.6rem; border-bottom: 1px solid var(--border);">Both maintain a hidden state updated by observations; SSMs (S4, Mamba) are learned Kalman filters</td>
+          </tr>
+          <tr>
+            <td style="padding: 0.6rem; border-bottom: 1px solid var(--border);">Learned filter bank</td>
+            <td style="padding: 0.6rem; border-bottom: 1px solid var(--border);">CNN first layer</td>
+            <td style="padding: 0.6rem; border-bottom: 1px solid var(--border);">CNN filters learned from raw audio converge to Mel-like spacing</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="insight-box">
+        <div class="insight-box__label">Part I Complete</div>
+        <p>
+          With adaptive filters and filter banks, you&rsquo;ve now seen the full arc of DSP:
+          signals &rarr; systems &rarr; convolution &rarr; frequency analysis &rarr; z-transforms &rarr;
+          poles/zeros &rarr; filter design &rarr; adaptive learning. Every one of these ideas
+          reappears, transformed, in Parts II&ndash;IV. The DSP foundation is complete.
+        </p>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         Tool 8.1 — Adaptive Noise Canceller
+         ============================================================ -->
+    <section class="content-section" id="tool-adaptive">
+      <h2 class="section-heading"><span class="section-number">8.7</span> Tool: Adaptive Noise Canceller</h2>
+
+      <p>
+        Watch an LMS filter learn to cancel noise in real time. The filter has <em>no knowledge</em>
+        of the noise path &mdash; it discovers it purely by minimizing the error. Adjust the step size
+        to see convergence, oscillation, and divergence.
+      </p>
+
+      <div class="tool-container" id="adaptiveFilterTool">
+        <div class="tool-header">
+          <span class="tool-header__label">Tool 8.1</span>
+          <span class="tool-header__title">Adaptive Noise Canceller (LMS)</span>
+        </div>
+        <div class="tool-body">
+          <div class="tool-controls" style="display: flex; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 0.75rem;">
+            <label class="tool-control">
+              <span class="tool-control__label">Signal</span>
+              <select data-control="adapt-signal" class="tool-select">
+                <option value="tones" selected>Mixed Tones</option>
+                <option value="speech-like">Speech-like</option>
+                <option value="chirp">Chirp</option>
+              </select>
+            </label>
+            <label class="tool-control">
+              <span class="tool-control__label">Noise Type</span>
+              <select data-control="adapt-noise" class="tool-select">
+                <option value="correlated" selected>Correlated</option>
+                <option value="narrowband">Narrowband</option>
+                <option value="broadband">Broadband</option>
+              </select>
+            </label>
+            <label class="tool-control">
+              <span class="tool-control__label">Step Size &mu;</span>
+              <input type="range" data-control="adapt-mu" min="0.0001" max="0.1" step="0.0001" value="0.01" class="tool-slider">
+              <span data-value="adapt-mu" class="tool-value">0.01</span>
+            </label>
+            <label class="tool-control">
+              <span class="tool-control__label">Filter Order</span>
+              <input type="range" data-control="adapt-order" min="4" max="64" step="1" value="16" class="tool-slider">
+              <span data-value="adapt-order" class="tool-value">16</span>
+            </label>
+            <label class="tool-control">
+              <span class="tool-control__label">Input SNR (dB)</span>
+              <input type="range" data-control="adapt-snr" min="-10" max="20" step="1" value="0" class="tool-slider">
+              <span data-value="adapt-snr" class="tool-value">0</span>
+            </label>
+          </div>
+
+          <div class="tool-canvas-wrapper"></div>
+
+          <div class="tool-actions" style="display: flex; gap: 0.5rem; margin-top: 0.5rem; flex-wrap: wrap;">
+            <button data-action="play-original-adapt" class="tool-btn">&#9654; Original</button>
+            <button data-action="play-noisy" class="tool-btn">&#9654; Noisy</button>
+            <button data-action="play-cleaned" class="tool-btn tool-btn--accent">&#9654; Cleaned</button>
+            <button data-action="stop-adaptive" class="tool-btn tool-btn--muted">&#9632; Stop</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="insight-box">
+        <div class="insight-box__label">Try This</div>
+        <ul>
+          <li>Start with &mu;=0.01 and slowly increase it. Watch the learning curve &mdash; at what point does it diverge?</li>
+          <li>Switch to broadband noise &mdash; notice it needs a higher filter order to cancel effectively</li>
+          <li>Set SNR to &minus;10 dB (very noisy) and listen to before/after. The LMS filter can extract signal buried deep in noise</li>
+          <li>Compare narrowband vs correlated noise &mdash; narrowband is easier to cancel</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         Tool 8.2 — Filter Bank Decomposer
+         ============================================================ -->
+    <section class="content-section" id="tool-bank">
+      <h2 class="section-heading"><span class="section-number">8.8</span> Tool: Filter Bank Decomposer</h2>
+
+      <p>
+        Decompose any signal into frequency bands and selectively reconstruct from chosen bands.
+        Switch between linear and Mel spacing to hear the difference. Click individual bands
+        to mute/unmute them.
+      </p>
+
+      <div class="tool-container" id="filterBankTool">
+        <div class="tool-header">
+          <span class="tool-header__label">Tool 8.2</span>
+          <span class="tool-header__title">Filter Bank Decomposer</span>
+        </div>
+        <div class="tool-body">
+          <div class="tool-controls" style="display: flex; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 0.75rem;">
+            <label class="tool-control">
+              <span class="tool-control__label">Signal</span>
+              <select data-control="bank-signal" class="tool-select">
+                <option value="rich" selected>Rich Harmonics</option>
+                <option value="speech-like">Speech-like</option>
+                <option value="chirp">Chirp</option>
+                <option value="noise">White Noise</option>
+              </select>
+            </label>
+            <label class="tool-control">
+              <span class="tool-control__label">Bands</span>
+              <input type="range" data-control="bank-nbands" min="4" max="16" step="1" value="8" class="tool-slider">
+              <span data-value="bank-nbands" class="tool-value">8</span>
+            </label>
+            <label class="tool-control">
+              <span class="tool-control__label">Scale</span>
+              <select data-control="bank-scale" class="tool-select">
+                <option value="linear" selected>Linear</option>
+                <option value="mel">Mel (Perceptual)</option>
+              </select>
+            </label>
+          </div>
+
+          <div style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem; flex-wrap: wrap; align-items: center;">
+            <span style="font-size: 0.75rem; color: var(--text-dim);">Bands:</span>
+            <div class="band-toggles" style="display: flex; flex-wrap: wrap; gap: 0.25rem;"></div>
+            <button data-action="bank-all" class="tool-btn tool-btn--small" style="font-size: 0.7rem; padding: 0.2rem 0.5rem;">All</button>
+            <button data-action="bank-none" class="tool-btn tool-btn--small" style="font-size: 0.7rem; padding: 0.2rem 0.5rem;">None</button>
+          </div>
+
+          <div class="tool-canvas-wrapper"></div>
+
+          <div class="tool-actions" style="display: flex; gap: 0.5rem; margin-top: 0.5rem; flex-wrap: wrap;">
+            <button data-action="play-original-bank" class="tool-btn">&#9654; Original</button>
+            <button data-action="play-reconstructed" class="tool-btn tool-btn--accent">&#9654; Reconstructed</button>
+            <button data-action="stop-bank" class="tool-btn tool-btn--muted">&#9632; Stop</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="insight-box">
+        <div class="insight-box__label">Try This</div>
+        <ul>
+          <li>Switch to Mel scale and compare the band widths &mdash; low frequencies get narrow bands, high frequencies get wide ones</li>
+          <li>Use the chirp signal and mute all but one band &mdash; you&rsquo;ll hear only the portion of the sweep that passes through that band</li>
+          <li>With speech-like signal, mute the lowest band (fundamental frequency) and listen &mdash; the pitch changes but the signal is still intelligible</li>
+          <li>Try keeping only 3&ndash;4 bands out of 8 &mdash; how few bands can you keep while the signal remains recognizable?</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- Further Reading -->
+    <section class="content-section" id="further-reading">
+      <h2 class="section-heading">Further Reading</h2>
+      <ul class="further-reading-list">
+        <li>
+          <a href="https://www.amazon.com/Adaptive-Filter-Theory-Simon-Haykin/dp/013267145X" target="_blank" rel="noopener">Adaptive Filter Theory, 5th Edition</a>
+          <span class="further-reading__authors">Haykin, S., 2014 — Pearson</span>
+          <span class="further-reading__note">The definitive textbook on LMS, RLS, and Kalman-based adaptive filtering</span>
+        </li>
+        <li>
+          <a href="https://www.dspguide.com/ch26.htm" target="_blank" rel="noopener">DSP Guide — Chapter 26: Filter Banks</a>
+          <span class="further-reading__authors">Smith, S.W. — Free online</span>
+          <span class="further-reading__note">Sub-band decomposition and multirate signal processing fundamentals</span>
+        </li>
+        <li>
+          <a href="https://ieeexplore.ieee.org/document/1164530" target="_blank" rel="noopener">Adaptive Noise Cancelling: Principles and Applications</a>
+          <span class="further-reading__authors">Widrow et al., 1975 — Proceedings of the IEEE</span>
+          <span class="further-reading__note">The foundational paper on LMS adaptive noise cancellation</span>
+        </li>
+      </ul>
+    </section>
+
+    <!-- ============================================================
+         Chapter Navigation
+         ============================================================ -->
+    <nav class="chapter-nav" aria-label="Chapter navigation">
+      <a class="chapter-nav__prev" href="ch07-filter-design.html">
+        <span class="chapter-nav__dir">&larr; Previous</span>
+        <span class="chapter-nav__title">Ch 7: FIR &amp; IIR Filters</span>
+      </a>
+      <a class="chapter-nav__next" href="../part2/ch09-neuron.html">
+        <span class="chapter-nav__dir">Next &rarr;</span>
+        <span class="chapter-nav__title">Ch 9: The Neuron &amp; the Perceptron</span>
+      </a>
+    </nav>
+
+  </main>
+</div>
+
+<!-- Scripts -->
+<script src="../../js/core/navigation.js"></script>
+<script src="../../js/core/progressive-disclosure.js"></script>
+<script src="../../js/core/chapter-nav.js"></script>
+<script src="../../js/tools/shared/plot-utils.js"></script>
+<script src="../../js/tools/shared/audio-engine.js"></script>
+<script src="../../js/tools/ch08-adaptive-filter.js"></script>
+<script src="../../js/tools/ch08-filter-bank.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    DSPtoAI.AdaptiveFilter.init('adaptiveFilterTool');
+    DSPtoAI.FilterBank.init('filterBankTool');
+  });
+</script>
+
+<style>
+  .band-btn {
+    font-size: 0.65rem;
+    font-family: 'JetBrains Mono', monospace;
+    padding: 0.15rem 0.4rem;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: transparent;
+    color: var(--text-dim);
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .band-btn.active {
+    color: var(--text);
+  }
+  .band-btn:hover {
+    background: rgba(255,255,255,0.05);
+  }
+</style>
+
+<script src="../../js/core/search-index.js"></script>
+<script src="../../js/core/search.js"></script>
+</body>
+</html>

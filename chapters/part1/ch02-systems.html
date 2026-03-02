@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ch 2: Systems That Process Signals &mdash; DSP to AI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Outfit:wght@300;400;500;600;700;800;900&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../style/global.css">
+  <link rel="stylesheet" href="../../style/theme-dark.css">
+  <link rel="stylesheet" href="../../style/theme-light.css">
+  <link rel="stylesheet" href="../../style/components.css">
+  <link rel="stylesheet" href="../../style/chapter.css">
+  <script src="../../js/core/theme-switcher.js"></script>
+</head>
+<body>
+
+<div class="noise"></div>
+
+<!-- Navigation -->
+<nav class="site-nav">
+  <a href="../../index.html" class="site-nav__logo">DSP <span class="arrow">&rarr;</span> AI</a>
+  <ul class="site-nav__links">
+    <li><a href="../../index.html#part1" class="active">Part I</a></li>
+    <li><a href="../../index.html#part2">Part II</a></li>
+    <li><a href="../../index.html#part3">Part III</a></li>
+    <li><a href="../../index.html#part4">Part IV</a></li>
+    <li><a href="../../gallery/index.html">Gallery</a></li>
+    <li><a href="../../reference/glossary.html">Reference</a></li>
+  </ul>
+  <button class="search-toggle" aria-label="Search site (press /)">🔍</button>
+  <button class="theme-toggle" aria-label="Toggle theme"></button>
+  <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false">&#9776;</button>
+</nav>
+<div class="progress-bar"></div>
+
+<!-- Page Layout -->
+<div class="chapter-page" data-chapter-id="ch02">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar__part-label">Part I: DSP Foundations</div>
+    <ul class="sidebar__chapters">
+      <li><a class="sidebar__chapter-link" href="ch01-signals.html"><span class="sidebar__chapter-num">01</span> What Is a Signal?</a></li>
+      <li><a class="sidebar__chapter-link active" href="ch02-systems.html"><span class="sidebar__chapter-num">02</span> Systems That Process Signals</a>
+        <ul class="sidebar__sections">
+          <li><a class="sidebar__section-link" href="#what-is-a-system">What Is a System?</a></li>
+          <li><a class="sidebar__section-link" href="#linearity">Linearity</a></li>
+          <li><a class="sidebar__section-link" href="#time-invariance">Time Invariance</a></li>
+          <li><a class="sidebar__section-link" href="#lti-systems">LTI Systems</a></li>
+          <li><a class="sidebar__section-link" href="#impulse-response">Impulse Response</a></li>
+          <li><a class="sidebar__section-link" href="#tool-black-box">System Black Box</a></li>
+          <li><a class="sidebar__section-link" href="#tool-impulse">Impulse Response Explorer</a></li>
+        </ul>
+      </li>
+      <li><a class="sidebar__chapter-link" href="ch03-convolution.html"><span class="sidebar__chapter-num">03</span> Convolution</a></li>
+      <li><a class="sidebar__chapter-link" href="ch04-fourier.html"><span class="sidebar__chapter-num">04</span> The Fourier Transform</a></li>
+      <li><a class="sidebar__chapter-link" href="ch05-z-transform.html"><span class="sidebar__chapter-num">05</span> Z-Transform</a></li>
+      <li><a class="sidebar__chapter-link" href="ch06-poles-zeros.html"><span class="sidebar__chapter-num">06</span> Poles &amp; Zeros</a></li>
+      <li><a class="sidebar__chapter-link" href="ch07-filter-design.html"><span class="sidebar__chapter-num">07</span> FIR &amp; IIR Filters</a></li>
+      <li><a class="sidebar__chapter-link" href="ch08-advanced-dsp.html"><span class="sidebar__chapter-num">08</span> Adaptive Filters</a></li>
+    </ul>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="chapter-content">
+
+    <nav class="breadcrumb" aria-label="Breadcrumb"></nav>
+
+    <header class="chapter-header">
+      <div class="chapter-header__part">Part I &mdash; DSP Foundations</div>
+      <div class="chapter-header__number">Chapter 02</div>
+      <h1 class="chapter-header__title">Systems That Process Signals</h1>
+      <p class="chapter-header__subtitle">
+        Signals are interesting, but the magic happens when we <em>process</em> them.
+        A system takes a signal in and produces a signal out &mdash; and some systems
+        have beautiful mathematical properties that make them incredibly powerful.
+      </p>
+    </header>
+
+    <!-- === Section 1: What Is a System? === -->
+    <section class="chapter-section" id="what-is-a-system">
+      <h2 class="chapter-section__title">2.1 &mdash; What Is a System?</h2>
+
+      <div class="motivation-box">
+        <div class="motivation-box__title">Why should I care?</div>
+        <p>Every layer in a neural network is a system. It takes an input signal (activations from the previous layer) and produces an output signal. Understanding what makes some systems special &mdash; linear, time-invariant &mdash; is the key to understanding why certain AI architectures work the way they do.</p>
+      </div>
+
+      <p>A <strong>system</strong> is anything that transforms an input signal into an output signal. We write this as:</p>
+
+      <div class="math-block">
+        y[n] = T{ x[n] }
+      </div>
+
+      <p>where <span class="math-inline">T</span> is the system operator, <span class="math-inline">x[n]</span> is the input, and <span class="math-inline">y[n]</span> is the output.</p>
+
+      <p>Think of it as a black box: signal goes in, something happens inside, a new signal comes out. We don't need to know the internals &mdash; we care about what the system <em>does</em> to signals.</p>
+
+      <p>Examples of systems:</p>
+      <ul style="margin: var(--sp-sm) 0 var(--sp-lg); padding-left: var(--sp-lg); line-height: 2;">
+        <li><strong>Amplifier</strong> &mdash; scales the signal by a constant</li>
+        <li><strong>Delay</strong> &mdash; shifts the signal forward in time</li>
+        <li><strong>Echo</strong> &mdash; adds a delayed copy of the signal to itself</li>
+        <li><strong>Noise canceller</strong> &mdash; subtracts estimated noise from a signal</li>
+        <li><strong>Neural network layer</strong> &mdash; multiplies by weights, adds bias, applies activation</li>
+      </ul>
+    </section>
+
+    <!-- === Section 2: Linearity === -->
+    <section class="chapter-section" id="linearity">
+      <h2 class="chapter-section__title">2.2 &mdash; Linearity: The Superposition Principle</h2>
+
+      <p>A system is <strong>linear</strong> if it obeys two rules:</p>
+
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap: var(--sp-md); margin: var(--sp-md) 0;">
+        <div class="card card--math">
+          <h4>Additivity</h4>
+          <p style="font-size:13.5px; color:var(--text-dim); margin-top:var(--sp-xs);">The system's response to a sum equals the sum of the individual responses</p>
+          <div class="math-block" style="font-size:13px; margin-top:var(--sp-sm);">T{ x<sub>1</sub> + x<sub>2</sub> } = T{ x<sub>1</sub> } + T{ x<sub>2</sub> }</div>
+        </div>
+        <div class="card card--math">
+          <h4>Homogeneity</h4>
+          <p style="font-size:13.5px; color:var(--text-dim); margin-top:var(--sp-xs);">Scaling the input scales the output by the same factor</p>
+          <div class="math-block" style="font-size:13px; margin-top:var(--sp-sm);">T{ a &middot; x } = a &middot; T{ x }</div>
+        </div>
+      </div>
+
+      <p>Together, these give us <strong>superposition</strong>:</p>
+      <div class="math-block">
+        T{ a &middot; x<sub>1</sub> + b &middot; x<sub>2</sub> } = a &middot; T{ x<sub>1</sub> } + b &middot; T{ x<sub>2</sub> }
+      </div>
+
+      <p>Why does this matter? Because if a system is linear, we can analyze <em>simple</em> inputs (like individual sinusoids) and combine the results to predict the response to <em>any</em> complex input. This is enormously powerful.</p>
+
+      <p><strong>What breaks linearity?</strong> Any operation that depends on the signal value nonlinearly: squaring, clipping, thresholding, taking the absolute value. Notice something? Activation functions in neural networks (ReLU, sigmoid) are nonlinear &mdash; that's precisely what gives networks their power.</p>
+
+      <div class="bridge-teaser">
+        <div class="bridge-teaser__label">Bridge to AI</div>
+        <div class="bridge-teaser__content">
+          Neural networks are intentionally nonlinear &mdash; without activation functions, stacking layers would just produce another linear transformation. But the <em>attention mechanism</em> and <em>state-space models</em> in Transformers and Mamba rely on linear operations (matrix multiplications) for their core computations. Understanding linearity helps you see which parts of these models are linear (and why) and which are nonlinear (and why).
+        </div>
+      </div>
+    </section>
+
+    <!-- === Section 3: Time Invariance === -->
+    <section class="chapter-section" id="time-invariance">
+      <h2 class="chapter-section__title">2.3 &mdash; Time Invariance: The Rules Don't Change</h2>
+
+      <p>A system is <strong>time-invariant</strong> if delaying the input simply delays the output by the same amount:</p>
+
+      <div class="math-block">
+        If y[n] = T{ x[n] }, then T{ x[n &minus; k] } = y[n &minus; k]
+      </div>
+
+      <p>In plain language: the system behaves the same way regardless of <em>when</em> the input arrives. A lowpass filter applied today gives the same result as one applied tomorrow.</p>
+
+      <p><strong>What breaks time invariance?</strong> Any system whose behavior changes over time. An amplifier whose gain depends on the time of day. A filter that adapts its coefficients based on what it has seen. Sound familiar? That's exactly what <strong>Mamba's selective scan</strong> does &mdash; it's a time-varying system by design.</p>
+
+      <!-- Show the Math -->
+      <div class="progressive-section">
+        <button class="progressive-toggle" aria-expanded="false">
+          <span class="arrow">&#9654;</span> Show the Math
+        </button>
+        <div class="progressive-content">
+          <div class="progressive-content__inner">
+            <p>Formally, let <span class="math-inline">S<sub>k</sub></span> be the shift operator: <span class="math-inline">S<sub>k</sub>{x[n]} = x[n &minus; k]</span></p>
+            <p>A system <span class="math-inline">T</span> is time-invariant if and only if:</p>
+            <div class="math-block">T &middot; S<sub>k</sub> = S<sub>k</sub> &middot; T &nbsp;&nbsp;&forall; k</div>
+            <p>That is, the system operator and the shift operator commute. Shifting then processing gives the same result as processing then shifting.</p>
+            <p><strong>Key terminology:</strong></p>
+            <ul style="margin: var(--sp-sm) 0; padding-left: var(--sp-lg); line-height: 1.8;">
+              <li><strong>LTI</strong> = Linear + Time-Invariant. Classical DSP filters (S4, IIR, FIR) are LTI.</li>
+              <li><strong>LTV</strong> = Linear + Time-Varying. Mamba is LTV &mdash; its parameters change with each input.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- === Section 4: LTI Systems === -->
+    <section class="chapter-section" id="lti-systems">
+      <h2 class="chapter-section__title">2.4 &mdash; LTI Systems: The Powerful Special Case</h2>
+
+      <p>When a system is both linear AND time-invariant, something remarkable happens: the system is <strong>completely characterized by a single function</strong> &mdash; its impulse response.</p>
+
+      <div class="insight-box">
+        <div class="insight-box__title">The Big Insight</div>
+        <div class="insight-box__content">
+          If you know a system's response to a single impulse (a one-sample spike), you can predict its response to <strong>any input whatsoever</strong>. The impulse response is the system's complete DNA &mdash; its fingerprint, its genome, its soul.
+        </div>
+      </div>
+
+      <p>This is because any input signal can be decomposed into a sum of shifted, scaled impulses. By linearity and time invariance, the output is the corresponding sum of shifted, scaled impulse responses. This operation has a name: <strong>convolution</strong> (the star of Chapter 3).</p>
+
+      <div class="math-block">
+        y[n] = x[n] * h[n] = &sum;<sub>k</sub> x[k] &middot; h[n &minus; k]
+      </div>
+
+      <p>where <span class="math-inline">h[n]</span> is the impulse response and <span class="math-inline">*</span> denotes convolution.</p>
+    </section>
+
+    <!-- === Section 5: Impulse Response === -->
+    <section class="chapter-section" id="impulse-response">
+      <h2 class="chapter-section__title">2.5 &mdash; The Impulse Response: A System's Complete Fingerprint</h2>
+
+      <p>The <strong>impulse</strong> <span class="math-inline">&delta;[n]</span> is the simplest possible signal: it equals 1 at sample 0 and 0 everywhere else.</p>
+
+      <div class="math-block">
+        &delta;[n] = { 1 if n = 0, &nbsp; 0 otherwise }
+      </div>
+
+      <p>Feed this impulse into any LTI system, and the output you get is the <strong>impulse response</strong> <span class="math-inline">h[n]</span>. It tells you everything:</p>
+
+      <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: var(--sp-md); margin: var(--sp-lg) 0;">
+        <div class="card card--dsp">
+          <h5>Short h[n]</h5>
+          <p style="font-size:13px; color:var(--text-dim); margin-top:var(--sp-xs);">FIR system. Finite memory. Guaranteed stable. Think: attention (limited context window).</p>
+        </div>
+        <div class="card card--dsp">
+          <h5>Long h[n]</h5>
+          <p style="font-size:13px; color:var(--text-dim); margin-top:var(--sp-xs);">IIR system. Potentially infinite memory. Efficient but needs stability control. Think: Mamba (recurrent state).</p>
+        </div>
+        <div class="card card--dsp">
+          <h5>Ringing h[n]</h5>
+          <p style="font-size:13px; color:var(--text-dim); margin-top:var(--sp-xs);">Resonator. Oscillates at a natural frequency. Poles near unit circle.</p>
+        </div>
+        <div class="card card--dsp">
+          <h5>Decaying h[n]</h5>
+          <p style="font-size:13px; color:var(--text-dim); margin-top:var(--sp-xs);">Exponential decay. Smoothing filter. Fading memory &mdash; like RNN hidden states.</p>
+        </div>
+      </div>
+
+      <!-- Show the Math -->
+      <div class="progressive-section">
+        <button class="progressive-toggle" aria-expanded="false">
+          <span class="arrow">&#9654;</span> Show the Math
+        </button>
+        <div class="progressive-content">
+          <div class="progressive-content__inner">
+            <p>Why does the impulse response determine everything? Here's the key derivation.</p>
+            <p>Any signal <span class="math-inline">x[n]</span> can be written as a sum of shifted impulses:</p>
+            <div class="math-block">
+              x[n] = &sum;<sub>k=&minus;&infin;</sub><sup>&infin;</sup> x[k] &middot; &delta;[n &minus; k]
+            </div>
+            <p>Apply the system <span class="math-inline">T</span> to both sides. By <strong>linearity</strong>:</p>
+            <div class="math-block">
+              y[n] = T{x[n]} = &sum;<sub>k</sub> x[k] &middot; T{&delta;[n &minus; k]}
+            </div>
+            <p>By <strong>time invariance</strong>, <span class="math-inline">T{&delta;[n &minus; k]} = h[n &minus; k]</span>:</p>
+            <div class="math-block">
+              y[n] = &sum;<sub>k</sub> x[k] &middot; h[n &minus; k]
+            </div>
+            <p>This is the <strong>convolution sum</strong>. The entire output is determined by the input and the impulse response.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- === TOOL 2.1: System Black Box === -->
+    <section class="chapter-section" id="tool-black-box">
+      <h2 class="chapter-section__title">Interactive Tool</h2>
+
+      <div class="tool-container" id="blackBoxTool">
+        <div class="tool-header">
+          <span class="tool-header__icon">&#9645;</span>
+          <span class="tool-header__title">Tool 2.1 &mdash; System Black Box</span>
+          <span class="tool-header__badge">Interactive</span>
+        </div>
+
+        <div class="tool-body">
+          <p style="font-size:14px; color:var(--text-dim); margin-bottom:var(--sp-md);">
+            Two input signals (A and B) are fed through a system. The tool tests <strong>superposition</strong>
+            (does T(A+B) = T(A)+T(B)?) and <strong>time invariance</strong> (does shifting input just shift output?).
+            Toggle the system properties to see what happens when linearity or time invariance breaks.
+          </p>
+          <div class="tool-canvas-wrapper"></div>
+        </div>
+
+        <div class="tool-controls">
+          <div class="control-group">
+            <label class="control-label">Signal A</label>
+            <select class="control-select" data-control="signal-a">
+              <option value="sine" selected>Sine</option>
+              <option value="square">Square</option>
+              <option value="triangle">Triangle</option>
+            </select>
+          </div>
+          <div class="control-group">
+            <label class="control-label">Freq A <span class="control-value" aria-live="polite" data-value="freq-a">3</span> Hz</label>
+            <input type="range" data-control="freq-a" min="1" max="10" value="3" step="0.5">
+          </div>
+          <div class="control-group">
+            <label class="control-label">Signal B</label>
+            <select class="control-select" data-control="signal-b">
+              <option value="sine">Sine</option>
+              <option value="square" selected>Square</option>
+              <option value="triangle">Triangle</option>
+            </select>
+          </div>
+          <div class="control-group">
+            <label class="control-label">Freq B <span class="control-value" aria-live="polite" data-value="freq-b">5</span> Hz</label>
+            <input type="range" data-control="freq-b" min="1" max="10" value="5" step="0.5">
+          </div>
+          <div class="control-group" style="justify-content:center;">
+            <label style="display:flex; align-items:center; gap:var(--sp-sm); font-size:12px; color:var(--text-dim); cursor:pointer;">
+              <input type="checkbox" data-control="linear" checked>
+              Linear
+            </label>
+          </div>
+          <div class="control-group" style="justify-content:center;">
+            <label style="display:flex; align-items:center; gap:var(--sp-sm); font-size:12px; color:var(--text-dim); cursor:pointer;">
+              <input type="checkbox" data-control="time-invariant" checked>
+              Time-Invariant
+            </label>
+          </div>
+          <div class="control-group">
+            <label class="control-label">Time Shift <span class="control-value" aria-live="polite" data-value="time-shift">0</span></label>
+            <input type="range" data-control="time-shift" min="0" max="80" value="0" step="5">
+          </div>
+        </div>
+      </div>
+
+      <div class="insight-box" style="margin-top:var(--sp-lg);">
+        <div class="insight-box__title">Try this</div>
+        <div class="insight-box__content">
+          <strong>1.</strong> Start with both Linear and Time-Invariant checked. Row 3 shows T(A+B) and T(A)+T(B) perfectly overlapping &mdash; superposition holds!<br>
+          <strong>2.</strong> Uncheck "Linear" &mdash; watch the curves in Row 3 diverge. A red dashed border appears. The system clips and distorts, breaking superposition.<br>
+          <strong>3.</strong> Re-check Linear, then uncheck "Time-Invariant". Set Time Shift to 40. Row 4 shows that shifting the input then processing gives a different result than processing then shifting &mdash; the system's rules change over time.<br>
+          <strong>4.</strong> Uncheck both &mdash; you now have a nonlinear, time-varying system. This is what Mamba is!
+        </div>
+      </div>
+    </section>
+
+    <!-- === TOOL 2.2: Impulse Response Explorer === -->
+    <section class="chapter-section" id="tool-impulse">
+      <h2 class="chapter-section__title">Interactive Tool</h2>
+
+      <div class="tool-container" id="impulseResponseTool">
+        <div class="tool-header">
+          <span class="tool-header__icon">&#9883;</span>
+          <span class="tool-header__title">Tool 2.2 &mdash; Impulse Response Explorer</span>
+          <span class="tool-header__badge">Interactive</span>
+        </div>
+
+        <div class="tool-body">
+          <p style="font-size:14px; color:var(--text-dim); margin-bottom:var(--sp-md);">
+            Fire an impulse into different systems and see their impulse response <span class="math-inline">h[n]</span>.
+            Then switch the input to see how the system responds to other signals &mdash; the output
+            is always the <strong>convolution</strong> of the input with h[n].
+          </p>
+          <div class="tool-canvas-wrapper"></div>
+        </div>
+
+        <div class="tool-controls">
+          <div class="control-group">
+            <label class="control-label">System Type</label>
+            <select class="control-select" data-control="system-type">
+              <option value="echo">Echo / Delay</option>
+              <option value="reverb">Reverb</option>
+              <option value="lowpass">Lowpass Filter</option>
+              <option value="highpass">Highpass Filter</option>
+              <option value="resonator">Resonator</option>
+              <option value="differentiator">Differentiator</option>
+            </select>
+          </div>
+          <div class="control-group">
+            <label class="control-label">Input Signal</label>
+            <select class="control-select" data-control="input-type">
+              <option value="impulse" selected>Impulse &delta;[n]</option>
+              <option value="sine">Sine</option>
+              <option value="square">Square</option>
+              <option value="noise">Noise</option>
+            </select>
+          </div>
+          <div class="control-group">
+            <label class="control-label">Input Freq <span class="control-value" aria-live="polite" data-value="input-freq">5</span> Hz</label>
+            <input type="range" data-control="input-freq" min="1" max="20" value="5" step="0.5">
+          </div>
+          <div class="control-group" style="justify-content:center;">
+            <button class="btn" data-action="play-ir">&#9654; Hear h[n]</button>
+          </div>
+          <div class="control-group" style="justify-content:center;">
+            <button class="btn" data-action="play-output">&#9654; Hear Output</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="insight-box" style="margin-top:var(--sp-lg);">
+        <div class="insight-box__title">Try this</div>
+        <div class="insight-box__content">
+          <strong>1.</strong> Select "Echo / Delay" with Impulse input. The middle row shows h[n]: a spike at 0, then smaller spikes at 40, 80, 120 samples &mdash; three echoes.<br>
+          <strong>2.</strong> Click "Hear h[n]" &mdash; you'll hear a click followed by fainter repetitions.<br>
+          <strong>3.</strong> Switch input to "Sine" at 5 Hz. The output shows the sine wave with echoed copies added &mdash; that's what convolution does.<br>
+          <strong>4.</strong> Try "Resonator" with Impulse input &mdash; see h[n] ring like a struck tuning fork. The system oscillates at a natural frequency even from a single tap.<br>
+          <strong>5.</strong> Try "Lowpass Filter" with Square input &mdash; the sharp edges get smoothed. The filter removes high-frequency harmonics.<br>
+          <strong>6.</strong> Try "Differentiator" with Sine input &mdash; the output is a cosine (the derivative of sine). This system detects rate of change.
+        </div>
+      </div>
+    </section>
+
+    <!-- === Section: Bridge to what's next === -->
+    <section class="chapter-section" id="bridge">
+      <h2 class="chapter-section__title">2.6 &mdash; Why LTI Matters for AI</h2>
+
+      <p>You've now seen the four key system properties:</p>
+
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap: var(--sp-md); margin: var(--sp-md) 0 var(--sp-lg);">
+        <div class="card card--dsp">
+          <h5>LTI (Linear Time-Invariant)</h5>
+          <p style="font-size:13px; color:var(--text-dim); margin-top:var(--sp-xs);">Classical DSP filters, S4 model. Fixed h[n]. Fully characterized by impulse response. Computable via convolution (FFT).</p>
+        </div>
+        <div class="card card--ai">
+          <h5>LTV (Linear Time-Varying)</h5>
+          <p style="font-size:13px; color:var(--text-dim); margin-top:var(--sp-xs);">Mamba/S6. Parameters change with input. Adapts to content. More powerful but harder to analyze.</p>
+        </div>
+      </div>
+
+      <div class="bridge-teaser">
+        <div class="bridge-teaser__label">Looking Ahead</div>
+        <div class="bridge-teaser__content">
+          In <strong>Chapter 3</strong>, we'll dive deep into <em>convolution</em> &mdash; the operation that computes the output of any LTI system. Convolution is the universal operation of signal processing, and it's also the core operation in convolutional neural networks (CNNs). Once you understand convolution, you'll see it everywhere.
+        </div>
+      </div>
+    </section>
+
+    <!-- Further Reading -->
+    <section class="content-section" id="further-reading">
+      <h2 class="section-heading">Further Reading</h2>
+      <ul class="further-reading-list">
+        <li>
+          <a href="https://ocw.mit.edu/courses/6-003-signals-and-systems-fall-2011/" target="_blank" rel="noopener">Signals and Systems — Chapters 1&ndash;2</a>
+          <span class="further-reading__authors">Oppenheim &amp; Willsky, 2nd ed.</span>
+          <span class="further-reading__note">Formal treatment of LTI systems, impulse response, and superposition</span>
+        </li>
+        <li>
+          <a href="https://www.dspguide.com/ch5.htm" target="_blank" rel="noopener">DSP Guide — Chapter 5: Linear Systems</a>
+          <span class="further-reading__authors">Smith, S.W. — Free online</span>
+          <span class="further-reading__note">Intuitive explanation of linearity, time-invariance, and system classification</span>
+        </li>
+      </ul>
+    </section>
+
+    <!-- Chapter Navigation -->
+    <nav class="chapter-nav" aria-label="Chapter navigation"></nav>
+
+  </main>
+</div>
+
+<!-- Scripts -->
+<script src="../../js/core/navigation.js"></script>
+<script src="../../js/core/progressive-disclosure.js"></script>
+<script src="../../js/core/chapter-nav.js"></script>
+<script src="../../js/tools/shared/signal-generator.js"></script>
+<script src="../../js/tools/shared/plot-utils.js"></script>
+<script src="../../js/tools/shared/audio-engine.js"></script>
+<script src="../../js/tools/ch02-black-box.js"></script>
+<script src="../../js/tools/ch02-impulse-response.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    DSPtoAI.BlackBox.init('blackBoxTool');
+    DSPtoAI.ImpulseExplorer.init('impulseResponseTool');
+  });
+</script>
+
+<script src="../../js/core/search-index.js"></script>
+<script src="../../js/core/search.js"></script>
+</body>
+</html>

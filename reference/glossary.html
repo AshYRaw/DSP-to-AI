@@ -1,0 +1,1314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reference Glossary &mdash; DSP to AI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Outfit:wght@300;400;500;600;700;800;900&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <link rel="stylesheet" href="../style/global.css">
+  <link rel="stylesheet" href="../style/theme-dark.css">
+  <link rel="stylesheet" href="../style/theme-light.css">
+  <link rel="stylesheet" href="../style/components.css">
+  <script src="../js/core/theme-switcher.js"></script>
+  <style>
+    .glossary-page {
+      max-width: var(--container-max);
+      margin: 0 auto;
+      padding: var(--sp-xl) var(--sp-lg) var(--sp-2xl);
+    }
+
+    .glossary-page__header {
+      text-align: center;
+      margin-bottom: var(--sp-xl);
+    }
+    .glossary-page__header h1 {
+      font-size: clamp(28px, 4vw, 44px);
+      font-weight: 800;
+      margin-bottom: var(--sp-sm);
+    }
+    .glossary-page__header p {
+      color: var(--text-dim);
+      font-size: 17px;
+      max-width: 640px;
+      margin: 0 auto;
+    }
+
+    /* Search */
+    .glossary-search {
+      max-width: 600px;
+      margin: var(--sp-lg) auto var(--sp-xl);
+      position: relative;
+    }
+    .glossary-search__input {
+      width: 100%;
+      padding: 14px 20px 14px 44px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-pill);
+      color: var(--text);
+      font-family: var(--font-body);
+      font-size: 16px;
+      outline: none;
+      transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+    }
+    .glossary-search__input::placeholder { color: var(--text-dim); opacity: 0.5; }
+    .glossary-search__input:focus {
+      border-color: var(--color-bridge);
+      box-shadow: 0 0 0 3px rgba(167,139,250,0.15);
+    }
+    .glossary-search__icon {
+      position: absolute;
+      left: 16px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-dim);
+      font-size: 18px;
+      pointer-events: none;
+    }
+    .glossary-search__count {
+      text-align: center;
+      margin-top: var(--sp-sm);
+      font-family: var(--font-code);
+      font-size: 12px;
+      color: var(--text-dim);
+    }
+
+    /* Filter tabs */
+    .glossary-filters {
+      display: flex;
+      justify-content: center;
+      gap: var(--sp-sm);
+      margin-bottom: var(--sp-xl);
+      flex-wrap: wrap;
+    }
+    .glossary-filter {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-pill);
+      padding: 6px 18px;
+      font-family: var(--font-code);
+      font-size: 12px;
+      color: var(--text-dim);
+      cursor: pointer;
+      transition: all var(--transition-fast);
+      letter-spacing: 0.5px;
+    }
+    .glossary-filter:hover {
+      border-color: var(--text-dim);
+      color: var(--text);
+    }
+    .glossary-filter.active {
+      background: var(--color-bridge);
+      border-color: var(--color-bridge);
+      color: #fff;
+    }
+
+    /* Category sections */
+    .glossary-category {
+      margin-bottom: var(--sp-2xl);
+    }
+    .glossary-category__title {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-family: var(--font-code);
+      font-size: 13px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 3px;
+      margin-bottom: var(--sp-lg);
+      padding-bottom: var(--sp-sm);
+      border-bottom: 1px solid var(--border);
+    }
+    .glossary-category__title .cat-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .glossary-category__title .cat-count {
+      margin-left: auto;
+      font-size: 11px;
+      font-weight: 400;
+      opacity: 0.5;
+    }
+
+    /* Term cards */
+    .glossary-grid {
+      display: grid;
+      gap: var(--sp-md);
+    }
+    .glossary-term {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: var(--sp-lg);
+      transition: all var(--transition-fast);
+      border-left: 3px solid var(--term-color, var(--border));
+    }
+    .glossary-term:hover {
+      box-shadow: var(--shadow-sm);
+      border-color: var(--term-color, var(--border));
+    }
+    .glossary-term.hidden { display: none; }
+
+    .glossary-term__name {
+      font-size: 17px;
+      font-weight: 700;
+      margin-bottom: 4px;
+      color: var(--text);
+    }
+    .glossary-term__name .alias {
+      font-size: 13px;
+      font-weight: 400;
+      color: var(--text-dim);
+      margin-left: 8px;
+    }
+    .glossary-term__tags {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-bottom: var(--sp-sm);
+    }
+    .glossary-term__tag {
+      font-family: var(--font-code);
+      font-size: 10px;
+      padding: 2px 8px;
+      border-radius: var(--radius-pill);
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      color: var(--text-dim);
+      letter-spacing: 0.5px;
+    }
+    .glossary-term__tag--dsp { color: var(--color-dsp); border-color: rgba(34,211,238,0.25); }
+    .glossary-term__tag--ai { color: var(--color-ai); border-color: rgba(251,146,60,0.25); }
+    .glossary-term__tag--bridge { color: var(--color-bridge); border-color: rgba(167,139,250,0.25); }
+    .glossary-term__tag--math { color: var(--color-math); border-color: rgba(74,222,128,0.25); }
+
+    .glossary-term__def {
+      font-size: 14.5px;
+      line-height: 1.65;
+      color: var(--text-dim);
+      margin-bottom: var(--sp-sm);
+    }
+    .glossary-term__def strong { color: var(--text); }
+
+    .glossary-term__dual {
+      display: flex;
+      gap: var(--sp-md);
+      flex-wrap: wrap;
+      font-size: 13px;
+    }
+    .glossary-term__dual-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      background: rgba(255,255,255,0.03);
+      border-radius: var(--radius-sm);
+    }
+    .glossary-term__dual-item .label {
+      font-family: var(--font-code);
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 1px;
+    }
+    .dual-dsp .label { color: var(--color-dsp); }
+    .dual-ai .label { color: var(--color-ai); }
+    .dual-bridge .label { color: var(--color-bridge); }
+
+    .glossary-term__chapter {
+      font-family: var(--font-code);
+      font-size: 11px;
+      color: var(--text-dim);
+      opacity: 0.6;
+      margin-top: var(--sp-sm);
+    }
+    .glossary-term__chapter a {
+      color: var(--text-dim);
+      text-decoration: underline;
+      text-underline-offset: 2px;
+    }
+    .glossary-term__chapter a:hover { color: var(--color-dsp); }
+
+    /* Rosetta stone quick-ref */
+    .rosetta-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: var(--sp-lg) 0;
+      font-size: 14px;
+    }
+    .rosetta-table th {
+      font-family: var(--font-code);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      padding: var(--sp-sm) var(--sp-md);
+      text-align: left;
+      border-bottom: 2px solid var(--border);
+    }
+    .rosetta-table th:nth-child(1) { color: var(--color-dsp); }
+    .rosetta-table th:nth-child(2) { color: var(--color-bridge); }
+    .rosetta-table th:nth-child(3) { color: var(--color-ai); }
+    .rosetta-table th:nth-child(4) { color: var(--text-dim); }
+    .rosetta-table td {
+      padding: var(--sp-sm) var(--sp-md);
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+      vertical-align: top;
+    }
+    .rosetta-table tr:hover td {
+      background: rgba(255,255,255,0.02);
+    }
+
+    /* Back to top */
+    .back-to-top {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 50%;
+      width: 44px;
+      height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      color: var(--text-dim);
+      cursor: pointer;
+      opacity: 0;
+      pointer-events: none;
+      transition: all var(--transition-fast);
+      z-index: 50;
+    }
+    .back-to-top.visible { opacity: 1; pointer-events: auto; }
+    .back-to-top:hover { border-color: var(--color-bridge); color: var(--color-bridge); }
+
+    /* Alphabet jump */
+    .glossary-alpha {
+      display: flex;
+      justify-content: center;
+      gap: 4px;
+      margin-bottom: var(--sp-lg);
+      flex-wrap: wrap;
+    }
+    .glossary-alpha__letter {
+      font-family: var(--font-code);
+      font-size: 12px;
+      width: 28px;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: var(--radius-sm);
+      color: var(--text-dim);
+      cursor: pointer;
+      transition: all var(--transition-fast);
+      background: transparent;
+      border: 1px solid transparent;
+    }
+    .glossary-alpha__letter:hover { background: var(--surface); color: var(--text); }
+    .glossary-alpha__letter.disabled { opacity: 0.2; cursor: default; }
+
+    @media (max-width: 768px) {
+      .glossary-page { padding: var(--sp-lg) var(--sp-md); }
+      .glossary-term__dual { flex-direction: column; gap: var(--sp-xs); }
+      .rosetta-table { font-size: 12px; }
+      .rosetta-table th, .rosetta-table td { padding: var(--sp-xs) var(--sp-sm); }
+    }
+  </style>
+</head>
+<body>
+<div class="noise"></div>
+
+<nav class="site-nav">
+  <a href="../index.html" class="site-nav__logo">DSP <span class="arrow">&rarr;</span> AI</a>
+  <ul class="site-nav__links">
+    <li><a href="../index.html#part1">Part I</a></li>
+    <li><a href="../index.html#part2">Part II</a></li>
+    <li><a href="../index.html#part3">Part III</a></li>
+    <li><a href="../index.html#part4">Part IV</a></li>
+    <li><a href="../gallery/index.html">Gallery</a></li>
+    <li><a href="glossary.html" class="active">Reference</a></li>
+  </ul>
+  <button class="search-toggle" aria-label="Search site (press /)">🔍</button>
+  <button class="theme-toggle" aria-label="Toggle theme"></button>
+  <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false">&#9776;</button>
+</nav>
+<div class="progress-bar"></div>
+
+<main class="glossary-page">
+
+  <!-- Header -->
+  <header class="glossary-page__header">
+    <div class="badge" style="margin-bottom: 16px;">REFERENCE</div>
+    <h1>Glossary</h1>
+    <p>Every concept in the book, mapped between its DSP name and its AI name. Search, filter, or browse alphabetically.</p>
+  </header>
+
+  <!-- Search -->
+  <div class="glossary-search">
+    <span class="glossary-search__icon">&#x1F50D;</span>
+    <input type="text" class="glossary-search__input" id="glossary-search" placeholder="Search terms, e.g. &quot;convolution&quot;, &quot;attention&quot;, &quot;pole&quot;..." autocomplete="off">
+    <div class="glossary-search__count" id="search-count"></div>
+  </div>
+
+  <!-- Filter tabs -->
+  <div class="glossary-filters" id="glossary-filters">
+    <button class="glossary-filter active" data-filter="all">All</button>
+    <button class="glossary-filter" data-filter="dsp" style="--f: var(--color-dsp);">DSP</button>
+    <button class="glossary-filter" data-filter="ai" style="--f: var(--color-ai);">AI</button>
+    <button class="glossary-filter" data-filter="bridge" style="--f: var(--color-bridge);">Bridge</button>
+    <button class="glossary-filter" data-filter="math" style="--f: var(--color-math);">Math</button>
+  </div>
+
+  <!-- ============================================================
+       SECTION 1: ROSETTA STONE QUICK REFERENCE
+       ============================================================ -->
+  <section class="glossary-category" id="cat-rosetta">
+    <h2 class="glossary-category__title">
+      <span class="cat-dot" style="background: var(--color-bridge);"></span>
+      Rosetta Stone &mdash; Quick Reference
+    </h2>
+
+    <p style="color: var(--text-dim); font-size: 14.5px; margin-bottom: var(--sp-lg); line-height: 1.6;">
+      The central thesis of this book: DSP and AI are the <strong style="color: var(--color-bridge);">same mathematics</strong> with different vocabulary. This table maps the core equivalences.
+    </p>
+
+    <div style="overflow-x: auto;">
+    <table class="rosetta-table">
+      <thead>
+        <tr>
+          <th>DSP Concept</th>
+          <th>Connection</th>
+          <th>AI Concept</th>
+          <th>Chapter</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Signal x[n]</td>
+          <td>=</td>
+          <td>Input tensor / token sequence</td>
+          <td><a href="../chapters/part1/ch01-signals.html">Ch 1</a>, <a href="../chapters/part3/ch16-rosetta.html">Ch 16</a></td>
+        </tr>
+        <tr>
+          <td>Impulse response h[n]</td>
+          <td>=</td>
+          <td>Network weights / kernel</td>
+          <td><a href="../chapters/part1/ch03-convolution.html">Ch 3</a>, <a href="../chapters/part3/ch16-rosetta.html">Ch 16</a></td>
+        </tr>
+        <tr>
+          <td>Convolution (slide, multiply, sum)</td>
+          <td>=</td>
+          <td>Matrix multiplication / conv layer</td>
+          <td><a href="../chapters/part1/ch03-convolution.html">Ch 3</a>, <a href="../chapters/part2/ch09-neuron.html">Ch 9</a></td>
+        </tr>
+        <tr>
+          <td>Frequency response H(e<sup>j&omega;</sup>)</td>
+          <td>=</td>
+          <td>Feature selectivity</td>
+          <td><a href="../chapters/part1/ch04-fourier.html">Ch 4</a>, <a href="../chapters/part3/ch16-rosetta.html">Ch 16</a></td>
+        </tr>
+        <tr>
+          <td>Poles (z-plane)</td>
+          <td>=</td>
+          <td>Eigenvalues / recurrence dynamics</td>
+          <td><a href="../chapters/part1/ch06-poles-zeros.html">Ch 6</a>, <a href="../chapters/part3/ch18-ssm.html">Ch 18</a></td>
+        </tr>
+        <tr>
+          <td>FIR filter</td>
+          <td>=</td>
+          <td>Attention (finite window, explicit memory)</td>
+          <td><a href="../chapters/part1/ch07-filter-design.html">Ch 7</a>, <a href="../chapters/part3/ch20-attn-vs-mamba.html">Ch 20</a></td>
+        </tr>
+        <tr>
+          <td>IIR filter</td>
+          <td>=</td>
+          <td>SSM / Mamba (recursive state, compressed memory)</td>
+          <td><a href="../chapters/part1/ch07-filter-design.html">Ch 7</a>, <a href="../chapters/part3/ch19-mamba.html">Ch 19</a></td>
+        </tr>
+        <tr>
+          <td>Adaptive filter (LMS)</td>
+          <td>=</td>
+          <td>Training / SGD</td>
+          <td><a href="../chapters/part1/ch08-advanced-dsp.html">Ch 8</a>, <a href="../chapters/part2/ch10-backprop.html">Ch 10</a></td>
+        </tr>
+        <tr>
+          <td>Filter bank</td>
+          <td>=</td>
+          <td>Multi-head attention / multi-channel SSM</td>
+          <td><a href="../chapters/part1/ch08-advanced-dsp.html">Ch 8</a>, <a href="../chapters/part2/ch14-attention.html">Ch 14</a></td>
+        </tr>
+        <tr>
+          <td>Matched filter</td>
+          <td>=</td>
+          <td>Dot-product similarity / neuron</td>
+          <td><a href="../chapters/part3/ch17-matched-to-attn.html">Ch 17</a></td>
+        </tr>
+        <tr>
+          <td>State-space model (continuous)</td>
+          <td>=</td>
+          <td>S4 / Structured SSM</td>
+          <td><a href="../chapters/part3/ch18-ssm.html">Ch 18</a></td>
+        </tr>
+        <tr>
+          <td>Adaptive IIR filter bank</td>
+          <td>=</td>
+          <td>Mamba (selective SSM)</td>
+          <td><a href="../chapters/part3/ch19-mamba.html">Ch 19</a></td>
+        </tr>
+        <tr>
+          <td>FIR + IIR cascade</td>
+          <td>=</td>
+          <td>Hybrid architecture (Jamba, Griffin)</td>
+          <td><a href="../chapters/part4/ch22-hybrid-architectures.html">Ch 22</a></td>
+        </tr>
+      </tbody>
+    </table>
+    </div>
+  </section>
+
+  <!-- ============================================================
+       SECTION 2: DSP FOUNDATIONS
+       ============================================================ -->
+  <section class="glossary-category" id="cat-dsp">
+    <h2 class="glossary-category__title">
+      <span class="cat-dot" style="background: var(--color-dsp);"></span>
+      DSP Foundations
+      <span class="cat-count"></span>
+    </h2>
+    <div class="glossary-grid">
+
+      <div class="glossary-term" style="--term-color: var(--color-dsp);" data-tags="dsp" data-search="signal discrete continuous sampling time series input">
+        <div class="glossary-term__name">Signal<span class="alias">x[n] or x(t)</span></div>
+        <div class="glossary-term__tags"><span class="glossary-term__tag glossary-term__tag--dsp">DSP</span></div>
+        <div class="glossary-term__def">A function that carries information, mapping time (or space) to amplitude. <strong>Continuous signals</strong> x(t) exist for all time; <strong>discrete-time signals</strong> x[n] exist only at integer indices after sampling.</div>
+        <div class="glossary-term__dual">
+          <div class="glossary-term__dual-item dual-ai"><span class="label">AI</span> Input tensor / token sequence</div>
+        </div>
+        <div class="glossary-term__chapter"><a href="../chapters/part1/ch01-signals.html">Ch 1</a></div>
+      </div>
+
+      <div class="glossary-term" style="--term-color: var(--color-dsp);" data-tags="dsp" data-search="sampling rate nyquist frequency aliasing fs ts">
+        <div class="glossary-term__name">Sampling &amp; Nyquist<span class="alias">f<sub>s</sub>, f<sub>N</sub></span></div>
+        <div class="glossary-term__tags"><span class="glossary-term__tag glossary-term__tag--dsp">DSP</span></div>
+        <div class="glossary-term__def">Converting a continuous signal to discrete by measuring at regular intervals. The <strong>Nyquist rate</strong> (2&times; the highest frequency) is the minimum sampling rate to avoid <strong>aliasing</strong> &mdash; where high frequencies masquerade as low ones.</div>
+        <div class="glossary-term__chapter"><a href="../chapters/part1/ch01-signals.html">Ch 1</a></div>
+      </div>
+
+      <div class="glossary-term" style="--term-color: var(--color-dsp);" data-tags="dsp" data-search="system lti linear time invariant causal stable">
+        <div class="glossary-term__name">LTI System<span class="alias">Linear Time-Invariant</span></div>
+        <div class="glossary-term__tags"><span class="glossary-term__tag glossary-term__tag--dsp">DSP</span></div>
+        <div class="glossary-term__def">A system where scaling the input scales the output (linearity) and delaying the input delays the output (time-invariance). Completely characterized by its <strong>impulse response</strong> h[n]. The backbone of classical DSP.</div>
+        <div class="glossary-term__dual">
+          <div class="glossary-term__dual-item dual-ai"><span class="label">AI</span> Fixed-weight layer (no input-dependent params)</div>
+        </div>
+        <div class="glossary-term__chapter"><a href="../chapters/part1/ch02-systems.html">Ch 2</a></div>
+      </div>
+
+      <div class="glossary-term" style="--term-color: var(--color-dsp);" data-tags="dsp math" data-search="convolution kernel impulse response slide multiply sum weighted average">
+        <div class="glossary-term__name">Convolution<span class="alias">(x * h)[n]</span></div>
+        <div class="glossary-term__tags"><span class="glossary-term__tag glossary-term__tag--dsp">DSP</span><span class="glossary-term__tag glossary-term__tag--math">MATH</span></div>
+        <div class="glossary-term__def"><strong>Slide, multiply, sum.</strong> The fundamental operation of DSP: y[n] = &sum; x[k] &middot; h[n&minus;k]. Applies a kernel (impulse response) to every position in the input. Produces the output of any LTI system.</div>
+        <div class="glossary-term__dual">
+          <div class="glossary-term__dual-item dual-ai"><span class="label">AI</span> Conv layer / matrix multiplication</div>
+        </div>
+        <div class="glossary-term__chapter"><a href="../chapters/part1/ch03-convolution.html">Ch 3</a></div>
+      </div>
+
+      <div class="glossary-term" style="--term-color: var(--color-dsp);" data-tags="dsp math" data-search="fourier transform frequency domain spectrum dft fft sinusoid decomposition">
+        <div class="glossary-term__name">Fourier Transform<span class="alias">DFT / FFT</span></div>
+        <div class="glossary-term__tags"><span class="glossary-term__tag glossary-term__tag--dsp">DSP</span><span class="glossary-term__tag glossary-term__tag--math">MATH</span></div>
+        <div class="glossary-term__def">Decomposes any signal into a sum of sinusoids at different frequencies. Converts from <strong>time domain</strong> to <strong>frequency domain</strong>. The FFT computes it in O(N log N). Convolution in time becomes multiplication in frequency.</div>
+        <div class="glossary-term__dual">
+          <div class="glossary-term__dual-item dual-ai"><span class="label">AI</span> Learned basis / feature decomposition</div>
+        </div>
+        <div class="glossary-term__chapter"><a href="../chapters/part1/ch04-fourier.html">Ch 4</a></div>
+      </div>
+
+      <div class="glossary-term" style="--term-color: var(--color-dsp);" data-tags="dsp math" data-search="z transform transfer function delay operator z-1 rational polynomial roc region of convergence">
+        <div class="glossary-term__name">Z-Transform<span class="alias">X(z), H(z)</span></div>
+        <div class="glossary-term__tags"><span class="glossary-term__tag glossary-term__tag--dsp">DSP</span><span class="glossary-term__tag glossary-term__tag--math">MATH</span></div>
+        <div class="glossary-term__def">Extends Fourier to the full complex plane z = re<sup>j&omega;</sup>. The delay operator z<sup>&minus;1</sup> turns difference equations into polynomials. The <strong>transfer function</strong> H(z) = Y(z)/X(z) fully describes any LTI system as a ratio of polynomials.</div>
+        <div class="glossary-term__chapter"><a href="../chapters/part1/ch05-z-transform.html">Ch 5</a></div>
+      </div>
+
+      <div class="glossary-term" style="--term-color: var(--color-dsp);" data-tags="dsp math" data-search="poles zeros unit circle stability resonance z-plane complex frequency response">
+        <div class="glossary-term__name">Poles &amp; Zeros<span class="alias">z-plane</span></div>
+        <div class="glossary-term__tags"><span class="glossary-term__tag glossary-term__tag--dsp">DSP</span><span class="glossary-term__tag glossary-term__tag--math">MATH</span></div>
+        <div class="glossary-term__def"><strong>Poles</strong> are frequencies where the system has infinite gain (roots of the denominator). <strong>Zeros</strong> are frequencies of zero gain (roots of the numerator). Poles inside the unit circle &rArr; stable system. Pole angle = resonant frequency; pole radius = decay rate.</div>
+        <div class="glossary-term__dual">
+          <div class="glossary-term__dual-item dual-ai"><span class="label">AI</span> Eigenvalues of state matrix A</div>
+        </div>
+        <div class="glossary-term__chapter"><a href="../chapters/part1/ch06-poles-zeros.html">Ch 6</a></div>
+      </div>
+
+      <div class="glossary-term" style="--term-color: var(--color-dsp);" data-tags="dsp" data-search="fir finite impulse response filter always stable linear phase taps coefficients window method sinc">
+        <div class="glossary-term__name">FIR Filter<span class="alias">Finite Impulse Response</span></div>
+        <div class="glossary-term__tags"><span class="glossary-term__tag glossary-term__tag--dsp">DSP</span></div>
+        <div class="glossary-term__def">Output depends only on a <strong>finite window</strong> of past inputs: y[n] = &sum; b<sub>k</sub> x[n&minus;k]. Always stable, can have linear phase, but needs many taps for sharp cutoffs. Computation: O(M) per sample where M = number of taps.</div>
+        <div class="glossary-term__dual">
+          <div class="glossary-term__dual-item dual-ai"><span class="label">AI</span> Attention (explicit, finite-window memory)</div>
+        </div>
+        <div class="glossary-term__chapter"><a href="../chapters/part1/ch07-filter-design.html">Ch 7</a>, <a href="../chapters/part3/ch20-attn-vs-mamba.html">Ch 20</a></div>
+      </div>
+
+      <div class="glossary-term" style="--term-color: var(--color-dsp);" data-tags="dsp" data-search="iir infinite impulse response filter recursive feedback poles unstable efficient memory compression">
+        <div class="glossary-term__name">IIR Filter<span class="alias">Infinite Impulse Response</span></div>
+        <div class="glossary-term__tags"><span class="glossary-term__tag glossary-term__tag--dsp">DSP</span></div>
+        <div class="glossary-term__def">Uses <strong>feedback</strong> (recursion): output depends on past inputs <em>and</em> past outputs. Can approximate sharp responses with few coefficients, but can be unstable if poles leave the unit circle. Memory is compressed into a state vector, not stored explicitly.</div>
+        <div class="glossary-term__dual">
+          <div class="glossary-term__dual-item dual-ai"><span class="label">AI</span> SSM / Mamba (recursive state, compressed memory)</div>
+        </div>
+        <div class="glossary-term__chapter"><a href="../chapters/part1/ch07-filter-design.html">Ch 7</a>, <a href="../chapters/part3/ch20-attn-vs-mamba.html">Ch 20</a></div>
+      </div>
+
+      <div class="glossary-term" style="--term-color: var(--color-dsp);" data-tags="dsp" data-search="filter bank multirate parallel channels frequency bands subband decomposition analysis synthesis">
+        <div class="glossary-term__name">Filter Bank<span class="alias">parallel channels</span></div>
+        <div class="glossary-term__tags"><span class="glossary-term__tag glossary-term__tag--dsp">DSP</span></div>
+        <div class="glossary-term__def">An array of filters applied in parallel, each tuned to a different frequency band. Decomposes a signal into sub-bands for independent processing. Used in audio codecs, wavelets, and speech processing.</div>
+        <div class="glossary-term__dual">
+          <div class="glossary-term__dual-item dual-ai"><span class="label">AI</span> Multi-head attention / multi-channel SSM</div>
+        </div>
+        <div class="glossary-term__chapter"><a href="../chapters/part1/ch08-advanced-dsp.html">Ch 8</a></div>
+      </div>
+
+      <div class="glossary-term" style="--term-color: var(--color-dsp);" data-tags="dsp" data-search="adaptive filter lms least mean squares wiener step size mu convergence noise cancellation echo">
+        <div class="glossary-term__name">Adaptive Filter<span class="alias">LMS algorithm</span></div>
+        <div class="glossary-term__tags"><span class="glossary-term__tag glossary-term__tag--dsp">DSP</span></div>
+        <div class="glossary-term__def">A filter whose coefficients update in real-time to minimize error. The <strong>LMS algorithm</strong> updates weights via: w[n+1] = w[n] + &mu; &middot; e[n] &middot; x[n], where &mu; is the step size. Used for noise cancellation, echo removal, and equalization.</div>
+        <div class="glossary-term__dual">
+          <div class="glossary-term__dual-item dual-ai"><span class="label">AI</span> Training / SGD / gradient descent</div>
+        </div>
+        <div class="glossary-term__chapter"><a href="../chapters/part1/ch08-advanced-dsp.html">Ch 8</a></div>
+      </div>
+
+      <div class="glossary-term" style="--term-color: var(--color-dsp);" data-tags="dsp" data-search="matched filter optimal snr signal-to-noise detection correlation template radar sonar">
+        <div class="glossary-term__name">Matched Filter</div>
+        <div class="glossary-term__tags"><span class="glossary-term__tag glossary-term__tag--dsp">DSP</span></div>
+        <div class="glossary-term__def">A filter whose impulse response is the <strong>time-reversed conjugate</strong> of the signal you want to detect. Maximizes signal-to-noise ratio (SNR) at the output. Its output is the cross-correlation between input and template.</div>
+        <div class="glossary-term__dual">
+          <div class="glossary-term__dual-item dual-ai"><span class="label">AI</span> Dot-product similarity / neuron activation</div>
+        </div>
+        <div class="glossary-term__chapter"><a href="../chapters/part3/ch17-matched-to-attn.html">Ch 17</a></div>
+      </div>
+
+      <div class="glossary-term" style="--term-color: var(--color-dsp);" data-tags="dsp" data-search="frequency response magnitude phase filter selectivity passband stopband cutoff">
+        <div class="glossary-term__name">Frequency Response<span class="alias">H(e<sup>j&omega;</sup>)</span></div>
+        <div class="glossary-term__tags"><span class="glossary-term__tag glossary-term__tag--dsp">DSP</span></div>
+        <div class="glossary-term__def">How a system responds to each frequency: evaluate the transfer function on the unit circle. Has <strong>magnitude</strong> (how much each frequency is amplified/attenuated) and <strong>phase</strong> (how much each frequency is delayed).</div>
+        <div class="glossary-term__dual">
+          <div class="glossary-term__dual-item dual-ai"><span class="label">AI</span> Feature selectivity pattern</div>
+        </div>
+        <div class="glossary-term__chapter"><a href="../chapters/part1/ch04-fourier.html">Ch 4</a>, <a href="../chapters/part1/ch06-poles-zeros.html">Ch 6</a></div>
+      </div>
+
+      <div class="glossary-term" style="--term-color: var(--color-dsp);" data-tags="dsp" data-search="window function hann hamming blackman rectangular side lobe spectral leakage gibbs">
+        <div class="glossary-term__name">Window Functions<span class="alias">Hann, Hamming, Blackman</span></div>
+        <div class="glossary-term__tags"><span class="glossary-term__tag glossary-term__tag--dsp">DSP</span></div>
+        <div class="glossary-term__def">Smooth tapering functions applied to finite-length signals to reduce <strong>spectral leakage</strong>. Trade off between main-lobe width (frequency resolution) and side-lobe level (leakage suppression). Used in FIR design and spectral analysis.</div>
+        <div class="glossary-term__chapter"><a href="../chapters/part1/ch07-filter-design.html">Ch 7</a></div>
+      </div>
+
+      <div class="glossary-term" style="--term-color: var(--color-dsp);" data-tags="dsp" data-search="discretization zero order hold bilinear tustin continuous to discrete delta timestep">
+        <div class="glossary-term__name">Discretization<span class="alias">ZOH, Bilinear</span></div>
+        <div class="glossary-term__tags"><span class="glossary-term__tag glossary-term__tag--dsp">DSP</span></div>
+        <div class="glossary-term__def">Converting a continuous-time system to discrete-time. <strong>Zero-Order Hold (ZOH)</strong> assumes input is constant between samples. <strong>Bilinear (Tustin)</strong> maps the entire s-plane into the z-plane preserving stability. Critical for SSMs.</div>
+        <div class="glossary-term__dual">
+          <div class="glossary-term__dual-item dual-ai"><span class="label">AI</span> SSM discretization step (learnable &Delta;)</div>
+        </div>
+        <div class="glossary-term__chapter"><a href="../chapters/part3/ch18-ssm.html">Ch 18</a></div>
+      </div>
+
+      <div class="glossary-term" style="--term-color: var(--color-dsp);" data-tags="dsp" data-search="impulse response h[n] system characterization kernel weights output convolution lti">
+        <div class="glossary-term__name">Impulse Response<span class="alias">h[n]</span></div>
+        <div class="glossary-term__tags"><span class="glossary-term__tag glossary-term__tag--dsp">DSP</span></div>
+        <div class="glossary-term__def">The output of an LTI system when the input is a unit impulse &delta;[n]. <strong>Completely characterizes</strong> the system &mdash; the output for any input is the convolution of that input with h[n]. FIR systems have finite h[n]; IIR systems have infinitely long h[n] that decays.</div>
+        <div class="glossary-term__dual">
+          <div class="glossary-term__dual-item dual-ai"><span class="label">AI</span> Network weights / convolution kernel</div>
+        </div>
+        <div class="glossary-term__chapter"><a href="../chapters/part1/ch02-systems.html">Ch 2</a>, <a href="../chapters/part1/ch03-convolution.html">Ch 3</a>, <a href="../chapters/part3/ch16-rosetta.html">Ch 16</a></div>
+      </div>
+
+      <div class="glossary-term" style="--term-color: var(--color-dsp);" data-tags="dsp math" data-search="transfer function h(z) system polynomial ratio numerator denominator input output frequency domain">
+        <div class="glossary-term__name">Transfer Function<span class="alias">H(z)</span></div>
+        <div class="glossary-term__tags"><span class="glossary-term__tag glossary-term__tag--dsp">DSP</span><span class="glossary-term__tag glossary-term__tag--math">MATH</span></div>
+        <div class="glossary-term__def">The Z-transform of the impulse response: H(z) = Y(z)/X(z). A ratio of polynomials whose roots are the poles and zeros. Evaluating H(z) on the unit circle gives the frequency response. The complete algebraic description of any LTI system.</div>
+        <div class="glossary-term__dual">
+          <div class="glossary-term__dual-item dual-ai"><span class="label">AI</span> SSM kernel in Z-domain / layer transfer characteristic</div>
+        </div>
+        <div class="glossary-term__chapter"><a href="../chapters/part1/ch05-z-transform.html">Ch 5</a>, <a href="../chapters/part3/ch18-ssm.html">Ch 18</a></div>
+      </div>
+
+      <div class="glossary-term" style="--term-color: var(--color-dsp);" data-tags="dsp" data-search="causality causal system output depends only past present not future realizable real-time">
+        <div class="glossary-term__name">Causality</div>
+        <div class="glossary-term__tags"><span class="glossary-term__tag glossary-term__tag--dsp">DSP</span></div>
+        <div class="glossary-term__def">A system is <strong>causal</strong> if its output at time n depends only on present and past inputs, not future ones. Required for real-time processing. In AI: causal attention masks future tokens; SSM recurrence is inherently causal (state only depends on past).</div>
+        <div class="glossary-term__dual">
+          <div class="glossary-term__dual-item dual-ai"><span class="label">AI</span> Causal attention mask / autoregressive generation</div>
+        </div>
+        <div class="glossary-term__chapter"><a href="../chapters/part1/ch02-systems.html">Ch 2</a>, <a href="../chapters/part2/ch14-attention.html">Ch 14</a></div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ============================================================
+       SECTION 3: AI FOUNDATIONS
+       ============================================================ -->
+  <section class="glossary-category" id="cat-ai">
+    <h2 class="glossary-category__title">
+      <span class="cat-dot" style="background: var(--color-ai);"></span>
+      AI Foundations
+      <span class="cat-count"></span>
+    </h2>
+    <div class="glossary-grid">
+
+      <div class="glossary-term" style="--term-color: var(--color-ai);" data-tags="ai" data-search="neuron perceptron weighted sum bias activation function mcculloch pitts rosenblatt sigmoid relu">
+        <div class="glossary-term__name">Neuron<span class="alias">Perceptron</span></div>
+        <div class="glossary-term__tags"><span class="glossary-term__tag glossary-term__tag--ai">AI</span></div>
+        <div class="glossary-term__def">The fundamental unit: <strong>y = &sigma;(w<sup>T</sup>x + b)</strong>. Computes a weighted sum of inputs (dot product), adds bias, applies a nonlinear activation. The McCulloch-Pitts model (1943), Rosenblatt's Perceptron (1958).</div>
+        <div class="glossary-term__dual">
+          <div class="glossary-term__dual-item dual-dsp"><span class="label">DSP</span> Matched filter (dot product = correlation)</div>
+        </div>
+        <div class="glossary-term__chapter"><a href="../chapters/part2/ch09-neuron.html">Ch 9</a></div>
+      </div>
+
+      <div class="glossary-term" style="--term-color: var(--color-ai);" data-tags="ai" data-search="activation function sigmoid relu tanh gelu nonlinearity squashing vanishing gradient dead neuron">
+        <div class="glossary-term__name">Activation Functions<span class="alias">ReLU, Sigmoid, GELU</span></div>
+        <div class="glossary-term__tags"><span class="glossary-term__tag glossary-term__tag--ai">AI</span></div>
+        <div class="glossary-term__def">Nonlinear functions applied after the weighted sum. <strong>Sigmoid</strong>: smooth 0-to-1 squash. <strong>ReLU</strong>: max(0, x), simple and fast. <strong>GELU</strong>: smooth ReLU used in transformers. Without nonlinearity, stacked layers collapse to a single linear operation.</div>
+        <div class="glossary-term__chapter"><a href="../chapters/part2/ch09-neuron.html">Ch 9</a></div>
+      </div>
+
+      <div class="glossary-term" style="--term-color: var(--color-ai);" data-tags="ai math" data-search="backpropagation gradient chain rule loss error backward pass parameter update training">
+        <div class="glossary-term__name">Backpropagation<span class="alias">chain rule</span></div>
+        <div class="glossary-term__tags"><span class="glossary-term__tag glossary-term__tag--ai">AI</span><span class="glossary-term__tag glossary-term__tag--math">MATH</span></div>
+        <div class="glossary-term__def">The algorithm for computing gradients efficiently via the <strong>chain rule</strong>. Flows error backwards through the network, computing &part;L/&part;w for every weight. Enables gradient descent to update parameters to minimize loss.</div>
+        <div class="glossary-term__dual">
+          <div class="glossary-term__dual-item dual-dsp"><span class="label">DSP</span> LMS error feedback / Wiener solution gradient</div>
+        </div>
+        <div class="glossary-term__chapter"><a href="../chapters/part2/ch10-backprop.html">Ch 10</a></div>
+      </div>
+
+      <div class="glossary-term" style="--term-color: var(--color-ai);" data-tags="ai" data-search="sgd stochastic gradient descent adam optimizer learning rate step size weight update batch mini-batch">
+        <div class="glossary-term__name">SGD &amp; Optimizers<span class="alias">Adam, learning rate</span></div>
+        <div class="glossary-term__tags"><span class="glossary-term__tag glossary-term__tag--ai">AI</span></div>
+        <div class="glossary-term__def"><strong>Stochastic Gradient Descent</strong>: update weights by subtracting gradient &times; learning rate. <strong>Adam</strong> adds momentum and adaptive per-parameter rates. The learning rate controls step size &mdash; too large diverges, too small stalls.</div>
+        <div class="glossary-term__dual">
+          <div class="glossary-term__dual-item dual-dsp"><span class="label">DSP</span> LMS step size &mu;</div>
+        </div>
+        <div class="glossary-term__chapter"><a href="../chapters/part2/ch11-training.html">Ch 11</a></div>
+      </div>
+
+      <div class="glossary-term" style="--term-color: var(--color-ai);" data-tags="ai" data-search="rnn recurrent neural network hidden state sequence vanishing gradient bptt lstm gru temporal">
+        <div class="glossary-term__name">RNN<span class="alias">Recurrent Neural Network</span></div>
+        <div class="glossary-term__tags"><span class="glossary-term__tag glossary-term__tag--ai">AI</span></div>
+        <div class="glossary-term__def">Processes sequences by maintaining a <strong>hidden state</strong> that updates at each timestep: h<sub>t</sub> = f(h<sub>t-1</sub>, x<sub>t</sub>). Suffers from vanishing gradients for long sequences. LSTM and GRU add gating to control information flow.</div>
+        <div class="glossary-term__dual">
+          <div class="glossary-term__dual-item dual-dsp"><span class="label">DSP</span> IIR filter (recursive state update)</div>
+        </div>
+        <div class="glossary-term__chapter"><a href="../chapters/part2/ch12-sequences.html">Ch 12</a></div>
+      </div>
+
+      <div class="glossary-term" style="--term-color: var(--color-ai);" data-tags="ai" data-search="embedding word2vec representation vector space semantic distributional one-hot dense learned basis">
+        <div class="glossary-term__name">Embedding<span class="alias">Word2Vec, learned basis</span></div>
+        <div class="glossary-term__tags"><span class="glossary-term__tag glossary-term__tag--ai">AI</span></div>
+        <div class="glossary-term__def">Maps discrete tokens (words, pixels) into a continuous <strong>vector space</strong> where geometric distance reflects semantic similarity. Replaces sparse one-hot encoding with dense learned representations. "King &minus; Man + Woman &asymp; Queen."</div>
+        <div class="glossary-term__dual">
+          <div class="glossary-term__dual-item dual-dsp"><span class="label">DSP</span> Learned basis functions / signal representation</div>
+        </div>
+        <div class="glossary-term__chapter"><a href="../chapters/part2/ch13-embeddings.html">Ch 13</a></div>
+      </div>
+
+      <div class="glossary-term" style="--term-color: var(--color-ai);" data-tags="ai" data-search="attention query key value qkv softmax dot product scaled multi-head self-attention cross-attention causal mask">
+        <div class="glossary-term__name">Attention<span class="alias">Q, K, V</span></div>
+        <div class="glossary-term__tags"><span class="glossary-term__tag glossary-term__tag--ai">AI</span></div>
+        <div class="glossary-term__def"><strong>Soft database lookup.</strong> Computes relevance scores between all pairs of tokens: Attention(Q,K,V) = softmax(QK<sup>T</sup>/&radic;d) &middot; V. <strong>Multi-head</strong>: run multiple attention in parallel on different projections. Complexity: O(T&sup2;) in sequence length.</div>
+        <div class="glossary-term__dual">
+          <div class="glossary-term__dual-item dual-dsp"><span class="label">DSP</span> Time-varying FIR filter / matched filter bank</div>
+        </div>
+        <div class="glossary-term__chapter"><a href="../chapters/part2/ch14-attention.html">Ch 14</a></div>
+      </div>
+
+      <div class="glossary-term" style="--term-color: var(--color-ai);" data-tags="ai" data-search="transformer encoder decoder feed-forward normalization positional encoding self-attention layer stack">
+        <div class="glossary-term__name">Transformer</div>
+        <div class="glossary-term__tags"><span class="glossary-term__tag glossary-term__tag--ai">AI</span></div>
+        <div class="glossary-term__def">Architecture built entirely from attention + feed-forward layers (Vaswani et al., 2017). Each block: self-attention &rarr; add &amp; norm &rarr; FFN &rarr; add &amp; norm. Processes all tokens in parallel, enabling massive-scale training. Foundation of GPT, BERT, and modern LLMs.</div>
+        <div class="glossary-term__chapter"><a href="../chapters/part2/ch15-transformer.html">Ch 15</a></div>
+      </div>
+
+      <div class="glossary-term" style="--term-color: var(--color-ai);" data-tags="ai" data-search="kv cache key value inference memory autoregressive generation decoding">
+        <div class="glossary-term__name">KV-Cache</div>
+        <div class="glossary-term__tags"><span class="glossary-term__tag glossary-term__tag--ai">AI</span></div>
+        <div class="glossary-term__def">During autoregressive generation, attention stores all past keys and values to avoid recomputation. Provides <strong>perfect, lossless recall</strong> of any previous token, but memory grows linearly with sequence length: O(T &middot; d) per layer.</div>
+        <div class="glossary-term__dual">
+          <div class="glossary-term__dual-item dual-dsp"><span class="label">DSP</span> Full signal buffer (explicit memory)</div>
+        </div>
+        <div class="glossary-term__chapter"><a href="../chapters/part3/ch20-attn-vs-mamba.html">Ch 20</a></div>
+      </div>
+
+      <div class="glossary-term" style="--term-color: var(--color-ai);" data-tags="ai" data-search="softmax exponential normalization probability distribution temperature scaling">
+        <div class="glossary-term__name">Softmax</div>
+        <div class="glossary-term__tags"><span class="glossary-term__tag glossary-term__tag--ai">AI</span></div>
+        <div class="glossary-term__def">Converts a vector of raw scores into a probability distribution: softmax(z<sub>i</sub>) = e<sup>z<sub>i</sub></sup> / &sum; e<sup>z<sub>j</sub></sup>. Used in attention weights and classification outputs. <strong>Temperature</strong> controls sharpness: low T &rarr; peaky, high T &rarr; uniform.</div>
+        <div class="glossary-term__chapter"><a href="../chapters/part2/ch14-attention.html">Ch 14</a></div>
+      </div>
+
+      <div class="glossary-term" style="--term-color: var(--color-ai);" data-tags="ai" data-search="multi-head attention parallel heads projection subspace different features diverse representations">
+        <div class="glossary-term__name">Multi-Head Attention</div>
+        <div class="glossary-term__tags"><span class="glossary-term__tag glossary-term__tag--ai">AI</span></div>
+        <div class="glossary-term__def">Runs h independent attention operations in parallel, each with its own Q, K, V projections into a d/h-dimensional subspace. Different heads learn to attend to different types of relationships (syntactic, semantic, positional). Outputs are concatenated and projected.</div>
+        <div class="glossary-term__dual">
+          <div class="glossary-term__dual-item dual-dsp"><span class="label">DSP</span> Parallel filter bank (each channel tuned differently)</div>
+        </div>
+        <div class="glossary-term__chapter"><a href="../chapters/part2/ch14-attention.html">Ch 14</a></div>
+      </div>
+
+      <div class="glossary-term" style="--term-color: var(--color-ai);" data-tags="ai" data-search="positional encoding sinusoidal position embedding learned absolute relative rotary rope location order">
+        <div class="glossary-term__name">Positional Encoding<span class="alias">sinusoidal, RoPE</span></div>
+        <div class="glossary-term__tags"><span class="glossary-term__tag glossary-term__tag--ai">AI</span></div>
+        <div class="glossary-term__def">Injects position information into the attention mechanism, which is otherwise order-agnostic. The original Transformer uses <strong>sinusoidal</strong> encodings (literal Fourier basis functions). Modern models use Rotary Position Embeddings (RoPE) that encode relative positions.</div>
+        <div class="glossary-term__dual">
+          <div class="glossary-term__dual-item dual-dsp"><span class="label">DSP</span> Fourier basis functions / window position tagging</div>
+        </div>
+        <div class="glossary-term__chapter"><a href="../chapters/part2/ch15-transformer.html">Ch 15</a></div>
+      </div>
+
+      <div class="glossary-term" style="--term-color: var(--color-ai);" data-tags="ai" data-search="residual connection skip connection shortcut identity add bypass gradient highway">
+        <div class="glossary-term__name">Residual Connection<span class="alias">skip connection</span></div>
+        <div class="glossary-term__tags"><span class="glossary-term__tag glossary-term__tag--ai">AI</span></div>
+        <div class="glossary-term__def">Adds the input directly to the output of a layer: y = F(x) + x. Allows gradients to flow unchanged through the identity path, preventing vanishing gradients in deep networks. Used in every Transformer block and Mamba block. The layer only needs to learn the <strong>residual</strong> F(x).</div>
+        <div class="glossary-term__dual">
+          <div class="glossary-term__dual-item dual-dsp"><span class="label">DSP</span> Feedforward path / D matrix in SSM</div>
+        </div>
+        <div class="glossary-term__chapter"><a href="../chapters/part2/ch15-transformer.html">Ch 15</a>, <a href="../chapters/part3/ch19-mamba.html">Ch 19</a></div>
+      </div>
+
+      <div class="glossary-term" style="--term-color: var(--color-ai);" data-tags="ai" data-search="layernorm rmsnorm normalization layer mean variance scale stability training">
+        <div class="glossary-term__name">LayerNorm / RMSNorm</div>
+        <div class="glossary-term__tags"><span class="glossary-term__tag glossary-term__tag--ai">AI</span></div>
+        <div class="glossary-term__def"><strong>LayerNorm</strong> normalizes activations to zero mean and unit variance across the feature dimension. <strong>RMSNorm</strong> (used in Mamba, Llama) simplifies by only dividing by the RMS, skipping the mean subtraction. Stabilizes training by keeping activations in a well-conditioned range.</div>
+        <div class="glossary-term__chapter"><a href="../chapters/part2/ch15-transformer.html">Ch 15</a>, <a href="../chapters/part3/ch19-mamba.html">Ch 19</a></div>
+      </div>
+
+      <div class="glossary-term" style="--term-color: var(--color-ai);" data-tags="ai" data-search="gelu silu swish gated activation smooth relu nonlinearity mamba transformer">
+        <div class="glossary-term__name">GELU / SiLU<span class="alias">Swish</span></div>
+        <div class="glossary-term__tags"><span class="glossary-term__tag glossary-term__tag--ai">AI</span></div>
+        <div class="glossary-term__def"><strong>GELU</strong> (x &middot; &Phi;(x)): smooth approximation to ReLU used in BERT and GPT. <strong>SiLU/Swish</strong> (x &middot; &sigma;(x)): self-gated activation used in Mamba blocks. Both are smooth, non-monotonic near zero, and avoid the "dead neuron" problem of ReLU.</div>
+        <div class="glossary-term__chapter"><a href="../chapters/part2/ch09-neuron.html">Ch 9</a>, <a href="../chapters/part3/ch19-mamba.html">Ch 19</a></div>
+      </div>
+
+      <div class="glossary-term" style="--term-color: var(--color-ai);" data-tags="ai" data-search="grouped query attention gqa shared keys values fewer kv heads efficient inference memory">
+        <div class="glossary-term__name">Grouped-Query Attention<span class="alias">GQA</span></div>
+        <div class="glossary-term__tags"><span class="glossary-term__tag glossary-term__tag--ai">AI</span></div>
+        <div class="glossary-term__def">Shares K and V projections across groups of query heads, reducing KV-cache size by the group factor. Used in Llama-2/3 and hybrid architectures. A middle ground between multi-head attention (separate KV per head) and multi-query attention (one shared KV).</div>
+        <div class="glossary-term__chapter"><a href="../chapters/part4/ch22-hybrid-architectures.html">Ch 22</a></div>
+      </div>
+
+      <div class="glossary-term" style="--term-color: var(--color-ai);" data-tags="ai" data-search="induction head in-context learning copy pattern match two head circuit retrieval prefix">
+        <div class="glossary-term__name">Induction Head</div>
+        <div class="glossary-term__tags"><span class="glossary-term__tag glossary-term__tag--ai">AI</span></div>
+        <div class="glossary-term__def">A two-head circuit in Transformers that implements pattern completion: if "A B ... A" appeared, predict "B" next. The core mechanism for <strong>in-context learning</strong>. SSMs struggle with this because it requires exact retrieval from history &mdash; a key motivation for hybrid architectures.</div>
+        <div class="glossary-term__chapter"><a href="../chapters/part3/ch20-attn-vs-mamba.html">Ch 20</a>, <a href="../chapters/part4/ch22-hybrid-architectures.html">Ch 22</a></div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ============================================================
+       SECTION 4: THE BRIDGE
+       ============================================================ -->
+  <section class="glossary-category" id="cat-bridge">
+    <h2 class="glossary-category__title">
+      <span class="cat-dot" style="background: var(--color-bridge);"></span>
+      The Bridge &mdash; SSMs, Mamba &amp; Duality
+      <span class="cat-count"></span>
+    </h2>
+    <div class="glossary-grid">
+
+      <div class="glossary-term" style="--term-color: var(--color-bridge);" data-tags="bridge math" data-search="state space model ssm continuous discretize state equation output equation a b c d matrices">
+        <div class="glossary-term__name">State-Space Model (SSM)<span class="alias">x' = Ax + Bu, y = Cx</span></div>
+        <div class="glossary-term__tags"><span class="glossary-term__tag glossary-term__tag--bridge">BRIDGE</span><span class="glossary-term__tag glossary-term__tag--math">MATH</span></div>
+        <div class="glossary-term__def">A model that maps input to output through a latent <strong>state vector</strong>. Defined by matrices A (state dynamics), B (input coupling), C (output readout), D (skip). The continuous form is discretized with timestep &Delta; for sequence processing.</div>
+        <div class="glossary-term__dual">
+          <div class="glossary-term__dual-item dual-dsp"><span class="label">DSP</span> State-space realization of a transfer function</div>
+          <div class="glossary-term__dual-item dual-ai"><span class="label">AI</span> Structured sequence model layer</div>
+        </div>
+        <div class="glossary-term__chapter"><a href="../chapters/part3/ch18-ssm.html">Ch 18</a></div>
+      </div>
+
+      <div class="glossary-term" style="--term-color: var(--color-bridge);" data-tags="bridge math" data-search="hippo high order polynomial projection operator legendre long range memory optimal compression lssl">
+        <div class="glossary-term__name">HiPPO<span class="alias">High-Order Polynomial Projection Operator</span></div>
+        <div class="glossary-term__tags"><span class="glossary-term__tag glossary-term__tag--bridge">BRIDGE</span><span class="glossary-term__tag glossary-term__tag--math">MATH</span></div>
+        <div class="glossary-term__def">A principled initialization for the A matrix that optimally compresses input history into a fixed-size state using Legendre polynomial projections. Solves the "how to remember long sequences in finite memory" problem. Foundation of S4 and all subsequent SSMs.</div>
+        <div class="glossary-term__chapter"><a href="../chapters/part3/ch18-ssm.html">Ch 18</a>, <a href="../chapters/part4/ch21-ssm-evolution.html">Ch 21</a></div>
+      </div>
+
+      <div class="glossary-term" style="--term-color: var(--color-bridge);" data-tags="bridge" data-search="s4 structured state space dplr diagonal plus low rank long range arena efficient convolution recurrence dual">
+        <div class="glossary-term__name">S4<span class="alias">Structured State Spaces for Sequences</span></div>
+        <div class="glossary-term__tags"><span class="glossary-term__tag glossary-term__tag--bridge">BRIDGE</span></div>
+        <div class="glossary-term__def">The first practical SSM architecture (Gu et al., ICLR 2022). Uses DPLR (diagonal plus low-rank) parameterization of A to enable efficient O(T log T) training via FFT. Exploits <strong>conv-recurrence duality</strong>: train as convolution, infer as recurrence.</div>
+        <div class="glossary-term__dual">
+          <div class="glossary-term__dual-item dual-dsp"><span class="label">DSP</span> Fixed IIR filter bank (parallel first-order sections)</div>
+        </div>
+        <div class="glossary-term__chapter"><a href="../chapters/part3/ch18-ssm.html">Ch 18</a>, <a href="../chapters/part4/ch21-ssm-evolution.html">Ch 21</a></div>
+      </div>
+
+      <div class="glossary-term" style="--term-color: var(--color-bridge);" data-tags="bridge" data-search="conv recurrence duality convolution training recurrence inference parallel sequential mode switching">
+        <div class="glossary-term__name">Conv-Recurrence Duality</div>
+        <div class="glossary-term__tags"><span class="glossary-term__tag glossary-term__tag--bridge">BRIDGE</span></div>
+        <div class="glossary-term__def">Any linear recurrence x<sub>t</sub> = Ax<sub>t-1</sub> + Bu<sub>t</sub> can be unrolled into a convolution y = K * u where K is the impulse response. <strong>Training</strong>: use convolution (parallel, O(T log T) via FFT). <strong>Inference</strong>: use recurrence (O(1) per step, streaming).</div>
+        <div class="glossary-term__dual">
+          <div class="glossary-term__dual-item dual-dsp"><span class="label">DSP</span> IIR filter &#x2194; truncated FIR kernel</div>
+        </div>
+        <div class="glossary-term__chapter"><a href="../chapters/part3/ch18-ssm.html">Ch 18</a></div>
+      </div>
+
+      <div class="glossary-term" style="--term-color: var(--color-bridge);" data-tags="bridge" data-search="mamba selective ssm s6 input dependent adaptive delta learnable scan hardware aware selection mechanism">
+        <div class="glossary-term__name">Mamba<span class="alias">Selective SSM / S6</span></div>
+        <div class="glossary-term__tags"><span class="glossary-term__tag glossary-term__tag--bridge">BRIDGE</span></div>
+        <div class="glossary-term__def">Makes SSM parameters (&Delta;, B, C) <strong>input-dependent</strong>, breaking LTI to become LTV. The selection mechanism lets the model decide what to remember/forget per token. Uses hardware-aware parallel scan for efficient GPU execution. O(T) complexity with content-aware processing.</div>
+        <div class="glossary-term__dual">
+          <div class="glossary-term__dual-item dual-dsp"><span class="label">DSP</span> Adaptive IIR filter bank (poles move per timestep)</div>
+        </div>
+        <div class="glossary-term__chapter"><a href="../chapters/part3/ch19-mamba.html">Ch 19</a></div>
+      </div>
+
+      <div class="glossary-term" style="--term-color: var(--color-bridge);" data-tags="bridge math" data-search="selective scan parallel associative scan prefix sum monoid binary tree work efficient gpu sram hbm">
+        <div class="glossary-term__name">Selective Scan<span class="alias">parallel associative scan</span></div>
+        <div class="glossary-term__tags"><span class="glossary-term__tag glossary-term__tag--bridge">BRIDGE</span><span class="glossary-term__tag glossary-term__tag--math">MATH</span></div>
+        <div class="glossary-term__def">The core algorithm of Mamba. Exploits the <strong>associativity</strong> of the recurrence (A, Bu) tuples to parallelize what looks sequential. Computed in O(T) work and O(log T) depth on GPU using a binary tree reduction, entirely in SRAM to minimize HBM transfers.</div>
+        <div class="glossary-term__chapter"><a href="../chapters/part3/ch19-mamba.html">Ch 19</a></div>
+      </div>
+
+      <div class="glossary-term" style="--term-color: var(--color-bridge);" data-tags="bridge math" data-search="delta timestep step size softplus gate forget remember selectivity input-dependent learnable">
+        <div class="glossary-term__name">Delta (&Delta;)<span class="alias">learnable timestep</span></div>
+        <div class="glossary-term__tags"><span class="glossary-term__tag glossary-term__tag--bridge">BRIDGE</span><span class="glossary-term__tag glossary-term__tag--math">MATH</span></div>
+        <div class="glossary-term__def">The <strong>master control</strong> in Mamba. Determines how much the state evolves per token. Large &Delta; &rarr; fast decay, focus on current input (reset). Small &Delta; &rarr; slow decay, retain history (remember). Computed as &Delta; = softplus(Linear(x)), making it input-dependent.</div>
+        <div class="glossary-term__dual">
+          <div class="glossary-term__dual-item dual-dsp"><span class="label">DSP</span> Pole radius / sampling period / gate opening</div>
+        </div>
+        <div class="glossary-term__chapter"><a href="../chapters/part3/ch19-mamba.html">Ch 19</a></div>
+      </div>
+
+      <div class="glossary-term" style="--term-color: var(--color-bridge);" data-tags="bridge" data-search="mamba-2 ssd structured state space duality semiseparable matrix structured masked attention unification">
+        <div class="glossary-term__name">Mamba-2 / SSD<span class="alias">Structured State Space Duality</span></div>
+        <div class="glossary-term__tags"><span class="glossary-term__tag glossary-term__tag--bridge">BRIDGE</span></div>
+        <div class="glossary-term__def">Proves that the selective SSM computation is <strong>mathematically equivalent</strong> to a form of structured masked attention where the mask is a semiseparable matrix. Unifies the two paradigms: SSM &equiv; structured attention. Enables 2&ndash;8&times; faster implementation using tensor cores.</div>
+        <div class="glossary-term__chapter"><a href="../chapters/part3/ch20-attn-vs-mamba.html">Ch 20</a>, <a href="../chapters/part4/ch21-ssm-evolution.html">Ch 21</a></div>
+      </div>
+
+      <div class="glossary-term" style="--term-color: var(--color-bridge);" data-tags="bridge" data-search="ltv linear time varying input dependent parameters content aware adaptive not fixed">
+        <div class="glossary-term__name">LTV System<span class="alias">Linear Time-Varying</span></div>
+        <div class="glossary-term__tags"><span class="glossary-term__tag glossary-term__tag--bridge">BRIDGE</span></div>
+        <div class="glossary-term__def">A system whose parameters change over time (or depend on input). Unlike LTI systems, an LTV system's response to the same input can differ depending on <em>when</em> or <em>what</em> triggers it. Mamba is LTV because &Delta;, B, C depend on the input token.</div>
+        <div class="glossary-term__dual">
+          <div class="glossary-term__dual-item dual-dsp"><span class="label">DSP</span> Adaptive / time-varying filter</div>
+          <div class="glossary-term__dual-item dual-ai"><span class="label">AI</span> Input-dependent gating (Mamba, attention)</div>
+        </div>
+        <div class="glossary-term__chapter"><a href="../chapters/part3/ch19-mamba.html">Ch 19</a></div>
+      </div>
+
+      <div class="glossary-term" style="--term-color: var(--color-bridge);" data-tags="bridge" data-search="state vector hidden state compressed memory fixed size lossy information bottleneck recurrence">
+        <div class="glossary-term__name">State Vector<span class="alias">compressed memory</span></div>
+        <div class="glossary-term__tags"><span class="glossary-term__tag glossary-term__tag--bridge">BRIDGE</span></div>
+        <div class="glossary-term__def">A fixed-size vector x &isin; R<sup>N</sup> that summarizes all past input through recursive updates. Unlike the KV-cache, it doesn't grow with sequence length, but information is <strong>lossy</strong> &mdash; compressed into N dimensions regardless of how long the history is.</div>
+        <div class="glossary-term__dual">
+          <div class="glossary-term__dual-item dual-dsp"><span class="label">DSP</span> IIR filter state registers</div>
+          <div class="glossary-term__dual-item dual-ai"><span class="label">AI</span> RNN hidden state / SSM latent state</div>
+        </div>
+        <div class="glossary-term__chapter"><a href="../chapters/part3/ch18-ssm.html">Ch 18</a>, <a href="../chapters/part3/ch20-attn-vs-mamba.html">Ch 20</a></div>
+      </div>
+
+      <div class="glossary-term" style="--term-color: var(--color-bridge);" data-tags="bridge math" data-search="dplr diagonal plus low rank parameterization s4 efficient kernel cauchy partial fraction">
+        <div class="glossary-term__name">DPLR<span class="alias">Diagonal Plus Low-Rank</span></div>
+        <div class="glossary-term__tags"><span class="glossary-term__tag glossary-term__tag--bridge">BRIDGE</span><span class="glossary-term__tag glossary-term__tag--math">MATH</span></div>
+        <div class="glossary-term__def">The key parameterization that made S4 practical. Decomposes the HiPPO A matrix as A = &Lambda; + PQ<sup>*</sup> (diagonal + low-rank correction). Enables O(N) kernel computation via Cauchy kernel evaluation &mdash; equivalent to computing the frequency response via partial fractions.</div>
+        <div class="glossary-term__dual">
+          <div class="glossary-term__dual-item dual-dsp"><span class="label">DSP</span> Partial fraction expansion of H(z)</div>
+        </div>
+        <div class="glossary-term__chapter"><a href="../chapters/part3/ch18-ssm.html">Ch 18</a>, <a href="../chapters/part4/ch21-ssm-evolution.html">Ch 21</a></div>
+      </div>
+
+      <div class="glossary-term" style="--term-color: var(--color-bridge);" data-tags="bridge ai" data-search="gated linear recurrence glr simplified ssm gate sigmoid real diagonal griffin hawk retention">
+        <div class="glossary-term__name">Gated Linear Recurrence<span class="alias">GLR</span></div>
+        <div class="glossary-term__tags"><span class="glossary-term__tag glossary-term__tag--bridge">BRIDGE</span><span class="glossary-term__tag glossary-term__tag--ai">AI</span></div>
+        <div class="glossary-term__def">A simplified form of SSM using a real-valued diagonal recurrence with input-dependent gating: x<sub>t</sub> = &alpha;<sub>t</sub> &middot; x<sub>t-1</sub> + (1&minus;&alpha;<sub>t</sub>) &middot; u<sub>t</sub>. Used in Griffin and Hawk. Simpler than Mamba&rsquo;s complex-valued diagonal, but effective when paired with local attention.</div>
+        <div class="glossary-term__dual">
+          <div class="glossary-term__dual-item dual-dsp"><span class="label">DSP</span> First-order adaptive IIR with real pole</div>
+        </div>
+        <div class="glossary-term__chapter"><a href="../chapters/part4/ch21-ssm-evolution.html">Ch 21</a>, <a href="../chapters/part4/ch22-hybrid-architectures.html">Ch 22</a></div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ============================================================
+       SECTION 5: THE FRONTIER
+       ============================================================ -->
+  <section class="glossary-category" id="cat-frontier">
+    <h2 class="glossary-category__title">
+      <span class="cat-dot" style="background: var(--color-danger);"></span>
+      The Frontier &mdash; Hybrids &amp; Evolution
+      <span class="cat-count"></span>
+    </h2>
+    <div class="glossary-grid">
+
+      <div class="glossary-term" style="--term-color: var(--color-danger);" data-tags="bridge ai" data-search="hybrid architecture interleave ssm attention layers mixed cascade jamba griffin bamba ratio placement">
+        <div class="glossary-term__name">Hybrid Architecture<span class="alias">Jamba, Griffin, Bamba</span></div>
+        <div class="glossary-term__tags"><span class="glossary-term__tag glossary-term__tag--bridge">BRIDGE</span><span class="glossary-term__tag glossary-term__tag--ai">AI</span></div>
+        <div class="glossary-term__def">Interleaves SSM layers (for efficiency and long-range) with attention layers (for retrieval and reasoning). Design choices: <strong>ratio</strong> (how many attention layers), <strong>placement</strong> (where), <strong>type</strong> (sliding-window vs full attention), <strong>SSM variant</strong>.</div>
+        <div class="glossary-term__dual">
+          <div class="glossary-term__dual-item dual-dsp"><span class="label">DSP</span> FIR + IIR cascade (best of both worlds)</div>
+        </div>
+        <div class="glossary-term__chapter"><a href="../chapters/part4/ch22-hybrid-architectures.html">Ch 22</a></div>
+      </div>
+
+      <div class="glossary-term" style="--term-color: var(--color-danger);" data-tags="ai" data-search="jamba ai21 1:7 ratio mixture of experts moe 52b 256k context production scale interleave">
+        <div class="glossary-term__name">Jamba<span class="alias">AI21, 2024</span></div>
+        <div class="glossary-term__tags"><span class="glossary-term__tag glossary-term__tag--ai">AI</span></div>
+        <div class="glossary-term__def">First production-scale hybrid: Mamba + Attention at <strong>1:7 ratio</strong> (1 attention layer per 7 SSM layers), combined with Mixture of Experts (MoE). 52B parameters, 256K context. Demonstrated that very few attention layers are sufficient for strong retrieval.</div>
+        <div class="glossary-term__chapter"><a href="../chapters/part4/ch22-hybrid-architectures.html">Ch 22</a></div>
+      </div>
+
+      <div class="glossary-term" style="--term-color: var(--color-danger);" data-tags="ai" data-search="griffin deepmind recurrence gated linear hawk 2024 real gated linear recurrence">
+        <div class="glossary-term__name">Griffin<span class="alias">DeepMind, 2024</span></div>
+        <div class="glossary-term__tags"><span class="glossary-term__tag glossary-term__tag--ai">AI</span></div>
+        <div class="glossary-term__def">DeepMind's hybrid combining Real Gated Linear Recurrence (a simplified SSM) with local sliding-window attention. Part of the Hawk/Griffin family. Demonstrates that even simple linear recurrences, when combined with attention, achieve strong results.</div>
+        <div class="glossary-term__chapter"><a href="../chapters/part4/ch22-hybrid-architectures.html">Ch 22</a></div>
+      </div>
+
+      <div class="glossary-term" style="--term-color: var(--color-danger);" data-tags="ai" data-search="sliding window local attention bounded context window sparse efficient chunked">
+        <div class="glossary-term__name">Sliding-Window Attention<span class="alias">local attention</span></div>
+        <div class="glossary-term__tags"><span class="glossary-term__tag glossary-term__tag--ai">AI</span></div>
+        <div class="glossary-term__def">Restricts attention to a fixed-size local window W around each token instead of all T past tokens. Reduces complexity from O(T&sup2;) to O(T&middot;W). Used in hybrid architectures where SSM layers handle long-range and attention handles local precision.</div>
+        <div class="glossary-term__dual">
+          <div class="glossary-term__dual-item dual-dsp"><span class="label">DSP</span> Windowed FIR filter (finite-length kernel)</div>
+        </div>
+        <div class="glossary-term__chapter"><a href="../chapters/part4/ch22-hybrid-architectures.html">Ch 22</a></div>
+      </div>
+
+      <div class="glossary-term" style="--term-color: var(--color-danger);" data-tags="ai" data-search="edge deployment mobile embedded iot real-time constant memory streaming efficient small model">
+        <div class="glossary-term__name">Edge Deployment</div>
+        <div class="glossary-term__tags"><span class="glossary-term__tag glossary-term__tag--ai">AI</span></div>
+        <div class="glossary-term__def">Running models on resource-constrained devices (mobile, IoT, embedded). SSM-heavy hybrids excel here due to <strong>constant memory</strong> (no KV-cache growth), O(1) per-step inference, and natural streaming capability. Models like XAMBA and eMamba target this space.</div>
+        <div class="glossary-term__chapter"><a href="../chapters/part4/ch22-hybrid-architectures.html">Ch 22</a>, <a href="../chapters/part4/ch21-ssm-evolution.html">Ch 21</a></div>
+      </div>
+
+      <div class="glossary-term" style="--term-color: var(--color-danger);" data-tags="bridge" data-search="in-context learning retrieval recall copy exact lookup key value associative memory pattern matching">
+        <div class="glossary-term__name">In-Context Retrieval<span class="alias">associative recall</span></div>
+        <div class="glossary-term__tags"><span class="glossary-term__tag glossary-term__tag--bridge">BRIDGE</span></div>
+        <div class="glossary-term__def">The ability to look up and copy specific information from earlier in the context. Attention excels here (direct access via KV-cache). SSMs struggle because state compression is lossy. This is the primary reason hybrids include attention layers.</div>
+        <div class="glossary-term__chapter"><a href="../chapters/part3/ch20-attn-vs-mamba.html">Ch 20</a>, <a href="../chapters/part4/ch22-hybrid-architectures.html">Ch 22</a></div>
+      </div>
+
+      <div class="glossary-term" style="--term-color: var(--color-danger);" data-tags="ai" data-search="mixture of experts moe sparse routing top-k gating expert parallelism conditional computation jamba">
+        <div class="glossary-term__name">Mixture of Experts<span class="alias">MoE</span></div>
+        <div class="glossary-term__tags"><span class="glossary-term__tag glossary-term__tag--ai">AI</span></div>
+        <div class="glossary-term__def">Replaces a single FFN with N parallel expert networks, routing each token to the top-k experts via a learned gating function. Total parameters are large but <strong>active parameters per token are small</strong> (sparse). Used in Jamba (Mamba + Attention + MoE) for efficiency at scale.</div>
+        <div class="glossary-term__chapter"><a href="../chapters/part4/ch22-hybrid-architectures.html">Ch 22</a></div>
+      </div>
+
+      <div class="glossary-term" style="--term-color: var(--color-danger);" data-tags="ai" data-search="bamba ibm mamba-2 hybrid 9b production open-source 3 attention layers 32 total">
+        <div class="glossary-term__name">Bamba<span class="alias">IBM, 2024</span></div>
+        <div class="glossary-term__tags"><span class="glossary-term__tag glossary-term__tag--ai">AI</span></div>
+        <div class="glossary-term__def">IBM's open-source 9B hybrid: 29 Mamba-2 layers + 3 attention layers (~9% attention). Demonstrates that minimal attention is sufficient at scale. Trained on 2T tokens with strong performance on reasoning and long-context tasks.</div>
+        <div class="glossary-term__chapter"><a href="../chapters/part4/ch22-hybrid-architectures.html">Ch 22</a>, <a href="../chapters/part4/ch21-ssm-evolution.html">Ch 21</a></div>
+      </div>
+
+      <div class="glossary-term" style="--term-color: var(--color-danger);" data-tags="ai bridge" data-search="hyena implicit long convolution learnable kernel data-driven sub-quadratic poli icml 2023">
+        <div class="glossary-term__name">Hyena<span class="alias">ICML 2023</span></div>
+        <div class="glossary-term__tags"><span class="glossary-term__tag glossary-term__tag--ai">AI</span><span class="glossary-term__tag glossary-term__tag--bridge">BRIDGE</span></div>
+        <div class="glossary-term__def">Uses <strong>implicit long convolutions</strong> &mdash; data-driven convolution kernels parameterized by a small neural network instead of explicit weights. Sub-quadratic in sequence length. An important stepping stone between S4's fixed kernels and Mamba's fully input-dependent approach.</div>
+        <div class="glossary-term__dual">
+          <div class="glossary-term__dual-item dual-dsp"><span class="label">DSP</span> Learned FIR kernel via implicit parameterization</div>
+        </div>
+        <div class="glossary-term__chapter"><a href="../chapters/part4/ch21-ssm-evolution.html">Ch 21</a></div>
+      </div>
+
+      <div class="glossary-term" style="--term-color: var(--color-danger);" data-tags="ai bridge" data-search="rwkv linear attention rnn open source wkv receptance world key value peng 2023 eagle finch">
+        <div class="glossary-term__name">RWKV<span class="alias">Receptance Weighted Key Value</span></div>
+        <div class="glossary-term__tags"><span class="glossary-term__tag glossary-term__tag--ai">AI</span><span class="glossary-term__tag glossary-term__tag--bridge">BRIDGE</span></div>
+        <div class="glossary-term__def">A fully open-source architecture combining linear attention with RNN-like recurrence. Achieves O(T) training and O(1) inference like Mamba, but via a different mechanism (WKV operator). Widely deployed; versions up to 14B. Bridges the linear attention and SSM communities.</div>
+        <div class="glossary-term__chapter"><a href="../chapters/part4/ch21-ssm-evolution.html">Ch 21</a></div>
+      </div>
+
+      <div class="glossary-term" style="--term-color: var(--color-danger);" data-tags="ai bridge" data-search="retnet retention network microsoft linear attention recurrence decay chunkwise 2023">
+        <div class="glossary-term__name">RetNet<span class="alias">Microsoft, 2023</span></div>
+        <div class="glossary-term__tags"><span class="glossary-term__tag glossary-term__tag--ai">AI</span><span class="glossary-term__tag glossary-term__tag--bridge">BRIDGE</span></div>
+        <div class="glossary-term__def">Replaces softmax attention with a <strong>retention mechanism</strong> that decays with distance: R = (QK<sup>T</sup> &odot; D) V, where D is an exponential decay mask. Supports three modes: parallel (training), recurrent (inference), and chunkwise (hybrid). Bridges linear attention and SSMs.</div>
+        <div class="glossary-term__dual">
+          <div class="glossary-term__dual-item dual-dsp"><span class="label">DSP</span> Exponentially-windowed FIR filter</div>
+        </div>
+        <div class="glossary-term__chapter"><a href="../chapters/part4/ch21-ssm-evolution.html">Ch 21</a></div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ============================================================
+       SECTION 6: MATHEMATICAL FOUNDATIONS
+       ============================================================ -->
+  <section class="glossary-category" id="cat-math">
+    <h2 class="glossary-category__title">
+      <span class="cat-dot" style="background: var(--color-math);"></span>
+      Mathematical Foundations
+      <span class="cat-count"></span>
+    </h2>
+    <div class="glossary-grid">
+
+      <div class="glossary-term" style="--term-color: var(--color-math);" data-tags="math" data-search="eigenvalue eigenvector characteristic polynomial spectral decomposition diagonal matrix">
+        <div class="glossary-term__name">Eigenvalues<span class="alias">spectral decomposition</span></div>
+        <div class="glossary-term__tags"><span class="glossary-term__tag glossary-term__tag--math">MATH</span></div>
+        <div class="glossary-term__def">Scalars &lambda; where A&middot;v = &lambda;&middot;v. Determine the natural modes of a system. In SSMs, the eigenvalues of A control decay rates and oscillation frequencies. <strong>|&lambda;| &lt; 1</strong> &rArr; decaying mode (stable). |&lambda;| = 1 &rArr; sustained. |&lambda;| &gt; 1 &rArr; unstable.</div>
+        <div class="glossary-term__dual">
+          <div class="glossary-term__dual-item dual-dsp"><span class="label">DSP</span> Poles of the transfer function</div>
+        </div>
+        <div class="glossary-term__chapter"><a href="../chapters/part1/ch06-poles-zeros.html">Ch 6</a>, <a href="../chapters/part3/ch18-ssm.html">Ch 18</a></div>
+      </div>
+
+      <div class="glossary-term" style="--term-color: var(--color-math);" data-tags="math" data-search="stability bounded input output bibo unit circle convergence divergence exploding gradient">
+        <div class="glossary-term__name">Stability<span class="alias">BIBO, gradient flow</span></div>
+        <div class="glossary-term__tags"><span class="glossary-term__tag glossary-term__tag--math">MATH</span></div>
+        <div class="glossary-term__def"><strong>BIBO stability</strong>: bounded input &rArr; bounded output. In DSP: all poles inside the unit circle. In AI: no exploding gradients / activations. The same mathematical condition governs both &mdash; eigenvalues of the recurrence matrix must have magnitude &lt; 1.</div>
+        <div class="glossary-term__dual">
+          <div class="glossary-term__dual-item dual-dsp"><span class="label">DSP</span> Poles inside unit circle</div>
+          <div class="glossary-term__dual-item dual-ai"><span class="label">AI</span> No exploding gradients</div>
+        </div>
+        <div class="glossary-term__chapter"><a href="../chapters/part1/ch06-poles-zeros.html">Ch 6</a>, <a href="../chapters/part3/ch16-rosetta.html">Ch 16</a></div>
+      </div>
+
+      <div class="glossary-term" style="--term-color: var(--color-math);" data-tags="math" data-search="linear transformation matrix multiplication dot product matmul projection weighted sum">
+        <div class="glossary-term__name">Linear Transformation<span class="alias">matrix multiply</span></div>
+        <div class="glossary-term__tags"><span class="glossary-term__tag glossary-term__tag--math">MATH</span></div>
+        <div class="glossary-term__def">A function f where f(ax + by) = a&middot;f(x) + b&middot;f(y). Represented as matrix multiplication y = Wx. The <strong>dot product</strong> w<sup>T</sup>x is a single row of this operation &mdash; the neuron, the matched filter, the correlation computation.</div>
+        <div class="glossary-term__chapter"><a href="../chapters/part2/ch09-neuron.html">Ch 9</a>, <a href="../chapters/part3/ch16-rosetta.html">Ch 16</a></div>
+      </div>
+
+      <div class="glossary-term" style="--term-color: var(--color-math);" data-tags="math" data-search="toeplitz matrix convolution structured circulant banded diagonal constant">
+        <div class="glossary-term__name">Toeplitz Matrix<span class="alias">convolution as matrix multiply</span></div>
+        <div class="glossary-term__tags"><span class="glossary-term__tag glossary-term__tag--math">MATH</span></div>
+        <div class="glossary-term__def">A matrix where each descending diagonal has the same value. Convolution y = h * x is equivalent to y = T&middot;x where T is a Toeplitz matrix built from h. This identity bridges DSP's convolution with AI's matrix multiplication.</div>
+        <div class="glossary-term__chapter"><a href="../chapters/part3/ch16-rosetta.html">Ch 16</a></div>
+      </div>
+
+      <div class="glossary-term" style="--term-color: var(--color-math);" data-tags="math" data-search="semiseparable matrix low rank structured mask block decomposition mamba-2 ssd">
+        <div class="glossary-term__name">Semiseparable Matrix</div>
+        <div class="glossary-term__tags"><span class="glossary-term__tag glossary-term__tag--math">MATH</span></div>
+        <div class="glossary-term__def">A matrix where every submatrix below the diagonal has rank at most N (the state dimension). The Mamba-2 / SSD result: the SSM output matrix is semiseparable, and this is exactly the structure of causal attention with a specific mask. The mathematical proof that SSMs &equiv; structured attention.</div>
+        <div class="glossary-term__chapter"><a href="../chapters/part3/ch20-attn-vs-mamba.html">Ch 20</a>, <a href="../chapters/part4/ch21-ssm-evolution.html">Ch 21</a></div>
+      </div>
+
+      <div class="glossary-term" style="--term-color: var(--color-math);" data-tags="math" data-search="complexity big-o quadratic linear logarithmic flops compute scaling asymptotic">
+        <div class="glossary-term__name">Computational Complexity<span class="alias">O(n&sup2;) vs O(n)</span></div>
+        <div class="glossary-term__tags"><span class="glossary-term__tag glossary-term__tag--math">MATH</span></div>
+        <div class="glossary-term__def">How resource usage scales with input size. Attention: <strong>O(T&sup2;&middot;d)</strong> &mdash; every token attends to every other. Mamba: <strong>O(T&middot;d&middot;N)</strong> &mdash; linear in sequence length. At T=131K, this means 131,000&times; less compute for the sequence-mixing step.</div>
+        <div class="glossary-term__chapter"><a href="../chapters/part3/ch20-attn-vs-mamba.html">Ch 20</a></div>
+      </div>
+
+      <div class="glossary-term" style="--term-color: var(--color-math);" data-tags="math dsp" data-search="associativity associative property parallel prefix scan combine binary operator monoid">
+        <div class="glossary-term__name">Associativity<span class="alias">parallel prefix scan</span></div>
+        <div class="glossary-term__tags"><span class="glossary-term__tag glossary-term__tag--math">MATH</span><span class="glossary-term__tag glossary-term__tag--dsp">DSP</span></div>
+        <div class="glossary-term__def">The property (a &oplus; b) &oplus; c = a &oplus; (b &oplus; c). Critical for parallelizing sequential operations. In Mamba, the recurrence tuples (A<sub>t</sub>, B<sub>t</sub>u<sub>t</sub>) form a monoid under composition, enabling O(log T) depth parallel scan on GPU.</div>
+        <div class="glossary-term__chapter"><a href="../chapters/part3/ch19-mamba.html">Ch 19</a></div>
+      </div>
+
+      <div class="glossary-term" style="--term-color: var(--color-math);" data-tags="math" data-search="vanishing gradient exploding gradient long range dependency training difficulty deep network stability">
+        <div class="glossary-term__name">Vanishing / Exploding Gradients</div>
+        <div class="glossary-term__tags"><span class="glossary-term__tag glossary-term__tag--math">MATH</span></div>
+        <div class="glossary-term__def">When gradients shrink to zero (vanishing) or grow unboundedly (exploding) through deep networks or long sequences. Caused by repeated multiplication by matrices with eigenvalues |&lambda;| &ne; 1. HiPPO/SSMs address this by carefully initializing A so eigenvalues stay near the stability boundary.</div>
+        <div class="glossary-term__dual">
+          <div class="glossary-term__dual-item dual-dsp"><span class="label">DSP</span> Poles too far inside (overdamped) or outside (unstable) unit circle</div>
+        </div>
+        <div class="glossary-term__chapter"><a href="../chapters/part2/ch10-backprop.html">Ch 10</a>, <a href="../chapters/part3/ch16-rosetta.html">Ch 16</a></div>
+      </div>
+
+      <div class="glossary-term" style="--term-color: var(--color-math);" data-tags="math bridge" data-search="softplus smooth relu positive activation log1pexp ln(1+exp(x)) delta mamba gate positive">
+        <div class="glossary-term__name">Softplus<span class="alias">log(1 + e<sup>x</sup>)</span></div>
+        <div class="glossary-term__tags"><span class="glossary-term__tag glossary-term__tag--math">MATH</span><span class="glossary-term__tag glossary-term__tag--bridge">BRIDGE</span></div>
+        <div class="glossary-term__def">A smooth approximation to ReLU that always produces <strong>positive</strong> outputs: softplus(x) = log(1 + e<sup>x</sup>). Used in Mamba to compute &Delta; = softplus(Linear(x)), ensuring the timestep is always positive (required for valid discretization).</div>
+        <div class="glossary-term__chapter"><a href="../chapters/part3/ch19-mamba.html">Ch 19</a></div>
+      </div>
+
+      <div class="glossary-term" style="--term-color: var(--color-math);" data-tags="math bridge" data-search="cauchy kernel evaluation frequency response s4 dplr transfer function unit circle efficient">
+        <div class="glossary-term__name">Cauchy Kernel<span class="alias">S4 kernel computation</span></div>
+        <div class="glossary-term__tags"><span class="glossary-term__tag glossary-term__tag--math">MATH</span><span class="glossary-term__tag glossary-term__tag--bridge">BRIDGE</span></div>
+        <div class="glossary-term__def">The function 1/(&omega; &minus; &lambda;) that appears when evaluating H(z) via partial fractions at points on the unit circle. S4 exploits this to compute the SSM convolution kernel in O(N) per frequency. Mathematically identical to evaluating the <strong>frequency response</strong> of a parallel bank of first-order IIR sections.</div>
+        <div class="glossary-term__dual">
+          <div class="glossary-term__dual-item dual-dsp"><span class="label">DSP</span> Frequency response evaluation via partial fractions</div>
+        </div>
+        <div class="glossary-term__chapter"><a href="../chapters/part3/ch18-ssm.html">Ch 18</a>, <a href="../chapters/part4/ch21-ssm-evolution.html">Ch 21</a></div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ============================================================
+       SECTION 7: KEY ABBREVIATIONS
+       ============================================================ -->
+  <section class="glossary-category" id="cat-abbrev">
+    <h2 class="glossary-category__title">
+      <span class="cat-dot" style="background: var(--text-dim);"></span>
+      Key Abbreviations
+      <span class="cat-count"></span>
+    </h2>
+    <div style="overflow-x: auto;">
+    <table class="rosetta-table" style="max-width: 800px;">
+      <thead>
+        <tr>
+          <th style="color: var(--text);">Abbrev.</th>
+          <th style="color: var(--text);">Full Name</th>
+          <th style="color: var(--text-dim);">Domain</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td><strong>SSM</strong></td><td>State-Space Model</td><td>Bridge</td></tr>
+        <tr><td><strong>LTI</strong></td><td>Linear Time-Invariant</td><td>DSP</td></tr>
+        <tr><td><strong>LTV</strong></td><td>Linear Time-Varying</td><td>Bridge</td></tr>
+        <tr><td><strong>FIR</strong></td><td>Finite Impulse Response</td><td>DSP</td></tr>
+        <tr><td><strong>IIR</strong></td><td>Infinite Impulse Response</td><td>DSP</td></tr>
+        <tr><td><strong>DFT / FFT</strong></td><td>Discrete Fourier Transform / Fast Fourier Transform</td><td>DSP</td></tr>
+        <tr><td><strong>ZOH</strong></td><td>Zero-Order Hold (discretization method)</td><td>DSP</td></tr>
+        <tr><td><strong>BIBO</strong></td><td>Bounded-Input Bounded-Output (stability)</td><td>DSP/Math</td></tr>
+        <tr><td><strong>LMS</strong></td><td>Least Mean Squares (adaptive filter algorithm)</td><td>DSP</td></tr>
+        <tr><td><strong>SGD</strong></td><td>Stochastic Gradient Descent</td><td>AI</td></tr>
+        <tr><td><strong>RNN</strong></td><td>Recurrent Neural Network</td><td>AI</td></tr>
+        <tr><td><strong>LSTM</strong></td><td>Long Short-Term Memory</td><td>AI</td></tr>
+        <tr><td><strong>Q, K, V</strong></td><td>Query, Key, Value (attention components)</td><td>AI</td></tr>
+        <tr><td><strong>KV-cache</strong></td><td>Key-Value cache (inference memory for attention)</td><td>AI</td></tr>
+        <tr><td><strong>FFN</strong></td><td>Feed-Forward Network</td><td>AI</td></tr>
+        <tr><td><strong>MoE</strong></td><td>Mixture of Experts</td><td>AI</td></tr>
+        <tr><td><strong>HiPPO</strong></td><td>High-Order Polynomial Projection Operator</td><td>Bridge</td></tr>
+        <tr><td><strong>S4</strong></td><td>Structured State Spaces for Sequences</td><td>Bridge</td></tr>
+        <tr><td><strong>DPLR</strong></td><td>Diagonal Plus Low-Rank</td><td>Bridge</td></tr>
+        <tr><td><strong>SSD</strong></td><td>Structured State Space Duality (Mamba-2)</td><td>Bridge</td></tr>
+        <tr><td><strong>LRA</strong></td><td>Long Range Arena (benchmark)</td><td>AI</td></tr>
+        <tr><td><strong>SNR</strong></td><td>Signal-to-Noise Ratio</td><td>DSP</td></tr>
+        <tr><td><strong>ROC</strong></td><td>Region of Convergence (z-transform)</td><td>DSP/Math</td></tr>
+        <tr><td><strong>GQA</strong></td><td>Grouped-Query Attention</td><td>AI</td></tr>
+        <tr><td><strong>RoPE</strong></td><td>Rotary Position Embedding</td><td>AI</td></tr>
+        <tr><td><strong>GLR</strong></td><td>Gated Linear Recurrence</td><td>Bridge</td></tr>
+        <tr><td><strong>RWKV</strong></td><td>Receptance Weighted Key Value</td><td>AI/Bridge</td></tr>
+      </tbody>
+    </table>
+    </div>
+  </section>
+
+</main>
+
+<!-- Back to top -->
+<button class="back-to-top" id="back-to-top" aria-label="Back to top">&uarr;</button>
+
+<!-- Scripts -->
+<script src="../js/core/navigation.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  var searchInput = document.getElementById('glossary-search');
+  var searchCount = document.getElementById('search-count');
+  var filters = document.querySelectorAll('.glossary-filter');
+  var allTerms = document.querySelectorAll('.glossary-term');
+  var backToTop = document.getElementById('back-to-top');
+  var activeFilter = 'all';
+
+  // Search
+  searchInput.addEventListener('input', function () {
+    applyFilters();
+  });
+
+  // Filter buttons
+  filters.forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      filters.forEach(function (b) { b.classList.remove('active'); });
+      btn.classList.add('active');
+      activeFilter = btn.getAttribute('data-filter');
+      applyFilters();
+    });
+  });
+
+  function applyFilters() {
+    var query = searchInput.value.toLowerCase().trim();
+    var visible = 0;
+    var total = allTerms.length;
+
+    allTerms.forEach(function (term) {
+      var tags = term.getAttribute('data-tags') || '';
+      var search = term.getAttribute('data-search') || '';
+      var name = term.querySelector('.glossary-term__name').textContent.toLowerCase();
+      var def = term.querySelector('.glossary-term__def').textContent.toLowerCase();
+
+      var matchesFilter = activeFilter === 'all' || tags.indexOf(activeFilter) !== -1;
+      var matchesSearch = !query ||
+        name.indexOf(query) !== -1 ||
+        def.indexOf(query) !== -1 ||
+        search.indexOf(query) !== -1;
+
+      if (matchesFilter && matchesSearch) {
+        term.classList.remove('hidden');
+        visible++;
+      } else {
+        term.classList.add('hidden');
+      }
+    });
+
+    if (query || activeFilter !== 'all') {
+      searchCount.textContent = visible + ' of ' + total + ' terms';
+    } else {
+      searchCount.textContent = total + ' terms';
+    }
+
+    // Update category counts
+    document.querySelectorAll('.glossary-category').forEach(function (cat) {
+      var grid = cat.querySelector('.glossary-grid');
+      if (!grid) return;
+      var catTerms = grid.querySelectorAll('.glossary-term');
+      var catVisible = grid.querySelectorAll('.glossary-term:not(.hidden)');
+      var countEl = cat.querySelector('.cat-count');
+      if (countEl) {
+        countEl.textContent = catVisible.length + ' / ' + catTerms.length;
+      }
+      // Hide entire category if no visible terms
+      cat.style.display = catVisible.length === 0 ? 'none' : '';
+    });
+  }
+
+  // Initial count
+  applyFilters();
+
+  // Back to top
+  window.addEventListener('scroll', function () {
+    if (window.scrollY > 400) {
+      backToTop.classList.add('visible');
+    } else {
+      backToTop.classList.remove('visible');
+    }
+  });
+  backToTop.addEventListener('click', function () {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+
+  // Keyboard shortcut: / to focus search
+  document.addEventListener('keydown', function (e) {
+    if (e.key === '/' && document.activeElement !== searchInput) {
+      e.preventDefault();
+      searchInput.focus();
+    }
+    if (e.key === 'Escape' && document.activeElement === searchInput) {
+      searchInput.value = '';
+      searchInput.blur();
+      applyFilters();
+    }
+  });
+})();
+</script>
+<script src="../js/core/search-index.js"></script>
+<script src="../js/core/search.js"></script>
+</body>
+</html>

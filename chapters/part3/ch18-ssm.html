@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ch 18: State-Space Models &mdash; DSP to AI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Outfit:wght@300;400;500;600;700;800;900&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../style/global.css">
+  <link rel="stylesheet" href="../../style/theme-dark.css">
+  <link rel="stylesheet" href="../../style/theme-light.css">
+  <link rel="stylesheet" href="../../style/components.css">
+  <link rel="stylesheet" href="../../style/chapter.css">
+  <script src="../../js/core/theme-switcher.js"></script>
+</head>
+<body>
+
+<div class="noise"></div>
+
+<!-- Navigation -->
+<nav class="site-nav">
+  <a href="../../index.html" class="site-nav__logo">DSP <span class="arrow">&rarr;</span> AI</a>
+  <ul class="site-nav__links">
+    <li><a href="../../index.html#part1">Part I</a></li>
+    <li><a href="../../index.html#part2">Part II</a></li>
+    <li><a href="../../index.html#part3" class="active">Part III</a></li>
+    <li><a href="../../index.html#part4">Part IV</a></li>
+    <li><a href="../../gallery/index.html">Gallery</a></li>
+    <li><a href="../../reference/glossary.html">Reference</a></li>
+  </ul>
+  <button class="search-toggle" aria-label="Search site (press /)">🔍</button>
+  <button class="theme-toggle" aria-label="Toggle theme"></button>
+  <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false">&#9776;</button>
+</nav>
+<div class="progress-bar"></div>
+
+<!-- Page Layout -->
+<div class="chapter-page" data-chapter-id="ch18">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar__part-label">Part III: The Bridge</div>
+    <ul class="sidebar__chapters">
+      <li><a class="sidebar__chapter-link" href="ch16-rosetta.html"><span class="sidebar__chapter-num">16</span> The Rosetta Stone</a></li>
+      <li><a class="sidebar__chapter-link" href="ch17-matched-to-attn.html"><span class="sidebar__chapter-num">17</span> Matched Filter &rarr; Attention</a></li>
+      <li><a class="sidebar__chapter-link active" href="ch18-ssm.html"><span class="sidebar__chapter-num">18</span> State-Space Models</a>
+        <ul class="sidebar__sections">
+          <li><a class="sidebar__section-link" href="#continuous">Continuous Form</a></li>
+          <li><a class="sidebar__section-link" href="#discretization">Discretization</a></li>
+          <li><a class="sidebar__section-link" href="#iir-equiv">SSM = IIR Filter</a></li>
+          <li><a class="sidebar__section-link" href="#hippo">HiPPO</a></li>
+          <li><a class="sidebar__section-link" href="#s4">S4 Architecture</a></li>
+          <li><a class="sidebar__section-link" href="#duality">Conv-Recurrence Duality</a></li>
+          <li><a class="sidebar__section-link" href="#tool-ssm">SSM Simulator</a></li>
+          <li><a class="sidebar__section-link" href="#tool-hippo">HiPPO Visualizer</a></li>
+          <li><a class="sidebar__section-link" href="#tool-duality">Duality Demo</a></li>
+        </ul>
+      </li>
+      <li><a class="sidebar__chapter-link" href="ch19-mamba.html"><span class="sidebar__chapter-num">19</span> Mamba</a></li>
+      <li><a class="sidebar__chapter-link" href="ch20-attn-vs-mamba.html"><span class="sidebar__chapter-num">20</span> Attention vs Mamba</a></li>
+    </ul>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="chapter-content">
+
+    <nav class="breadcrumb" aria-label="Breadcrumb"></nav>
+
+    <header class="chapter-header">
+      <div class="chapter-header__part">Part III &mdash; The Bridge</div>
+      <div class="chapter-header__number">Chapter 18</div>
+      <h1 class="chapter-header__title">State-Space Models &mdash; The Mathematical Bridge</h1>
+      <p class="chapter-header__subtitle">
+        State-space models (SSMs) are the <em>literal mathematical bridge</em> between DSP and
+        deep learning. Originally from control theory, the state-space formulation describes
+        any linear dynamical system &mdash; and when you discretize it, you get an IIR filter.
+        When you parameterize it cleverly (HiPPO), you get optimal long-range memory. And the
+        crown jewel: the same SSM can be computed as either convolution (parallel, for training)
+        or recurrence (sequential, for inference).
+      </p>
+    </header>
+
+    <!-- ============================================================
+         18.1 — Continuous State-Space Form
+         ============================================================ -->
+    <section class="content-section" id="continuous">
+      <h2 class="section-heading"><span class="section-number">18.1</span> The Continuous State-Space Form</h2>
+
+      <p>
+        A continuous-time linear state-space model has four matrices:
+      </p>
+
+      <div class="math-block" style="font-size: 1.05em;">
+        <code>
+          x'(t) = A x(t) + B u(t) &nbsp;&nbsp; (state equation)<br>
+          y(t) &nbsp;= C x(t) + D u(t) &nbsp;&nbsp; (output equation)
+        </code>
+      </div>
+
+      <div class="card-grid" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));">
+        <div class="concept-card">
+          <h3 class="concept-card__title">A &isin; &Ropf;^{N&times;N}</h3>
+          <p class="concept-card__body">
+            State transition matrix. Determines how the state evolves on its own.
+            Its eigenvalues control memory, oscillation, and stability.
+          </p>
+        </div>
+        <div class="concept-card">
+          <h3 class="concept-card__title">B &isin; &Ropf;^{N&times;1}</h3>
+          <p class="concept-card__body">
+            Input matrix. Controls how the input signal enters the state.
+            Which state dimensions receive input, and how much.
+          </p>
+        </div>
+        <div class="concept-card">
+          <h3 class="concept-card__title">C &isin; &Ropf;^{1&times;N}</h3>
+          <p class="concept-card__body">
+            Output matrix. Reads out from the state to produce the output.
+            A linear combination of state dimensions.
+          </p>
+        </div>
+        <div class="concept-card">
+          <h3 class="concept-card__title">D &isin; &Ropf;</h3>
+          <p class="concept-card__body">
+            Skip connection. Direct input-to-output path (usually 0 in SSMs).
+            Adds a residual component.
+          </p>
+        </div>
+      </div>
+
+      <p>
+        The state vector x(t) &isin; &Ropf;^N is the system&rsquo;s internal memory &mdash; a
+        <strong>compressed representation</strong> of all past inputs. For SSMs used in
+        deep learning, N is typically 16&ndash;64.
+      </p>
+    </section>
+
+    <!-- ============================================================
+         18.2 — Discretization
+         ============================================================ -->
+    <section class="content-section" id="discretization">
+      <h2 class="section-heading"><span class="section-number">18.2</span> Discretization</h2>
+
+      <p>
+        Neural networks process discrete sequences, not continuous signals. We need to
+        convert the continuous SSM to a discrete-time recurrence. The standard method is
+        <strong>Zero-Order Hold (ZOH)</strong>:
+      </p>
+
+      <div class="math-block">
+        <code>
+          x[n+1] = A&#x0305; x[n] + B&#x0305; u[n]<br>
+          y[n] &nbsp;&nbsp;= C x[n] + D u[n]<br><br>
+          where A&#x0305; = e^{A&Delta;t}, &nbsp; B&#x0305; = A&supmin;&sup1;(A&#x0305; - I)B
+        </code>
+      </div>
+
+      <p>
+        The step size &Delta;t controls the time resolution. Small &Delta;t = fine resolution
+        (captures fast dynamics), large &Delta;t = coarse resolution (captures slow dynamics).
+      </p>
+
+      <div class="progressive-section">
+        <button class="progressive-toggle" aria-expanded="false">Show the Math</button>
+        <div class="progressive-content">
+          <p><strong>Alternative: Bilinear (Tustin) transform:</strong></p>
+          <div class="math-block">
+            <code>
+              A&#x0305; = (I - &Delta;t/2 &middot; A)&supmin;&sup1;(I + &Delta;t/2 &middot; A)<br>
+              B&#x0305; = (I - &Delta;t/2 &middot; A)&supmin;&sup1; &middot; &Delta;t &middot; B
+            </code>
+          </div>
+          <p>
+            The bilinear transform maps the left half of the s-plane (stable region)
+            exactly to the interior of the unit circle in the z-plane. It preserves
+            stability perfectly, which is why S4 uses it.
+          </p>
+          <p><strong>Key insight:</strong> &Delta;t is a <em>learnable parameter</em> in modern
+            SSMs. The network learns what temporal resolution to use for each channel &mdash;
+            this is the precursor to Mamba&rsquo;s selective mechanism.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         18.3 — SSM = IIR Filter
+         ============================================================ -->
+    <section class="content-section" id="iir-equiv">
+      <h2 class="section-heading"><span class="section-number">18.3</span> Discretized SSM = IIR Filter</h2>
+
+      <p>
+        Once discretized, the SSM recurrence is:
+      </p>
+
+      <div class="math-block">
+        <code>
+          x[n+1] = A&#x0305; x[n] + B&#x0305; u[n] &nbsp;&nbsp; (exactly IIR state update!)<br>
+          y[n] &nbsp;&nbsp;= C x[n] &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (linear readout)
+        </code>
+      </div>
+
+      <p>
+        This IS an IIR filter (Chapter 7). The eigenvalues of A&#x0305; ARE the poles.
+        The impulse response h[n] = C A&#x0305;^n B is an exponentially decaying
+        (or oscillating) sequence &mdash; the characteristic IIR behavior.
+      </p>
+
+      <table class="comparison-table">
+        <thead>
+          <tr>
+            <th>IIR Filter</th>
+            <th>Discretized SSM</th>
+            <th>Identical</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Filter coefficients a_k, b_k</td>
+            <td>Matrices A&#x0305;, B&#x0305;, C</td>
+            <td>Both parameterize the same recurrence</td>
+          </tr>
+          <tr>
+            <td>Poles of H(z)</td>
+            <td>Eigenvalues of A&#x0305;</td>
+            <td>Same complex numbers, same locations in z-plane</td>
+          </tr>
+          <tr>
+            <td>Impulse response h[n]</td>
+            <td>C A&#x0305;^n B</td>
+            <td>Same decaying/oscillating sequence</td>
+          </tr>
+          <tr>
+            <td>Stability: |poles| &lt; 1</td>
+            <td>|&lambda;(A&#x0305;)| &lt; 1</td>
+            <td>Same constraint</td>
+          </tr>
+          <tr>
+            <td>Filter state s[n]</td>
+            <td>Hidden state x[n]</td>
+            <td>Same compressed memory of past inputs</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- ============================================================
+         18.4 — HiPPO
+         ============================================================ -->
+    <section class="content-section" id="hippo">
+      <h2 class="section-heading"><span class="section-number">18.4</span> HiPPO &mdash; Optimal History Compression</h2>
+
+      <p>
+        If a discretized SSM is just an IIR filter, what makes it special? The answer is
+        <strong>HiPPO</strong> (High-Order Polynomial Projection Operator): a specific
+        <em>structure</em> for the A matrix that gives the state an optimal interpretation.
+      </p>
+
+      <p>
+        HiPPO says: at every timestep, the state vector x[n] should be the coefficients of
+        a <strong>polynomial approximation</strong> of the input history. Specifically,
+        Legendre polynomial coefficients:
+      </p>
+
+      <div class="math-block">
+        <code>
+          x_k[n] &asymp; &int;_0^n u(t) P_k(t) dt
+        </code>
+      </div>
+
+      <p>
+        From these N coefficients, you can reconstruct an approximation of the entire input
+        history &mdash; not just the last few samples, but everything from the beginning.
+        More coefficients = more accurate reconstruction.
+      </p>
+
+      <div class="progressive-section">
+        <button class="progressive-toggle" aria-expanded="false">Show the Math</button>
+        <div class="progressive-content">
+          <p><strong>HiPPO-LegS (Legendre Scaled) A matrix:</strong></p>
+          <div class="math-block">
+            <code>
+              A_{nk} = -&radic;(2n+1) &radic;(2k+1) &nbsp; if n &gt; k<br>
+              A_{nk} = -(n+1) &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if n = k<br>
+              A_{nk} = 0 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if n &lt; k<br><br>
+              B_n = &radic;(2n+1)
+            </code>
+          </div>
+          <p>
+            This lower-triangular structure ensures that each coefficient c_k[n] tracks the
+            projection of the history onto the k-th Legendre polynomial, weighted by the
+            current window length. The matrix is derived analytically from the requirement
+            that x(t) minimizes the L&sup2; reconstruction error.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         18.5 — S4
+         ============================================================ -->
+    <section class="content-section" id="s4">
+      <h2 class="section-heading"><span class="section-number">18.5</span> S4 &mdash; Structured State Spaces for Sequences</h2>
+
+      <p>
+        S4 (Gu et al., 2021) is the architecture that made SSMs competitive with Transformers.
+        It combines three ideas:
+      </p>
+
+      <div class="card-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+        <div class="concept-card">
+          <h3 class="concept-card__title">HiPPO Initialization</h3>
+          <p class="concept-card__body">
+            Initialize A with the HiPPO matrix for optimal long-range memory.
+            Don&rsquo;t start random &mdash; start with structure.
+          </p>
+        </div>
+        <div class="concept-card">
+          <h3 class="concept-card__title">Diagonal + Low-Rank</h3>
+          <p class="concept-card__body">
+            Parameterize A as diagonal plus low-rank (DPLR) for efficient computation.
+            Reduces matrix operations from O(N&sup2;) to O(N).
+          </p>
+        </div>
+        <div class="concept-card">
+          <h3 class="concept-card__title">Conv-Recurrence Duality</h3>
+          <p class="concept-card__body">
+            Train as convolution (parallel, GPU-friendly). Infer as recurrence (O(1) per step).
+            Best of both worlds.
+          </p>
+        </div>
+      </div>
+
+      <p>
+        S4 achieved state-of-the-art results on the Long Range Arena benchmark, handling
+        sequences of 16K tokens where Transformers struggled. It proved that the IIR
+        approach could work at scale.
+      </p>
+    </section>
+
+    <!-- ============================================================
+         18.6 — Convolution-Recurrence Duality
+         ============================================================ -->
+    <section class="content-section bridge-teaser" id="duality">
+      <h2 class="section-heading"><span class="section-number">18.6</span> The Convolution-Recurrence Duality</h2>
+
+      <p>
+        This is the most beautiful property of linear SSMs. The same system can be computed
+        in two mathematically equivalent ways:
+      </p>
+
+      <div class="card-grid" style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));">
+        <div class="concept-card">
+          <h3 class="concept-card__title">Convolution Mode (Training)</h3>
+          <p class="concept-card__body">
+            Pre-compute the kernel h[n] = C A&#x0305;^n B, then convolve with the input.
+            This is a standard FIR-like operation &mdash; fully parallel, uses FFT for O(T log T).
+            Perfect for GPU training where you have the full sequence.
+          </p>
+        </div>
+        <div class="concept-card">
+          <h3 class="concept-card__title">Recurrence Mode (Inference)</h3>
+          <p class="concept-card__body">
+            Process one token at a time: x[n+1] = A&#x0305;x[n] + B&#x0305;u[n], y[n] = Cx[n].
+            O(1) per step, O(N) memory (just the state). Perfect for autoregressive generation
+            where tokens arrive one at a time.
+          </p>
+        </div>
+      </div>
+
+      <div class="progressive-section">
+        <button class="progressive-toggle" aria-expanded="false">Show the Math</button>
+        <div class="progressive-content">
+          <p><strong>Proving the duality:</strong></p>
+          <p>Unrolling the recurrence:</p>
+          <div class="math-block">
+            <code>
+              x[0] = B&#x0305; u[0]<br>
+              x[1] = A&#x0305; B&#x0305; u[0] + B&#x0305; u[1]<br>
+              x[2] = A&#x0305;&sup2; B&#x0305; u[0] + A&#x0305; B&#x0305; u[1] + B&#x0305; u[2]<br>
+              &hellip;<br>
+              x[n] = &Sigma;_{k=0}^{n} A&#x0305;^{n-k} B&#x0305; u[k]
+            </code>
+          </div>
+          <p>Therefore:</p>
+          <div class="math-block">
+            <code>
+              y[n] = C x[n] = &Sigma;_{k=0}^{n} (C A&#x0305;^{n-k} B&#x0305;) u[k] = &Sigma;_{k=0}^{n} h[n-k] u[k]
+            </code>
+          </div>
+          <p>
+            This is convolution with kernel h[n] = C A&#x0305;^n B&#x0305;. The recurrence
+            and convolution produce <em>identical</em> outputs. QED.
+          </p>
+        </div>
+      </div>
+
+      <p>
+        In DSP terms: the recurrence is the IIR filter running sample-by-sample, and the
+        convolution uses the IIR&rsquo;s impulse response as a (truncated) FIR kernel.
+        Same filter, two implementations. This duality is the key insight that enables
+        Mamba (Chapter 19).
+      </p>
+    </section>
+
+    <!-- ============================================================
+         TOOL 18.1 — State-Space Simulator
+         ============================================================ -->
+    <section class="content-section" id="tool-ssm">
+      <h2 class="section-heading"><span class="section-number">Tool 18.1</span> State-Space Simulator</h2>
+
+      <p>
+        Adjust the entries of the continuous A matrix and watch the discretized poles move
+        in the z-plane. The impulse response updates in real time &mdash; observe how eigenvalues
+        control decay rate and oscillation frequency.
+      </p>
+
+      <div class="tool-container" id="tool-ssm-simulator">
+        <div class="tool-header">
+          <span class="tool-header__label">Tool 18.1</span>
+          <span class="tool-header__title">State-Space Simulator</span>
+        </div>
+        <div class="tool-body">
+          <div class="tool-controls">
+            <div class="control-group">
+              <label class="control-label">Preset</label>
+              <select class="tool-select" data-control="ssm-preset">
+                <option value="0">Damped Oscillator</option>
+                <option value="1">Pure Oscillator</option>
+                <option value="2">Overdamped</option>
+                <option value="3">Unstable</option>
+              </select>
+            </div>
+            <div class="control-group">
+              <label class="control-label">&Delta;t</label>
+              <input type="range" min="0.01" max="0.5" value="0.1" step="0.01" data-control="ssm-dt">
+              <span class="control-value" aria-live="polite" data-value="ssm-dt">0.1</span>
+            </div>
+          </div>
+          <div class="tool-controls" style="padding-top: 0;">
+            <div class="control-group">
+              <label class="control-label">A[1,1]</label>
+              <input type="range" min="-4" max="2" value="-0.5" step="0.1" data-control="ssm-a11">
+              <span class="control-value" aria-live="polite" data-value="ssm-a11">-0.5</span>
+            </div>
+            <div class="control-group">
+              <label class="control-label">A[1,2]</label>
+              <input type="range" min="-4" max="4" value="1.0" step="0.1" data-control="ssm-a12">
+              <span class="control-value" aria-live="polite" data-value="ssm-a12">1.0</span>
+            </div>
+            <div class="control-group">
+              <label class="control-label">A[2,1]</label>
+              <input type="range" min="-4" max="4" value="-1.0" step="0.1" data-control="ssm-a21">
+              <span class="control-value" aria-live="polite" data-value="ssm-a21">-1.0</span>
+            </div>
+            <div class="control-group">
+              <label class="control-label">A[2,2]</label>
+              <input type="range" min="-4" max="2" value="-0.5" step="0.1" data-control="ssm-a22">
+              <span class="control-value" aria-live="polite" data-value="ssm-a22">-0.5</span>
+            </div>
+          </div>
+          <div class="tool-canvas-wrapper"></div>
+        </div>
+      </div>
+
+      <div class="insight-box">
+        <h3 class="insight-box__title">Try This</h3>
+        <ul>
+          <li>Start with <strong>Damped Oscillator</strong> &mdash; s-plane poles are in the left half (stable). z-plane poles are inside the unit circle. Impulse response decays with oscillation.</li>
+          <li>Select <strong>Unstable</strong> &mdash; s-plane poles move to the right half. z-plane poles exit the unit circle. Impulse response explodes. This is the vanishing/exploding gradient problem!</li>
+          <li>Drag <strong>A[1,1]</strong> from -4 toward +2. Watch the poles migrate through the stability boundary.</li>
+          <li>Increase <strong>&Delta;t</strong> &mdash; the mapping from s-plane to z-plane changes. Larger steps can push stable continuous poles into unstable discrete poles (aliasing of dynamics).</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         TOOL 18.2 — HiPPO Visualizer
+         ============================================================ -->
+    <section class="content-section" id="tool-hippo">
+      <h2 class="section-heading"><span class="section-number">Tool 18.2</span> HiPPO Visualizer</h2>
+
+      <p>
+        Watch the HiPPO state compress signal history into Legendre coefficients. The green
+        dashed line reconstructs the signal from just N numbers. Compare with a random A matrix.
+      </p>
+
+      <div class="tool-container" id="tool-hippo-viz">
+        <div class="tool-header">
+          <span class="tool-header__label">Tool 18.2</span>
+          <span class="tool-header__title">HiPPO Visualizer</span>
+        </div>
+        <div class="tool-body">
+          <div class="tool-controls">
+            <div class="control-group">
+              <label class="control-label">Signal</label>
+              <select class="tool-select" data-control="hippo-signal">
+                <option value="ramp">Ramp</option>
+                <option value="sine">Sine Wave</option>
+                <option value="step">Step Pulse</option>
+                <option value="mixed">Mixed</option>
+              </select>
+            </div>
+            <div class="control-group">
+              <label class="control-label">Observe at Step</label>
+              <input type="range" min="5" max="99" value="60" step="1" data-control="hippo-step">
+              <span class="control-value" aria-live="polite" data-value="hippo-step">60</span>
+            </div>
+          </div>
+          <div class="tool-canvas-wrapper"></div>
+        </div>
+      </div>
+
+      <div class="insight-box">
+        <h3 class="insight-box__title">Try This</h3>
+        <ul>
+          <li>Drag <strong>Observe at Step</strong> from left to right. Watch the HiPPO reconstruction (green) track the input signal history. The random reconstruction (red) drifts wildly.</li>
+          <li>Try <strong>Step Pulse</strong> &mdash; HiPPO faithfully captures the sharp transition. Random A smears it out.</li>
+          <li>Look at the <strong>state heatmap</strong> (bottom) &mdash; low-order coefficients (c0, c1) change smoothly, while high-order ones (c6, c7) capture fine detail.</li>
+          <li>Compare the <strong>RMSE values</strong> &mdash; HiPPO consistently achieves much lower reconstruction error because its A matrix is analytically designed for optimal compression.</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         TOOL 18.3 — Convolution-Recurrence Duality
+         ============================================================ -->
+    <section class="content-section" id="tool-duality">
+      <h2 class="section-heading"><span class="section-number">Tool 18.3</span> Convolution-Recurrence Duality</h2>
+
+      <p>
+        The same SSM output computed two ways: convolution (left, parallel) and recurrence
+        (right, sequential). Click the mode buttons to animate each computation and verify
+        they produce identical outputs.
+      </p>
+
+      <div class="tool-container" id="tool-conv-recurrence">
+        <div class="tool-header">
+          <span class="tool-header__label">Tool 18.3</span>
+          <span class="tool-header__title">Convolution-Recurrence Duality</span>
+        </div>
+        <div class="tool-body">
+          <div class="tool-canvas-wrapper"></div>
+          <div class="tool-actions">
+            <button class="tool-btn" data-action="cr-conv">Animate Convolution</button>
+            <button class="tool-btn" data-action="cr-rec">Animate Recurrence</button>
+            <button class="tool-btn" data-action="cr-both">Show Both</button>
+            <button class="tool-btn" data-action="cr-reset">Reset</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="insight-box">
+        <h3 class="insight-box__title">Try This</h3>
+        <ul>
+          <li>Click <strong>Show Both</strong> to see the complete outputs overlaid at the bottom &mdash; blue (conv) and green (rec) are identical to machine precision.</li>
+          <li>Click <strong>Animate Convolution</strong> &mdash; watch the kernel slide across the input, computing y[n] as a sum over the full kernel at each position. This requires the full input upfront (training mode).</li>
+          <li>Click <strong>Animate Recurrence</strong> &mdash; watch the state update one step at a time. The state heatmap shows how information accumulates. This works with streaming input (inference mode).</li>
+          <li>Notice: convolution is <strong>parallel</strong> (all positions can be computed simultaneously). Recurrence is <strong>sequential</strong> (each step depends on the previous). Same output, different computational patterns.</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- Further Reading -->
+    <section class="content-section" id="further-reading">
+      <h2 class="section-heading">Further Reading</h2>
+      <ul class="further-reading-list">
+        <li>
+          <a href="https://arxiv.org/abs/2008.07669" target="_blank" rel="noopener">HiPPO: Recurrent Memory with Optimal Polynomial Projections</a>
+          <span class="further-reading__authors">Gu et al., 2020 — NeurIPS</span>
+          <span class="further-reading__note">The mathematical foundation: optimal history compression using Legendre polynomials</span>
+        </li>
+        <li>
+          <a href="https://arxiv.org/abs/2111.00396" target="_blank" rel="noopener">Efficiently Modeling Long Sequences with Structured State Spaces (S4)</a>
+          <span class="further-reading__authors">Gu, Goel &amp; R&eacute;, 2022 — ICLR</span>
+          <span class="further-reading__note">S4: the breakthrough combining HiPPO initialization with the convolution-recurrence duality</span>
+        </li>
+        <li>
+          <a href="https://hazyresearch.stanford.edu/blog/2022-01-14-s4-3" target="_blank" rel="noopener">The Annotated S4</a>
+          <span class="further-reading__authors">Rush &amp; Karamcheti, 2022 — Hazy Research</span>
+          <span class="further-reading__note">Step-by-step JAX implementation with explanations of every component</span>
+        </li>
+      </ul>
+    </section>
+
+    <!-- Chapter Navigation -->
+    <nav class="chapter-nav">
+      <a class="chapter-nav__prev" href="ch17-matched-to-attn.html">
+        <span class="chapter-nav__dir">&larr; Previous</span>
+        <span class="chapter-nav__label">Ch 17: Matched Filter &rarr; Attention</span>
+      </a>
+      <a class="chapter-nav__next" href="ch19-mamba.html">
+        <span class="chapter-nav__dir">Next &rarr;</span>
+        <span class="chapter-nav__label">Ch 19: Mamba</span>
+      </a>
+    </nav>
+
+  </main>
+</div>
+
+<!-- Scripts -->
+<script src="../../js/core/navigation.js"></script>
+<script src="../../js/core/progressive-disclosure.js"></script>
+<script src="../../js/core/chapter-nav.js"></script>
+<script src="../../js/tools/shared/plot-utils.js"></script>
+<script src="../../js/tools/ch18-ssm-simulator.js"></script>
+<script src="../../js/tools/ch18-hippo.js"></script>
+<script src="../../js/tools/ch18-conv-recurrence.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    if (window.DSPtoAI && window.DSPtoAI.SSMSimulator) {
+      window.DSPtoAI.SSMSimulator.init('tool-ssm-simulator');
+    }
+    if (window.DSPtoAI && window.DSPtoAI.HiPPOViz) {
+      window.DSPtoAI.HiPPOViz.init('tool-hippo-viz');
+    }
+    if (window.DSPtoAI && window.DSPtoAI.ConvRecurrence) {
+      window.DSPtoAI.ConvRecurrence.init('tool-conv-recurrence');
+    }
+  });
+</script>
+
+<script src="../../js/core/search-index.js"></script>
+<script src="../../js/core/search.js"></script>
+</body>
+</html>

@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ch 13: Word Embeddings &mdash; DSP to AI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Outfit:wght@300;400;500;600;700;800;900&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../style/global.css">
+  <link rel="stylesheet" href="../../style/theme-dark.css">
+  <link rel="stylesheet" href="../../style/theme-light.css">
+  <link rel="stylesheet" href="../../style/components.css">
+  <link rel="stylesheet" href="../../style/chapter.css">
+  <script src="../../js/core/theme-switcher.js"></script>
+</head>
+<body>
+
+<div class="noise"></div>
+
+<!-- Navigation -->
+<nav class="site-nav">
+  <a href="../../index.html" class="site-nav__logo">DSP <span class="arrow">&rarr;</span> AI</a>
+  <ul class="site-nav__links">
+    <li><a href="../../index.html#part1">Part I</a></li>
+    <li><a href="../../index.html#part2" class="active">Part II</a></li>
+    <li><a href="../../index.html#part3">Part III</a></li>
+    <li><a href="../../index.html#part4">Part IV</a></li>
+    <li><a href="../../gallery/index.html">Gallery</a></li>
+    <li><a href="../../reference/glossary.html">Reference</a></li>
+  </ul>
+  <button class="search-toggle" aria-label="Search site (press /)">🔍</button>
+  <button class="theme-toggle" aria-label="Toggle theme"></button>
+  <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false">&#9776;</button>
+</nav>
+<div class="progress-bar"></div>
+
+<!-- Page Layout -->
+<div class="chapter-page" data-chapter-id="ch13">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar__part-label">Part II: AI Foundations</div>
+    <ul class="sidebar__chapters">
+      <li><a class="sidebar__chapter-link" href="ch09-neuron.html"><span class="sidebar__chapter-num">09</span> The Neuron</a></li>
+      <li><a class="sidebar__chapter-link" href="ch10-backprop.html"><span class="sidebar__chapter-num">10</span> Networks &amp; Backprop</a></li>
+      <li><a class="sidebar__chapter-link" href="ch11-training.html"><span class="sidebar__chapter-num">11</span> Training &amp; Optimization</a></li>
+      <li><a class="sidebar__chapter-link" href="ch12-sequences.html"><span class="sidebar__chapter-num">12</span> RNNs &amp; LSTMs</a></li>
+      <li><a class="sidebar__chapter-link active" href="ch13-embeddings.html"><span class="sidebar__chapter-num">13</span> Embeddings</a>
+        <ul class="sidebar__sections">
+          <li><a class="sidebar__section-link" href="#one-hot">One-Hot Encoding</a></li>
+          <li><a class="sidebar__section-link" href="#distributional">Distributional Hypothesis</a></li>
+          <li><a class="sidebar__section-link" href="#word2vec">Word2Vec</a></li>
+          <li><a class="sidebar__section-link" href="#geometry">Embedding Geometry</a></li>
+          <li><a class="sidebar__section-link" href="#contextual">Contextual Embeddings</a></li>
+          <li><a class="sidebar__section-link" href="#bridge">Bridge: Learned Basis</a></li>
+          <li><a class="sidebar__section-link" href="#tool-embeddings">Embedding Explorer</a></li>
+        </ul>
+      </li>
+      <li><a class="sidebar__chapter-link" href="ch14-attention.html"><span class="sidebar__chapter-num">14</span> Attention</a></li>
+      <li><a class="sidebar__chapter-link" href="ch15-transformer.html"><span class="sidebar__chapter-num">15</span> The Transformer</a></li>
+    </ul>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="chapter-content">
+
+    <nav class="breadcrumb" aria-label="Breadcrumb"></nav>
+
+    <header class="chapter-header">
+      <div class="chapter-header__part">Part II &mdash; AI Foundations</div>
+      <div class="chapter-header__number">Chapter 13</div>
+      <h1 class="chapter-header__title">Word Embeddings &amp; Representation Learning</h1>
+      <p class="chapter-header__subtitle">
+        How do you feed a word into a neural network? Numbers go in, numbers come out &mdash;
+        but words aren&rsquo;t numbers. The solution is <strong>embeddings</strong>: learned vector
+        representations that capture meaning. Words with similar meanings land near each other
+        in a high-dimensional space, and the <em>directions</em> in that space encode semantic
+        relationships. If this reminds you of choosing a basis for signal representation,
+        you&rsquo;re onto the deepest idea in this chapter.
+      </p>
+    </header>
+
+    <!-- ============================================================
+         13.1 — One-Hot Encoding
+         ============================================================ -->
+    <section class="content-section" id="one-hot">
+      <h2 class="section-heading"><span class="section-number">13.1</span> The One-Hot Problem</h2>
+
+      <p>
+        The simplest encoding: give each word its own dimension. With a vocabulary of
+        <em>V</em> words, each word becomes a vector of length <em>V</em> with a single 1 and
+        the rest 0s.
+      </p>
+
+      <div class="math-block">
+        <code>
+          &ldquo;cat&rdquo; &rarr; [0, 0, 1, 0, 0, &hellip;, 0]<br>
+          &ldquo;dog&rdquo; &rarr; [0, 0, 0, 1, 0, &hellip;, 0]<br>
+          &ldquo;car&rdquo; &rarr; [0, 0, 0, 0, 1, &hellip;, 0]
+        </code>
+      </div>
+
+      <p>This seems reasonable until you notice three fatal problems:</p>
+
+      <div class="card-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+        <div class="concept-card">
+          <h3 class="concept-card__title">Orthogonality</h3>
+          <p class="concept-card__body">
+            Every word is equally distant from every other. &ldquo;cat&rdquo; is no closer
+            to &ldquo;dog&rdquo; than to &ldquo;democracy&rdquo;. The dot product between
+            any two one-hot vectors is always zero.
+          </p>
+        </div>
+        <div class="concept-card">
+          <h3 class="concept-card__title">Dimensionality</h3>
+          <p class="concept-card__body">
+            Real vocabularies have 30K&ndash;100K words. That means 100K-dimensional vectors
+            that are 99.999% zeros. Massively wasteful.
+          </p>
+        </div>
+        <div class="concept-card">
+          <h3 class="concept-card__title">No Generalization</h3>
+          <p class="concept-card__body">
+            Learning something about &ldquo;cat&rdquo; tells the model nothing about
+            &ldquo;kitten&rdquo;. Each word is its own island &mdash; no structure to exploit.
+          </p>
+        </div>
+      </div>
+
+      <div class="progressive-section">
+        <button class="progressive-toggle" aria-expanded="false">Show the Math</button>
+        <div class="progressive-content">
+          <p>
+            For a vocabulary of size <em>V</em>, the one-hot encoding of word <em>i</em>
+            is the standard basis vector:
+          </p>
+          <div class="math-block">
+            <code>
+              e_i &isin; &Ropf;^V, &nbsp; (e_i)_j = &delta;_{ij}<br><br>
+              &lang;e_i, e_j&rang; = 0 &nbsp;&nbsp; for all i &ne; j<br>
+              ||e_i - e_j||&sup2; = 2 &nbsp; for all i &ne; j
+            </code>
+          </div>
+          <p>
+            Every pair of words has identical distance &radic;2. The representation
+            contains zero semantic information &mdash; it&rsquo;s purely an index.
+          </p>
+        </div>
+      </div>
+
+      <p>
+        We need something better: a <strong>dense, low-dimensional</strong> representation
+        where similar words have similar vectors. But how do we discover what
+        &ldquo;similar&rdquo; means without hand-engineering thousands of features?
+      </p>
+    </section>
+
+    <!-- ============================================================
+         13.2 — Distributional Hypothesis
+         ============================================================ -->
+    <section class="content-section" id="distributional">
+      <h2 class="section-heading"><span class="section-number">13.2</span> The Distributional Hypothesis</h2>
+
+      <p>
+        The answer comes from linguistics:
+      </p>
+
+      <blockquote class="highlight-quote" style="border-left: 3px solid var(--accent-ai); padding: 0.8em 1.2em; margin: 1.5em 0; font-style: italic;">
+        &ldquo;You shall know a word by the company it keeps.&rdquo;
+        <br><span style="font-style: normal; font-size: 0.85em; color: var(--text-dim);">&mdash; J.R. Firth, 1957</span>
+      </blockquote>
+
+      <p>
+        Words that appear in similar contexts tend to have similar meanings. Consider:
+      </p>
+
+      <div class="math-block">
+        <code>
+          &ldquo;The <strong>cat</strong> sat on the mat and purred.&rdquo;<br>
+          &ldquo;The <strong>kitten</strong> sat on the mat and purred.&rdquo;<br>
+          &ldquo;The <strong>dog</strong> sat on the mat and barked.&rdquo;
+        </code>
+      </div>
+
+      <p>
+        &ldquo;Cat&rdquo; and &ldquo;kitten&rdquo; share almost identical contexts.
+        &ldquo;Dog&rdquo; shares many but differs in some. &ldquo;Algorithm&rdquo; would
+        never appear here. The context <em>is</em> the meaning.
+      </p>
+
+      <p>
+        This is a profound insight: we don&rsquo;t need labeled data or human-curated features.
+        We just need <strong>lots of text</strong> and a clever way to turn co-occurrence
+        patterns into vectors.
+      </p>
+    </section>
+
+    <!-- ============================================================
+         13.3 — Word2Vec
+         ============================================================ -->
+    <section class="content-section" id="word2vec">
+      <h2 class="section-heading"><span class="section-number">13.3</span> Word2Vec</h2>
+
+      <p>
+        In 2013, Mikolov et al. at Google introduced <strong>Word2Vec</strong> &mdash;
+        two simple neural network architectures that turn the distributional hypothesis
+        into dense vector representations.
+      </p>
+
+      <div class="card-grid" style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));">
+        <div class="concept-card">
+          <h3 class="concept-card__title">CBOW (Continuous Bag of Words)</h3>
+          <p class="concept-card__body">
+            <strong>Given the context, predict the center word.</strong><br><br>
+            Input: &ldquo;The ___ sat on&rdquo; &rarr; predict &ldquo;cat&rdquo;.<br><br>
+            Average the context word embeddings, pass through a single linear layer, softmax
+            over vocabulary. Fast, works well for frequent words.
+          </p>
+        </div>
+        <div class="concept-card">
+          <h3 class="concept-card__title">Skip-Gram</h3>
+          <p class="concept-card__body">
+            <strong>Given the center word, predict the context.</strong><br><br>
+            Input: &ldquo;cat&rdquo; &rarr; predict &ldquo;The&rdquo;, &ldquo;sat&rdquo;, &ldquo;on&rdquo;.<br><br>
+            Take center word embedding, predict each context word independently. Slower but
+            works better for rare words and small datasets.
+          </p>
+        </div>
+      </div>
+
+      <div class="progressive-section">
+        <button class="progressive-toggle" aria-expanded="false">Show the Math</button>
+        <div class="progressive-content">
+          <p><strong>Skip-gram objective</strong> &mdash; maximize the probability of context words given center word:</p>
+          <div class="math-block">
+            <code>
+              J = (1/T) &Sigma;_{t=1}^{T} &Sigma;_{-c &le; j &le; c, j&ne;0} log P(w_{t+j} | w_t)<br><br>
+              P(w_O | w_I) = exp(v'_{w_O} &middot; v_{w_I}) / &Sigma;_{w=1}^{V} exp(v'_w &middot; v_{w_I})
+            </code>
+          </div>
+          <p>
+            Two embedding matrices: <em>W</em> (input embeddings, V&times;d) and
+            <em>W'</em> (output embeddings, V&times;d). The softmax denominator sums over
+            the full vocabulary &mdash; expensive!
+          </p>
+          <p><strong>Negative sampling</strong> approximation:</p>
+          <div class="math-block">
+            <code>
+              log &sigma;(v'_{w_O} &middot; v_{w_I}) + &Sigma;_{k=1}^{K} &Eopf;_{w_k ~ P_n(w)} [log &sigma;(-v'_{w_k} &middot; v_{w_I})]
+            </code>
+          </div>
+          <p>
+            Instead of computing softmax over all <em>V</em> words, sample <em>K</em>
+            negative examples (typically 5&ndash;20). Push the target word&rsquo;s dot product
+            up and random words&rsquo; dot products down.
+          </p>
+        </div>
+      </div>
+
+      <p>
+        The key insight: the <strong>embedding matrix itself</strong> is the product.
+        After training, throw away the prediction head. The V&times;d weight matrix
+        <em>W</em> gives you a d-dimensional vector for every word. Typical dimensions:
+        100&ndash;300.
+      </p>
+    </section>
+
+    <!-- ============================================================
+         13.4 — Embedding Geometry
+         ============================================================ -->
+    <section class="content-section" id="geometry">
+      <h2 class="section-heading"><span class="section-number">13.4</span> Embedding Geometry &amp; Analogies</h2>
+
+      <p>
+        The most stunning property of word embeddings: <strong>directions encode
+        relationships</strong>. The famous example:
+      </p>
+
+      <div class="math-block" style="font-size: 1.1em; text-align: center;">
+        <code>
+          king &minus; man + woman &approx; queen
+        </code>
+      </div>
+
+      <p>
+        This works because the vector from &ldquo;man&rdquo; to &ldquo;king&rdquo; captures the
+        concept of &ldquo;royalty,&rdquo; and adding that direction to &ldquo;woman&rdquo; lands
+        near &ldquo;queen.&rdquo; The embedding space has learned <em>semantic axes</em>.
+      </p>
+
+      <div class="card-grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));">
+        <div class="concept-card">
+          <h3 class="concept-card__title">Gender axis</h3>
+          <p class="concept-card__body">
+            king &minus; queen &approx; man &minus; woman &approx; uncle &minus; aunt
+          </p>
+        </div>
+        <div class="concept-card">
+          <h3 class="concept-card__title">Country&ndash;Capital axis</h3>
+          <p class="concept-card__body">
+            Paris &minus; France &approx; Tokyo &minus; Japan &approx; Berlin &minus; Germany
+          </p>
+        </div>
+        <div class="concept-card">
+          <h3 class="concept-card__title">Tense axis</h3>
+          <p class="concept-card__body">
+            walking &minus; walk &approx; swimming &minus; swim &approx; running &minus; run
+          </p>
+        </div>
+      </div>
+
+      <div class="progressive-section">
+        <button class="progressive-toggle" aria-expanded="false">Show the Math</button>
+        <div class="progressive-content">
+          <p><strong>Analogy solving</strong> &mdash; &ldquo;A is to B as C is to ?&rdquo;</p>
+          <div class="math-block">
+            <code>
+              d = v_B &minus; v_A + v_C<br><br>
+              ? = argmax_{w &notin; {A,B,C}} cos(v_w, d)<br><br>
+              cos(u, v) = (u &middot; v) / (||u|| &middot; ||v||)
+            </code>
+          </div>
+          <p>
+            Compute the target vector, then find the word whose embedding has the highest
+            cosine similarity to it (excluding the input words).
+          </p>
+          <p><strong>Why cosine similarity?</strong> Euclidean distance is affected by vector
+            magnitude. Cosine similarity measures only the <em>angle</em> between vectors,
+            which better captures semantic direction regardless of word frequency effects
+            on magnitude.</p>
+        </div>
+      </div>
+
+      <p>
+        These regularities emerge without any supervision about relationships. The network
+        discovers structure purely from word co-occurrence patterns in text.
+      </p>
+    </section>
+
+    <!-- ============================================================
+         13.5 — Contextual Embeddings
+         ============================================================ -->
+    <section class="content-section" id="contextual">
+      <h2 class="section-heading"><span class="section-number">13.5</span> Contextual Embeddings</h2>
+
+      <p>
+        Word2Vec assigns a <strong>single vector per word</strong>. But words have multiple
+        meanings:
+      </p>
+
+      <div class="math-block">
+        <code>
+          &ldquo;I sat by the river <strong>bank</strong>.&rdquo;<br>
+          &ldquo;I deposited money at the <strong>bank</strong>.&rdquo;
+        </code>
+      </div>
+
+      <p>
+        Same word, completely different meanings. Static embeddings average all senses into
+        one vector. Modern models solve this with <strong>contextual embeddings</strong> &mdash;
+        the vector for a word depends on the entire sentence around it.
+      </p>
+
+      <div class="card-grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));">
+        <div class="concept-card">
+          <h3 class="concept-card__title">ELMo (2018)</h3>
+          <p class="concept-card__body">
+            Bi-directional LSTM (Chapter 12!) reads the sentence left-to-right and
+            right-to-left. Concatenate hidden states at each position. Different layers
+            capture syntax vs semantics.
+          </p>
+        </div>
+        <div class="concept-card">
+          <h3 class="concept-card__title">BERT (2018)</h3>
+          <p class="concept-card__body">
+            Transformer encoder (Chapter 15). Mask random words, predict them from context.
+            Truly bidirectional &mdash; every token attends to every other. Revolutionized NLP.
+          </p>
+        </div>
+        <div class="concept-card">
+          <h3 class="concept-card__title">GPT (2018&ndash;present)</h3>
+          <p class="concept-card__body">
+            Transformer decoder. Left-to-right only, but scales massively. Each layer
+            produces richer contextual representations. Foundation of modern LLMs.
+          </p>
+        </div>
+      </div>
+
+      <p>
+        The evolution: one-hot (no meaning) &rarr; Word2Vec (one meaning per word) &rarr;
+        ELMo/BERT/GPT (meaning depends on context). Each step adds more information to
+        the representation.
+      </p>
+    </section>
+
+    <!-- ============================================================
+         13.6 — Bridge: Embeddings = Learned Basis
+         ============================================================ -->
+    <section class="content-section bridge-teaser" id="bridge">
+      <h2 class="section-heading"><span class="section-number">13.6</span> Bridge &mdash; Embeddings as a Learned Basis</h2>
+
+      <p>
+        In DSP, we represent signals using a <strong>basis</strong>: the Fourier transform
+        decomposes a signal into sinusoidal components, each with a coefficient. The choice
+        of basis determines what&rsquo;s easy to see.
+      </p>
+
+      <p>
+        Word embeddings are doing the same thing. The embedding matrix <em>W</em> defines a
+        <strong>learned basis</strong> for representing words. Each dimension is a
+        &ldquo;semantic frequency&rdquo; &mdash; not hand-designed like Fourier harmonics
+        but discovered from data.
+      </p>
+
+      <table class="comparison-table">
+        <thead>
+          <tr>
+            <th>DSP Concept</th>
+            <th>Embedding Analogue</th>
+            <th>Connection</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Basis functions (sin, cos)</td>
+            <td>Embedding dimensions</td>
+            <td>Both provide coordinates in a representation space</td>
+          </tr>
+          <tr>
+            <td>Fourier coefficients</td>
+            <td>Embedding values</td>
+            <td>How much of each basis component is present</td>
+          </tr>
+          <tr>
+            <td>Change of basis (DFT matrix)</td>
+            <td>Embedding matrix W</td>
+            <td>Both map from one representation to another</td>
+          </tr>
+          <tr>
+            <td>Filter bank decomposition</td>
+            <td>Multi-head embeddings</td>
+            <td>Decompose input into parallel sub-representations</td>
+          </tr>
+          <tr>
+            <td>Parseval&rsquo;s theorem (energy preserved)</td>
+            <td>Distance preservation</td>
+            <td>Semantic distances maintained in lower-dimensional space</td>
+          </tr>
+          <tr>
+            <td>Mel scale (perceptual warping)</td>
+            <td>Subword tokenization</td>
+            <td>Both warp resolution to match meaningful structure</td>
+          </tr>
+          <tr>
+            <td>Fixed basis (DFT)</td>
+            <td>Word2Vec (static)</td>
+            <td>Same decomposition regardless of context</td>
+          </tr>
+          <tr>
+            <td>Adaptive filter bank</td>
+            <td>Contextual embeddings (BERT)</td>
+            <td>Basis adapts to the input &mdash; context-dependent decomposition</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <p>
+        The deepest connection: the Fourier transform is the <em>optimal</em> basis for
+        stationary signals. Word2Vec finds a good basis for language. Contextual models
+        like BERT learn an <em>adaptive</em> basis that changes with context &mdash;
+        exactly like the adaptive filters of Chapter 8 adjust their coefficients to the
+        current signal environment.
+      </p>
+    </section>
+
+    <!-- ============================================================
+         TOOL 13.1 — Embedding Space Explorer
+         ============================================================ -->
+    <section class="content-section" id="tool-embeddings">
+      <h2 class="section-heading"><span class="section-number">Tool 13.1</span> Embedding Space Explorer</h2>
+
+      <p>
+        Explore a 2D projection of 49 word embeddings across 7 semantic clusters. Hover to
+        see nearest neighbors. Use the analogy solver to test vector arithmetic relationships.
+      </p>
+
+      <div class="tool-container" id="tool-embedding-explorer">
+        <div class="tool-header">
+          <span class="tool-header__label">Tool 13.1</span>
+          <span class="tool-header__title">Embedding Space Explorer</span>
+        </div>
+        <div class="tool-body">
+          <div class="tool-controls">
+            <div class="control-group">
+              <label class="control-label">Preset Analogies</label>
+              <select class="tool-select" data-control="emb-preset">
+                <option value="none">Choose an analogy&hellip;</option>
+                <option value="france,paris,japan">France:Paris :: Japan:?</option>
+                <option value="france,paris,india">France:Paris :: India:?</option>
+                <option value="cat,dog,lion">Cat:Dog :: Lion:?</option>
+                <option value="red,blue,green">Red:Blue :: Green:?</option>
+              </select>
+            </div>
+          </div>
+          <div class="tool-canvas-wrapper"></div>
+          <div class="tool-actions">
+            <button class="tool-btn" data-action="emb-analogy">Analogy Mode</button>
+            <button class="tool-btn" data-action="emb-reset">Reset Selection</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="insight-box">
+        <h3 class="insight-box__title">Try This</h3>
+        <ul>
+          <li>Hover over words and check the nearest neighbors panel &mdash; semantically similar words cluster together.</li>
+          <li>Click <strong>Analogy Mode</strong>, then click three words in sequence (A, B, C) to solve &ldquo;A is to B as C is to ?&rdquo; via vector arithmetic.</li>
+          <li>Use the preset analogies to see country&ndash;capital and category relationships.</li>
+          <li>Notice how each cluster forms a tight group &mdash; the 8D embedding space learned that animals are more like animals than colors.</li>
+          <li>The 2D projection preserves relative distances but inevitably loses some structure from the full 8 dimensions.</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- Further Reading -->
+    <section class="content-section" id="further-reading">
+      <h2 class="section-heading">Further Reading</h2>
+      <ul class="further-reading-list">
+        <li>
+          <a href="https://arxiv.org/abs/1301.3781" target="_blank" rel="noopener">Efficient Estimation of Word Representations in Vector Space</a>
+          <span class="further-reading__authors">Mikolov et al., 2013</span>
+          <span class="further-reading__note">The Word2Vec paper — Skip-gram and CBOW models for learning word embeddings</span>
+        </li>
+        <li>
+          <a href="https://nlp.stanford.edu/pubs/glove.pdf" target="_blank" rel="noopener">GloVe: Global Vectors for Word Representation</a>
+          <span class="further-reading__authors">Pennington, Socher &amp; Manning, 2014 — EMNLP</span>
+          <span class="further-reading__note">Combines global matrix factorization with local context window methods</span>
+        </li>
+        <li>
+          <a href="https://jalammar.github.io/illustrated-word2vec/" target="_blank" rel="noopener">The Illustrated Word2vec</a>
+          <span class="further-reading__authors">Alammar, J., 2019</span>
+          <span class="further-reading__note">Visual walkthrough of embedding training, analogies, and semantic spaces</span>
+        </li>
+      </ul>
+    </section>
+
+    <!-- Chapter Navigation -->
+    <nav class="chapter-nav">
+      <a class="chapter-nav__prev" href="ch12-sequences.html">
+        <span class="chapter-nav__dir">&larr; Previous</span>
+        <span class="chapter-nav__label">Ch 12: RNNs &amp; LSTMs</span>
+      </a>
+      <a class="chapter-nav__next" href="ch14-attention.html">
+        <span class="chapter-nav__dir">Next &rarr;</span>
+        <span class="chapter-nav__label">Ch 14: Attention</span>
+      </a>
+    </nav>
+
+  </main>
+</div>
+
+<!-- Scripts -->
+<script src="../../js/core/navigation.js"></script>
+<script src="../../js/core/progressive-disclosure.js"></script>
+<script src="../../js/core/chapter-nav.js"></script>
+<script src="../../js/tools/shared/plot-utils.js"></script>
+<script src="../../js/tools/ch13-embeddings.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    if (window.DSPtoAI && window.DSPtoAI.EmbeddingExplorer) {
+      window.DSPtoAI.EmbeddingExplorer.init('tool-embedding-explorer');
+    }
+  });
+</script>
+
+<script src="../../js/core/search-index.js"></script>
+<script src="../../js/core/search.js"></script>
+</body>
+</html>

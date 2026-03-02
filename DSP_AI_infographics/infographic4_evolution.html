@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The SSM Evolution: From S4 to Hybrid Dominance</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Sora:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #fefce8;
+    --surface: #ffffff;
+    --ink: #1c1917;
+    --ink-dim: #78716c;
+    --stone: #d6d3d1;
+    --amber: #f59e0b;
+    --amber-bg: #fffbeb;
+    --emerald: #059669;
+    --emerald-bg: #ecfdf5;
+    --sky: #0284c7;
+    --sky-bg: #f0f9ff;
+    --violet: #7c3aed;
+    --violet-bg: #f5f3ff;
+    --rose: #e11d48;
+    --rose-bg: #fff1f2;
+    --orange: #ea580c;
+    --orange-bg: #fff7ed;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg); color: var(--ink);
+    font-family: 'Sora', sans-serif;
+    min-height: 100vh;
+  }
+  .container { max-width: 1000px; margin: 0 auto; padding: 40px 24px; }
+
+  .header {
+    text-align: center; margin-bottom: 52px;
+  }
+  .header .badge {
+    display: inline-block;
+    background: var(--ink); color: var(--bg);
+    padding: 6px 18px; border-radius: 20px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; letter-spacing: 2px; text-transform: uppercase;
+    margin-bottom: 16px;
+  }
+  .header h1 {
+    font-size: clamp(30px, 4.5vw, 48px);
+    font-weight: 800; line-height: 1.15;
+    margin-bottom: 14px;
+  }
+  .header h1 .em { color: var(--amber); }
+  .header p {
+    font-size: 16px; color: var(--ink-dim);
+    max-width: 600px; margin: 0 auto; font-weight: 300;
+  }
+
+  /* Timeline */
+  .timeline {
+    position: relative;
+    padding-left: 48px;
+  }
+  .timeline::before {
+    content: '';
+    position: absolute; left: 18px; top: 0;
+    width: 3px; height: 100%;
+    background: linear-gradient(180deg, var(--amber), var(--emerald), var(--sky), var(--violet), var(--rose));
+    border-radius: 2px;
+  }
+
+  .era-label {
+    position: relative;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; letter-spacing: 2px;
+    text-transform: uppercase; font-weight: 700;
+    margin: 32px 0 16px -48px;
+    padding-left: 56px;
+  }
+  .era-label::before {
+    content: '';
+    position: absolute; left: 12px; top: 50%;
+    width: 16px; height: 16px;
+    border-radius: 50%; transform: translateY(-50%);
+    border: 3px solid;
+  }
+  .era-amber .era-label { color: var(--amber); }
+  .era-amber .era-label::before { border-color: var(--amber); background: var(--amber-bg); }
+  .era-emerald .era-label { color: var(--emerald); }
+  .era-emerald .era-label::before { border-color: var(--emerald); background: var(--emerald-bg); }
+  .era-sky .era-label { color: var(--sky); }
+  .era-sky .era-label::before { border-color: var(--sky); background: var(--sky-bg); }
+  .era-violet .era-label { color: var(--violet); }
+  .era-violet .era-label::before { border-color: var(--violet); background: var(--violet-bg); }
+  .era-rose .era-label { color: var(--rose); }
+  .era-rose .era-label::before { border-color: var(--rose); background: var(--rose-bg); }
+
+  /* Entry card */
+  .entry {
+    background: var(--surface);
+    border: 1px solid var(--stone);
+    border-radius: 14px;
+    padding: 20px 24px;
+    margin-bottom: 14px;
+    position: relative;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+  .entry::before {
+    content: '';
+    position: absolute;
+    left: -37px; top: 24px;
+    width: 10px; height: 10px;
+    border-radius: 50%;
+  }
+  .era-amber .entry::before { background: var(--amber); }
+  .era-emerald .entry::before { background: var(--emerald); }
+  .era-sky .entry::before { background: var(--sky); }
+  .era-violet .entry::before { background: var(--violet); }
+  .era-rose .entry::before { background: var(--rose); }
+
+  .entry-head {
+    display: flex; align-items: flex-start;
+    justify-content: space-between; gap: 12px;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+  }
+  .entry-title { font-weight: 700; font-size: 17px; }
+  .entry-date {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; font-weight: 500;
+    padding: 3px 10px; border-radius: 6px;
+    white-space: nowrap;
+  }
+  .era-amber .entry-date { background: var(--amber-bg); color: var(--amber); }
+  .era-emerald .entry-date { background: var(--emerald-bg); color: var(--emerald); }
+  .era-sky .entry-date { background: var(--sky-bg); color: var(--sky); }
+  .era-violet .entry-date { background: var(--violet-bg); color: var(--violet); }
+  .era-rose .entry-date { background: var(--rose-bg); color: var(--rose); }
+
+  .entry-body {
+    font-size: 13.5px; line-height: 1.7;
+    color: #57534e;
+  }
+  .entry-body strong { color: var(--ink); }
+
+  .entry-stats {
+    display: flex; gap: 12px; margin-top: 12px;
+    flex-wrap: wrap;
+  }
+  .stat {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; padding: 4px 10px;
+    border-radius: 6px;
+    border: 1px solid var(--stone);
+    background: #fafaf9;
+  }
+  .stat-val { font-weight: 700; }
+
+  .entry-insight {
+    margin-top: 12px;
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-size: 12.5px;
+    font-style: italic;
+    line-height: 1.6;
+  }
+  .era-amber .entry-insight { background: var(--amber-bg); color: var(--amber); border-left: 3px solid var(--amber); }
+  .era-emerald .entry-insight { background: var(--emerald-bg); color: var(--emerald); border-left: 3px solid var(--emerald); }
+  .era-sky .entry-insight { background: var(--sky-bg); color: var(--sky); border-left: 3px solid var(--sky); }
+  .era-violet .entry-insight { background: var(--violet-bg); color: var(--violet); border-left: 3px solid var(--violet); }
+  .era-rose .entry-insight { background: var(--rose-bg); color: var(--rose); border-left: 3px solid var(--rose); }
+
+  /* Summary box */
+  .summary-box {
+    background: var(--ink);
+    color: #fafaf9;
+    border-radius: 16px;
+    padding: 32px;
+    margin-top: 40px;
+  }
+  .summary-box h3 {
+    font-size: 20px; margin-bottom: 16px;
+    color: var(--amber);
+  }
+  .summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 16px;
+  }
+  .summary-item {
+    padding: 16px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 10px;
+    border: 1px solid rgba(255,255,255,0.1);
+  }
+  .summary-item .s-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; letter-spacing: 2px;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.5);
+    margin-bottom: 6px;
+  }
+  .summary-item .s-value {
+    font-size: 24px; font-weight: 800;
+  }
+  .summary-item .s-detail {
+    font-size: 12px; color: rgba(255,255,255,0.6);
+    margin-top: 4px;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <div class="badge">Infographic 04 / 05</div>
+    <h1>The SSM Evolution<br><span class="em">From S4 to Hybrid Dominance</span></h1>
+    <p>Four years of breakthroughs: how structured state spaces went from academic curiosity to production-grade architectures</p>
+  </div>
+
+  <div class="timeline">
+    <!-- Era 1: Foundation -->
+    <div class="era-amber">
+      <div class="era-label">Era 1 — The Foundation (2020–2021)</div>
+
+      <div class="entry">
+        <div class="entry-head">
+          <div class="entry-title">HiPPO: High-order Polynomial Projection</div>
+          <div class="entry-date">NeurIPS 2020</div>
+        </div>
+        <div class="entry-body">
+          Albert Gu et al. discover that optimal online function approximation via Legendre polynomials yields a specific matrix A (the HiPPO matrix) whose eigenvalues provide <strong>provably optimal signal history compression</strong>.
+        </div>
+        <div class="entry-insight">💡 DSP insight: This is optimal pole placement for temporal memory — the Butterworth equivalent for signal history, not frequency response.</div>
+      </div>
+
+      <div class="entry">
+        <div class="entry-head">
+          <div class="entry-title">S4: Structured State Spaces for Sequences</div>
+          <div class="entry-date">ICLR 2022</div>
+        </div>
+        <div class="entry-body">
+          The breakthrough paper. S4 combines HiPPO initialization with a key algorithmic insight: <strong>LTI state spaces can be computed as convolutions</strong> during training (parallel via FFT) and recurrences during inference (sequential, O(1)/step). First model to match Transformers on Long Range Arena with O(n) complexity.
+        </div>
+        <div class="entry-stats">
+          <div class="stat">Sequential MNIST: <span class="stat-val">98.3%</span></div>
+          <div class="stat">Path-X (16K): <span class="stat-val">88%</span> (Transformers fail)</div>
+        </div>
+        <div class="entry-insight">💡 DSP insight: S4 exploits the IIR↔FIR duality — train with truncated impulse response (FIR/convolution), infer with recursive state (IIR/recurrence).</div>
+      </div>
+    </div>
+
+    <!-- Era 2: Simplification -->
+    <div class="era-emerald">
+      <div class="era-label">Era 2 — Simplification &amp; Understanding (2022)</div>
+
+      <div class="entry">
+        <div class="entry-head">
+          <div class="entry-title">S4D / DSS: Diagonal State Spaces</div>
+          <div class="entry-date">NeurIPS 2022</div>
+        </div>
+        <div class="entry-body">
+          Discovered that diagonalizing A to diag(λ₁,...,λ_N) preserves nearly all performance while massively simplifying computation. Each state dimension becomes an <strong>independent first-order IIR section</strong>. This makes the DSP connection explicit: partial fraction expansion = parallel first-order sections.
+        </div>
+        <div class="entry-insight">💡 DSP insight: Diagonalization IS the partial fraction decomposition of H(z). Textbook DSP, discovered independently by ML researchers.</div>
+      </div>
+
+      <div class="entry">
+        <div class="entry-head">
+          <div class="entry-title">H3: Hungry Hungry Hippos</div>
+          <div class="entry-date">ICLR 2023</div>
+        </div>
+        <div class="entry-body">
+          Stacks two SSM layers with a multiplicative gate between them. Achieves language modeling quality closer to Transformers. Identifies the <strong>critical gap: LTI systems can't do content-based selection</strong> — they treat every input identically.
+        </div>
+        <div class="entry-insight">💡 The "selective copy" failure: ask an LTI SSM to copy a specific token → it fails completely because it applies the same transform regardless of content.</div>
+      </div>
+    </div>
+
+    <!-- Era 3: Selectivity -->
+    <div class="era-sky">
+      <div class="era-label">Era 3 — The Mamba Breakthrough (2023–2024)</div>
+
+      <div class="entry">
+        <div class="entry-head">
+          <div class="entry-title">🐍 Mamba (S6): Selective State Spaces</div>
+          <div class="entry-date">Dec 2023 / COLM 2024</div>
+        </div>
+        <div class="entry-body">
+          The landmark paper by Gu & Dao. Makes B, C, Δ <strong>input-dependent</strong>, breaking the LTI assumption but enabling content-based selection. Hardware-aware parallel scan replaces FFT convolution. First SSM to <strong>match Transformers at language modeling</strong>.
+        </div>
+        <div class="entry-stats">
+          <div class="stat">Throughput: <span class="stat-val">5× Transformer</span></div>
+          <div class="stat">Training: <span class="stat-val">40× faster</span> than naive</div>
+          <div class="stat">Memory: <span class="stat-val">O(1)</span> per step</div>
+        </div>
+        <div class="entry-insight">💡 DSP insight: Mamba converts the LTI IIR filter into a Linear Time-Varying (LTV) adaptive filter — like LMS/RLS, but driven by input content and trained via backprop.</div>
+      </div>
+
+      <div class="entry">
+        <div class="entry-head">
+          <div class="entry-title">Mamba-2 (SSD): State Space Duality</div>
+          <div class="entry-date">May 2024</div>
+        </div>
+        <div class="entry-body">
+          Proves SSMs and masked linear attention are <strong>mathematically equivalent through semiseparable matrices</strong>. Chunked algorithm: quadratic attention within chunks, SSM state between chunks. 2–8× faster training than Mamba-1.
+        </div>
+        <div class="entry-stats">
+          <div class="stat">State size: <span class="stat-val">N=128</span> (vs N=16)</div>
+          <div class="stat">Training: <span class="stat-val">2–8× faster</span></div>
+          <div class="stat">Leverages: <span class="stat-val">Tensor cores</span></div>
+        </div>
+        <div class="entry-insight">💡 The unification: SSMs and Attention aren't different paradigms — they're different views of the same matrix class (semiseparable matrices).</div>
+      </div>
+    </div>
+
+    <!-- Era 4: Hybrids -->
+    <div class="era-violet">
+      <div class="era-label">Era 4 — The Hybrid Revolution (2024)</div>
+
+      <div class="entry">
+        <div class="entry-head">
+          <div class="entry-title">Jamba: Hybrid Transformer-Mamba</div>
+          <div class="entry-date">ICLR 2025</div>
+        </div>
+        <div class="entry-body">
+          AI21 Labs establishes the <strong>1:7 attention-to-Mamba ratio</strong> at scale (52B params). Attention for retrieval, Mamba for efficiency. "Never put attention at the front." KV-cache reduced from 32 GB to 4 GB at 256K context.
+        </div>
+        <div class="entry-insight">💡 The recipe: Mamba first (efficient feature extraction), sparse attention later (content-based retrieval). IIR for bulk processing, FIR for precision.</div>
+      </div>
+
+      <div class="entry">
+        <div class="entry-head">
+          <div class="entry-title">ConMamba / ConExtBiMamba</div>
+          <div class="entry-date">ICASSP 2025</div>
+        </div>
+        <div class="entry-body">
+          Replace MHSA in Conformer with bidirectional Mamba for ASR. <strong>WER competitive with Conformer at 40–45% less training time</strong> and 50% less memory. Critical finding: standalone Mamba underperforms — needs the convolutional module.
+        </div>
+        <div class="entry-stats">
+          <div class="stat">LibriSpeech clean: <span class="stat-val">3.9%</span> WER</div>
+          <div class="stat">Training time: <span class="stat-val">−45%</span></div>
+          <div class="stat">Long-context WER: <span class="stat-val">−50%</span></div>
+        </div>
+      </div>
+
+      <div class="entry">
+        <div class="entry-head">
+          <div class="entry-title">Griffin, Bamba, Samba-ASR</div>
+          <div class="entry-date">2024–2025</div>
+        </div>
+        <div class="entry-body">
+          <strong>Griffin</strong> (DeepMind): gated recurrences + local attention, matches Llama-2 at 6× fewer tokens. <strong>Bamba</strong> (IBM, 9B): Mamba-2 layers + 3 attention layers. <strong>Samba-ASR</strong>: pure Mamba encoder-decoder, 1.17% WER on LibriSpeech clean.
+        </div>
+      </div>
+    </div>
+
+    <!-- Era 5: Edge + Future -->
+    <div class="era-rose">
+      <div class="era-label">Era 5 — Edge Deployment &amp; Future (2025+)</div>
+
+      <div class="entry">
+        <div class="entry-head">
+          <div class="entry-title">XAMBA / eMamba: SSMs on Edge NPUs</div>
+          <div class="entry-date">Feb 2025</div>
+        </div>
+        <div class="entry-body">
+          First frameworks optimizing Mamba for commodity NPUs and FPGAs. Replace SiLU with piecewise-linear, cumsum with MatMul. <strong>260 tok/s on Intel NPU, 11.6× perf/area on ASIC</strong>. Fixed-state, no-softmax, static shapes — architecturally ideal for NPUs.
+        </div>
+      </div>
+
+      <div class="entry">
+        <div class="entry-head">
+          <div class="entry-title">Production Hybrids at Scale</div>
+          <div class="entry-date">2025</div>
+        </div>
+        <div class="entry-body">
+          <strong>Jamba 1.5</strong> (398B total, 94B active), <strong>Falcon Mamba 7B</strong> (5.5T training tokens), <strong>Codestral Mamba</strong> (256K context for code), <strong>Microsoft Phi-4-mini-flash-reasoning</strong> (Mamba + sliding-window attention + GatedMU, 10× throughput for reasoning).
+        </div>
+        <div class="entry-insight">💡 Hybrid architectures are becoming the default foundation model design. The question isn't "attention vs SSM" — it's "what ratio and where."</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Summary Stats -->
+  <div class="summary-box">
+    <h3>The Trajectory in Numbers</h3>
+    <div class="summary-grid">
+      <div class="summary-item">
+        <div class="s-label">Complexity reduction</div>
+        <div class="s-value" style="color: var(--amber);">O(n²) → O(n)</div>
+        <div class="s-detail">Quadratic attention to linear SSM</div>
+      </div>
+      <div class="summary-item">
+        <div class="s-label">Inference memory</div>
+        <div class="s-value" style="color: var(--emerald);">O(n) → O(1)</div>
+        <div class="s-detail">Growing KV-cache to fixed state</div>
+      </div>
+      <div class="summary-item">
+        <div class="s-label">KV-cache @ 256K</div>
+        <div class="s-value" style="color: var(--sky);">32 → 4 GB</div>
+        <div class="s-detail">8× reduction with Jamba hybrid</div>
+      </div>
+      <div class="summary-item">
+        <div class="s-label">Edge throughput</div>
+        <div class="s-value" style="color: var(--rose);">260 tok/s</div>
+        <div class="s-detail">Mamba-130M on Intel NPU</div>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

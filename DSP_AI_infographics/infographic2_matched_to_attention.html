@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>From Matched Filter to Self-Attention</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Outfit:wght@300;400;600;700;900&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #faf7f2;
+    --card: #ffffff;
+    --ink: #1a1a2e;
+    --ink-dim: #64748b;
+    --blue: #2563eb;
+    --blue-light: #dbeafe;
+    --emerald: #059669;
+    --emerald-light: #d1fae5;
+    --amber: #d97706;
+    --amber-light: #fef3c7;
+    --rose: #e11d48;
+    --rose-light: #ffe4e6;
+    --violet: #7c3aed;
+    --violet-light: #ede9fe;
+    --border: #e2e8f0;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Outfit', sans-serif;
+    min-height: 100vh;
+  }
+  .container { max-width: 1100px; margin: 0 auto; padding: 40px 24px; }
+
+  /* Header */
+  .header {
+    text-align: center;
+    margin-bottom: 48px;
+    padding-bottom: 32px;
+    border-bottom: 2px solid var(--ink);
+  }
+  .header .issue {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--ink-dim);
+    margin-bottom: 16px;
+  }
+  .header h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(32px, 5vw, 52px);
+    font-weight: 900;
+    line-height: 1.1;
+    margin-bottom: 12px;
+  }
+  .header h1 .highlight {
+    background: linear-gradient(135deg, var(--blue), var(--violet));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .header .subtitle {
+    font-size: 17px; color: var(--ink-dim);
+    max-width: 660px; margin: 0 auto;
+    font-weight: 300;
+  }
+
+  /* Flow Section */
+  .flow-section {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0;
+    margin-bottom: 48px;
+  }
+
+  /* Stage Card */
+  .stage {
+    position: relative;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 28px;
+    margin-bottom: 0;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    transition: transform 0.2s;
+  }
+  .stage:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.08); }
+
+  .stage-number {
+    position: absolute; top: -14px; left: 28px;
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px; font-weight: 700;
+    color: white;
+  }
+
+  .stage-header {
+    display: flex; align-items: flex-start; gap: 16px;
+    margin-bottom: 16px;
+  }
+  .stage-icon {
+    width: 48px; height: 48px; border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 24px; flex-shrink: 0;
+  }
+  .stage-title { font-size: 20px; font-weight: 700; line-height: 1.3; }
+  .stage-subtitle {
+    font-size: 13px; color: var(--ink-dim);
+    font-family: 'JetBrains Mono', monospace;
+    margin-top: 2px;
+  }
+
+  .stage-body { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  @media (max-width: 700px) { .stage-body { grid-template-columns: 1fr; } }
+
+  .stage-visual {
+    background: #f8fafc;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    line-height: 1.8;
+    color: var(--ink);
+  }
+  .stage-visual .label {
+    font-size: 10px; text-transform: uppercase;
+    letter-spacing: 2px; color: var(--ink-dim);
+    margin-bottom: 8px; font-weight: 600;
+  }
+
+  .stage-explain {
+    font-size: 14.5px; line-height: 1.75;
+    color: #334155;
+  }
+  .stage-explain strong { color: var(--ink); }
+
+  /* Equation highlight */
+  .eq {
+    display: inline-block;
+    background: var(--violet-light);
+    color: var(--violet);
+    padding: 2px 8px; border-radius: 4px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px; font-weight: 500;
+  }
+
+  /* Arrow connector between stages */
+  .arrow-connector {
+    display: flex; align-items: center; justify-content: center;
+    padding: 12px 0;
+    position: relative;
+  }
+  .arrow-connector .arrow-line {
+    width: 2px; height: 40px;
+    background: linear-gradient(180deg, var(--border), var(--blue));
+    position: relative;
+  }
+  .arrow-connector .arrow-line::after {
+    content: '▼';
+    position: absolute; bottom: -8px; left: 50%;
+    transform: translateX(-50%);
+    color: var(--blue); font-size: 12px;
+  }
+  .arrow-label {
+    position: absolute; right: calc(50% + 24px);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; color: var(--blue);
+    font-weight: 500;
+    white-space: nowrap;
+    background: var(--bg); padding: 2px 8px;
+    border-radius: 4px;
+    border: 1px dashed var(--blue);
+  }
+
+  /* Comparison table at bottom */
+  .comparison {
+    background: var(--card);
+    border: 2px solid var(--ink);
+    border-radius: 16px;
+    overflow: hidden;
+    margin-top: 32px;
+  }
+  .comparison-header {
+    background: var(--ink);
+    color: white;
+    padding: 16px 24px;
+    font-family: 'Playfair Display', serif;
+    font-size: 20px; font-weight: 700;
+  }
+  .comparison-grid {
+    display: grid;
+    grid-template-columns: 1.5fr 1fr 1fr 1fr;
+    font-size: 13px;
+  }
+  .comparison-grid .cell {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    border-right: 1px solid var(--border);
+    display: flex; align-items: center;
+  }
+  .comparison-grid .cell:nth-child(4n) { border-right: none; }
+  .comparison-grid .cell.header {
+    background: #f1f5f9;
+    font-weight: 700;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; text-transform: uppercase;
+    letter-spacing: 1px; color: var(--ink-dim);
+  }
+  .comparison-grid .cell.header.blue-h { color: var(--blue); }
+  .comparison-grid .cell.header.emerald-h { color: var(--emerald); }
+  .comparison-grid .cell.header.violet-h { color: var(--violet); }
+
+  .tag {
+    display: inline-block;
+    padding: 2px 8px; border-radius: 4px;
+    font-size: 11px; font-weight: 600;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .tag-blue { background: var(--blue-light); color: var(--blue); }
+  .tag-emerald { background: var(--emerald-light); color: var(--emerald); }
+  .tag-rose { background: var(--rose-light); color: var(--rose); }
+  .tag-amber { background: var(--amber-light); color: var(--amber); }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <div class="issue">Infographic 02 / 05 — The Conceptual Pipeline</div>
+    <h1>From <span class="highlight">Matched Filter</span><br>to Self-Attention</h1>
+    <p class="subtitle">How radar's optimal detector evolved — through 80 years of mathematics — into the engine that powers every Transformer</p>
+  </div>
+
+  <!-- Stage 1: Matched Filter -->
+  <div class="stage" style="border-top: 3px solid var(--blue);">
+    <div class="stage-number" style="background: var(--blue);">1</div>
+    <div class="stage-header">
+      <div class="stage-icon" style="background: var(--blue-light);">📡</div>
+      <div>
+        <div class="stage-title">The Matched Filter</div>
+        <div class="stage-subtitle">North, 1943 — Radar & Communications</div>
+      </div>
+    </div>
+    <div class="stage-body">
+      <div class="stage-visual">
+        <div class="label">Core Operation</div>
+        <div style="margin-bottom: 12px;">
+          <span style="color: var(--blue);">Template:</span> s(t) — known signal shape<br>
+          <span style="color: var(--blue);">Received:</span> r(t) = s(t) + noise<br>
+          <span style="color: var(--blue);">Filter:</span> h(t) = s*(T − t)<br><br>
+          <span style="color: var(--violet); font-weight: 600;">Output = r ⊛ s* = cross-correlation</span>
+        </div>
+        <div style="background: var(--amber-light); padding: 8px 12px; border-radius: 6px; color: var(--amber); font-weight: 500; font-size: 11px;">
+          ⚡ Maximizes SNR = 2E_s / N₀<br>
+          Optimal by Cauchy-Schwarz inequality
+        </div>
+      </div>
+      <div class="stage-explain">
+        <strong>Intuition:</strong> You know what your radar pulse looks like. To find it buried in noise, you slide the pulse template across the received signal and measure similarity at each position. Where the template "matches" — the output spikes. This cross-correlation is provably the best possible linear detector in white noise.<br><br>
+        <strong>Key property:</strong> The template is <strong>fixed</strong> — you designed it beforehand. One template, one target shape.
+      </div>
+    </div>
+  </div>
+
+  <div class="arrow-connector">
+    <div class="arrow-line"></div>
+    <div class="arrow-label">Make it learnable →</div>
+  </div>
+
+  <!-- Stage 2: Template Bank -->
+  <div class="stage" style="border-top: 3px solid var(--emerald);">
+    <div class="stage-number" style="background: var(--emerald);">2</div>
+    <div class="stage-header">
+      <div class="stage-icon" style="background: var(--emerald-light);">🎛️</div>
+      <div>
+        <div class="stage-title">Learned Template Bank</div>
+        <div class="stage-subtitle">Filter Banks, Mel Scale, Wavelets</div>
+      </div>
+    </div>
+    <div class="stage-body">
+      <div class="stage-visual">
+        <div class="label">Parallel Matched Filters</div>
+        <div>
+          <span style="color: var(--emerald);">Template 1:</span> low-freq detector<br>
+          <span style="color: var(--emerald);">Template 2:</span> mid-freq detector<br>
+          <span style="color: var(--emerald);">Template 3:</span> high-freq detector<br>
+          <span style="color: var(--emerald);">  ⋮</span><br>
+          <span style="color: var(--emerald);">Template N:</span> learned end-to-end<br><br>
+          <span style="color: var(--violet); font-weight: 600;">Each filter responds to different patterns</span>
+        </div>
+      </div>
+      <div class="stage-explain">
+        <strong>Evolution:</strong> Instead of one template, run many in parallel. A mel filter bank decomposes audio into 80+ frequency bands — each band is a matched filter for a specific frequency range.<br><br>
+        <strong>Key advance:</strong> In deep learning, these templates become <strong>learnable</strong> (1D conv layers). But they're still <strong>fixed after training</strong> — the same set of templates applied to every input, at every position.
+      </div>
+    </div>
+  </div>
+
+  <div class="arrow-connector">
+    <div class="arrow-line"></div>
+    <div class="arrow-label">Make templates input-dependent →</div>
+  </div>
+
+  <!-- Stage 3: Q,K Projections -->
+  <div class="stage" style="border-top: 3px solid var(--violet);">
+    <div class="stage-number" style="background: var(--violet);">3</div>
+    <div class="stage-header">
+      <div class="stage-icon" style="background: var(--violet-light);">🔑</div>
+      <div>
+        <div class="stage-title">Query-Key Projections</div>
+        <div class="stage-subtitle">The Q, K mechanism — data-adaptive templates</div>
+      </div>
+    </div>
+    <div class="stage-body">
+      <div class="stage-visual">
+        <div class="label">Content-Adaptive Matching</div>
+        <div>
+          Input X ∈ ℝⁿˣᵈ<br><br>
+          <span style="color: var(--rose); font-weight: 600;">Q = XW_Q</span> — "what am I looking for?"<br>
+          <span style="color: var(--blue); font-weight: 600;">K = XW_K</span> — "what do I contain?"<br><br>
+          <span style="color: var(--violet); font-weight: 600;">Similarity = QKᵀ</span><br>
+          <span style="font-size: 11px; color: var(--ink-dim);">  ↑ This IS a cross-correlation matrix!</span><br><br>
+          Every frame's "template" (Q) depends on<br>
+          what that frame <em>contains</em>.
+        </div>
+      </div>
+      <div class="stage-explain">
+        <strong>The breakthrough:</strong> Instead of fixed templates, <strong>derive the template from the data itself</strong>. Each position generates its own query ("I'm looking for patterns like X") and its own key ("I contain patterns like Y").<br><br>
+        The <span class="eq">QKᵀ</span> matrix is literally a cross-correlation matrix: entry (i,j) = similarity between position i's query template and position j's key signature.<br><br>
+        <strong>Key property:</strong> Templates change with every input — a <strong>content-adaptive matched filter bank</strong>.
+      </div>
+    </div>
+  </div>
+
+  <div class="arrow-connector">
+    <div class="arrow-line"></div>
+    <div class="arrow-label">Add soft selection + content extraction →</div>
+  </div>
+
+  <!-- Stage 4: Full Attention -->
+  <div class="stage" style="border-top: 3px solid var(--rose);">
+    <div class="stage-number" style="background: var(--rose);">4</div>
+    <div class="stage-header">
+      <div class="stage-icon" style="background: var(--rose-light);">🧠</div>
+      <div>
+        <div class="stage-title">Full Self-Attention</div>
+        <div class="stage-subtitle">Vaswani et al., 2017 — "Attention Is All You Need"</div>
+      </div>
+    </div>
+    <div class="stage-body">
+      <div class="stage-visual">
+        <div class="label">Complete Mechanism</div>
+        <div>
+          ① <span style="color: var(--rose);">Compute templates:</span><br>
+          &nbsp;&nbsp; Q = XW_Q, K = XW_K<br><br>
+          ② <span style="color: var(--blue);">Cross-correlate all pairs:</span><br>
+          &nbsp;&nbsp; Scores = QKᵀ / √d_k<br><br>
+          ③ <span style="color: var(--emerald);">Soft selection (not hard threshold):</span><br>
+          &nbsp;&nbsp; Weights = softmax(Scores)<br><br>
+          ④ <span style="color: var(--violet);">Extract content:</span><br>
+          &nbsp;&nbsp; V = XW_V<br>
+          &nbsp;&nbsp; Output = Weights · V
+        </div>
+      </div>
+      <div class="stage-explain">
+        <strong>Three innovations beyond matched filtering:</strong><br><br>
+        <strong>1. Softmax</strong> converts correlation scores into a probability distribution — differentiable "soft" peak detection instead of hard thresholding. Every position attends to every other, weighted by relevance.<br><br>
+        <strong>2. Value vectors (V)</strong> separate "what to look for" (Q, K) from "what to extract" (V) — after detecting a match, extract different information than what was used for matching.<br><br>
+        <strong>3. Multi-head</strong> runs h parallel filter banks in different subspaces, each specializing in different pattern types — like running mel, gammatone, and wavelet filter banks simultaneously, all learned.
+      </div>
+    </div>
+  </div>
+
+  <!-- Comparison Table -->
+  <div class="comparison">
+    <div class="comparison-header">Evolution at a Glance</div>
+    <div class="comparison-grid">
+      <div class="cell header">Property</div>
+      <div class="cell header blue-h">Matched Filter</div>
+      <div class="cell header emerald-h">Filter Bank</div>
+      <div class="cell header violet-h">Self-Attention</div>
+
+      <div class="cell"><strong>Template source</strong></div>
+      <div class="cell"><span class="tag tag-blue">Fixed (designed)</span></div>
+      <div class="cell"><span class="tag tag-emerald">Fixed (learned)</span></div>
+      <div class="cell"><span class="tag tag-rose">Dynamic (per-input)</span></div>
+
+      <div class="cell"><strong>Templates per input</strong></div>
+      <div class="cell">1</div>
+      <div class="cell">N (fixed set)</div>
+      <div class="cell">n (one per position)</div>
+
+      <div class="cell"><strong>Selection</strong></div>
+      <div class="cell">Hard threshold</div>
+      <div class="cell">Max energy</div>
+      <div class="cell">Softmax (differentiable)</div>
+
+      <div class="cell"><strong>Content extraction</strong></div>
+      <div class="cell">Same as detection</div>
+      <div class="cell">Same as detection</div>
+      <div class="cell"><span class="tag tag-amber">Separate (V vectors)</span></div>
+
+      <div class="cell"><strong>Learnable?</strong></div>
+      <div class="cell">No</div>
+      <div class="cell">Partially</div>
+      <div class="cell"><span class="tag tag-emerald">Fully end-to-end</span></div>
+
+      <div class="cell"><strong>Complexity</strong></div>
+      <div class="cell">O(n)</div>
+      <div class="cell">O(n × N)</div>
+      <div class="cell"><span class="tag tag-rose">O(n²)</span></div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

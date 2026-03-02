@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ch 20: Attention vs Mamba &mdash; DSP to AI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Outfit:wght@300;400;500;600;700;800;900&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../style/global.css">
+  <link rel="stylesheet" href="../../style/theme-dark.css">
+  <link rel="stylesheet" href="../../style/theme-light.css">
+  <link rel="stylesheet" href="../../style/components.css">
+  <link rel="stylesheet" href="../../style/chapter.css">
+  <script src="../../js/core/theme-switcher.js"></script>
+</head>
+<body>
+
+<div class="noise"></div>
+
+<!-- Navigation -->
+<nav class="site-nav">
+  <a href="../../index.html" class="site-nav__logo">DSP <span class="arrow">&rarr;</span> AI</a>
+  <ul class="site-nav__links">
+    <li><a href="../../index.html#part1">Part I</a></li>
+    <li><a href="../../index.html#part2">Part II</a></li>
+    <li><a href="../../index.html#part3" class="active">Part III</a></li>
+    <li><a href="../../index.html#part4">Part IV</a></li>
+    <li><a href="../../gallery/index.html">Gallery</a></li>
+    <li><a href="../../reference/glossary.html">Reference</a></li>
+  </ul>
+  <button class="search-toggle" aria-label="Search site (press /)">🔍</button>
+  <button class="theme-toggle" aria-label="Toggle theme"></button>
+  <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false">&#9776;</button>
+</nav>
+<div class="progress-bar"></div>
+
+<!-- Page Layout -->
+<div class="chapter-page" data-chapter-id="ch20">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar__part-label">Part III: The Bridge</div>
+    <ul class="sidebar__chapters">
+      <li><a class="sidebar__chapter-link" href="ch16-rosetta.html"><span class="sidebar__chapter-num">16</span> The Rosetta Stone</a></li>
+      <li><a class="sidebar__chapter-link" href="ch17-matched-to-attn.html"><span class="sidebar__chapter-num">17</span> Matched Filter &rarr; Attention</a></li>
+      <li><a class="sidebar__chapter-link" href="ch18-ssm.html"><span class="sidebar__chapter-num">18</span> State-Space Models</a></li>
+      <li><a class="sidebar__chapter-link" href="ch19-mamba.html"><span class="sidebar__chapter-num">19</span> Mamba</a></li>
+      <li><a class="sidebar__chapter-link active" href="ch20-attn-vs-mamba.html"><span class="sidebar__chapter-num">20</span> Attention vs Mamba</a>
+        <ul class="sidebar__sections">
+          <li><a class="sidebar__section-link" href="#two-paradigms">Two Paradigms</a></li>
+          <li><a class="sidebar__section-link" href="#complexity">O(n&sup2;) vs O(n)</a></li>
+          <li><a class="sidebar__section-link" href="#memory">Memory &amp; State</a></li>
+          <li><a class="sidebar__section-link" href="#dsp-lens">The DSP Lens</a></li>
+          <li><a class="sidebar__section-link" href="#tradeoffs">When Each Wins</a></li>
+          <li><a class="sidebar__section-link" href="#hybrid">The Hybrid Future</a></li>
+          <li><a class="sidebar__section-link" href="#tool-complexity">Scaling Explorer</a></li>
+          <li><a class="sidebar__section-link" href="#tool-fir-iir">FIR vs IIR</a></li>
+          <li><a class="sidebar__section-link" href="#tool-arena">Head-to-Head Arena</a></li>
+        </ul>
+      </li>
+    </ul>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="chapter-content">
+
+    <nav class="breadcrumb" aria-label="Breadcrumb"></nav>
+
+    <header class="chapter-header">
+      <div class="chapter-header__part">Part III &mdash; The Bridge</div>
+      <div class="chapter-header__number">Chapter 20</div>
+      <h1 class="chapter-header__title">Attention vs Mamba &mdash; O(n&sup2;) vs O(n)</h1>
+      <p class="chapter-header__subtitle">
+        Two sequence models. Two philosophies. Attention says: <em>&ldquo;Look at everything,
+        every time.&rdquo;</em> Mamba says: <em>&ldquo;Compress intelligently, remember
+        selectively.&rdquo;</em> Through the DSP lens, this is the ancient FIR vs IIR debate
+        at unprecedented scale. This chapter puts them head-to-head &mdash; complexity, memory,
+        expressiveness, and the tasks where each dominates &mdash; and shows why the future is
+        <strong>hybrid</strong>.
+      </p>
+    </header>
+
+    <!-- ============================================================
+         20.1 — The Two Paradigms
+         ============================================================ -->
+    <section class="content-section" id="two-paradigms">
+      <h2 class="section-heading"><span class="section-number">20.1</span> The Two Paradigms</h2>
+
+      <p>
+        At their core, Attention and Mamba answer the same question differently:
+        <strong>&ldquo;Given a new token, how do I combine it with the history?&rdquo;</strong>
+      </p>
+
+      <div class="card-grid" style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));">
+        <div class="concept-card">
+          <h3 class="concept-card__title">Self-Attention (Ch 14&ndash;15)</h3>
+          <p class="concept-card__body">
+            Every token computes similarity with <em>every other token</em> via Q&middot;K.
+            The output is a weighted sum of all values: y[n] = &Sigma;_k softmax(q[n]&middot;k[k]) &middot; v[k].
+            <br><br>
+            <strong>Mechanism:</strong> Direct, pairwise comparison.<br>
+            <strong>Memory:</strong> KV-cache stores all past tokens.<br>
+            <strong>Computational pattern:</strong> Dense matrix multiplication.
+          </p>
+        </div>
+        <div class="concept-card">
+          <h3 class="concept-card__title">Mamba / Selective SSM (Ch 18&ndash;19)</h3>
+          <p class="concept-card__body">
+            Each token updates a fixed-size state: x[n] = A&#x0305;[n] x[n-1] + B&#x0305;[n] u[n].
+            The output reads from the state: y[n] = C[n] x[n].
+            <br><br>
+            <strong>Mechanism:</strong> Compressed state, selective update.<br>
+            <strong>Memory:</strong> Fixed-size state vector (never grows).<br>
+            <strong>Computational pattern:</strong> Parallel scan.
+          </p>
+        </div>
+      </div>
+
+      <div class="math-block" style="font-size: 0.95em;">
+        <code>
+          Attention: &nbsp; y[n] = &Sigma;_{k=1}^{n} softmax(Q[n] &middot; K[k]<sup>T</sup> / &radic;d) &middot; V[k] &nbsp;&nbsp; (looks at ALL past tokens)<br><br>
+          Mamba: &nbsp;&nbsp;&nbsp;&nbsp; x[n] = A&#x0305;[n] x[n-1] + B&#x0305;[n] u[n], &nbsp; y[n] = C[n] x[n] &nbsp;&nbsp;&nbsp;&nbsp; (compresses into fixed state)
+        </code>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         20.2 — Complexity Analysis
+         ============================================================ -->
+    <section class="content-section" id="complexity">
+      <h2 class="section-heading"><span class="section-number">20.2</span> O(n&sup2;) vs O(n) &mdash; The Scaling Wall</h2>
+
+      <p>
+        The most discussed difference. For a sequence of length T:
+      </p>
+
+      <table class="comparison-table">
+        <thead>
+          <tr>
+            <th>Metric</th>
+            <th>Self-Attention</th>
+            <th>Mamba</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Training FLOPS</td>
+            <td>O(T&sup2; &middot; d) &mdash; attention matrix is T&times;T</td>
+            <td>O(T &middot; d &middot; N) &mdash; parallel scan, linear in T</td>
+          </tr>
+          <tr>
+            <td>Inference per token</td>
+            <td>O(T &middot; d) &mdash; must attend to all cached keys</td>
+            <td>O(d &middot; N) &mdash; state update only, O(1) in T</td>
+          </tr>
+          <tr>
+            <td>Memory (inference)</td>
+            <td>O(T &middot; d) &mdash; KV-cache grows with sequence</td>
+            <td>O(d &middot; N) &mdash; fixed state, ~few KB</td>
+          </tr>
+          <tr>
+            <td>Memory (training)</td>
+            <td>O(T&sup2;) for attention maps (per head, per layer)</td>
+            <td>O(T &middot; N) for scan intermediates</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <p>
+        At T = 1K, the difference is ~1,000&times;. At T = 100K, it&rsquo;s ~100,000&times;.
+        Attention hits a <strong>memory wall</strong> long before it hits a compute wall:
+        the T&times;T attention matrix at T=100K with float16 is ~20 GB per head per layer.
+      </p>
+
+      <div class="progressive-section">
+        <button class="progressive-toggle" aria-expanded="false">Show the Math</button>
+        <div class="progressive-content">
+          <p><strong>Exact FLOP counts for a single layer:</strong></p>
+          <div class="math-block">
+            <code>
+              Attention:<br>
+              &nbsp; QKV projection: &nbsp;&nbsp;&nbsp; 3 &times; T &times; d &times; d = 3Td&sup2; &nbsp; FLOPs<br>
+              &nbsp; Q&middot;K<sup>T</sup> products: &nbsp;&nbsp;&nbsp;&nbsp; T &times; T &times; d = T&sup2;d &nbsp;&nbsp;&nbsp;&nbsp; FLOPs<br>
+              &nbsp; Softmax: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; T &times; T = T&sup2; &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; FLOPs<br>
+              &nbsp; Attn &times; V: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; T &times; T &times; d = T&sup2;d &nbsp;&nbsp;&nbsp;&nbsp; FLOPs<br>
+              &nbsp; Output projection: &nbsp; T &times; d &times; d = Td&sup2; &nbsp;&nbsp;&nbsp;&nbsp; FLOPs<br>
+              &nbsp; Total: 4Td&sup2; + 2T&sup2;d &nbsp; (dominated by T&sup2;d for large T)<br><br>
+              Mamba:<br>
+              &nbsp; Input projections: &nbsp; T &times; d &times; 2E = 2TdE &nbsp; FLOPs<br>
+              &nbsp; Conv1D: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; T &times; E &times; k = TEk &nbsp;&nbsp;&nbsp; FLOPs<br>
+              &nbsp; &Delta;,B,C projections: T &times; E &times; (1+2N) &nbsp;&nbsp;&nbsp; FLOPs<br>
+              &nbsp; Selective scan: &nbsp;&nbsp;&nbsp; T &times; E &times; N &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; FLOPs<br>
+              &nbsp; Output projection: &nbsp; T &times; E &times; d = TEd &nbsp;&nbsp;&nbsp; FLOPs<br>
+              &nbsp; Total: O(TdEN) &nbsp; (linear in T, E=expand factor, N=state dim)
+            </code>
+          </div>
+          <p>
+            With typical values d=1024, N=16, E=2, k=4: Attention&rsquo;s quadratic term
+            2T&sup2;d = 2048T&sup2; dominates once T &gt; ~2048. Mamba&rsquo;s dominant term
+            TdEN = 32768T stays linear forever.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         20.3 — Memory & State
+         ============================================================ -->
+    <section class="content-section" id="memory">
+      <h2 class="section-heading"><span class="section-number">20.3</span> Memory Models &mdash; Explicit vs Compressed</h2>
+
+      <p>
+        The complexity difference comes from fundamentally different approaches to memory:
+      </p>
+
+      <div class="card-grid" style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));">
+        <div class="concept-card">
+          <h3 class="concept-card__title">Attention: Explicit Memory</h3>
+          <p class="concept-card__body">
+            The KV-cache is a <strong>perfect, lossless record</strong> of every past token.
+            At inference, generating token 1000 still has full access to token 1. Nothing is
+            forgotten. Nothing is compressed. The price: the cache grows without bound.
+          </p>
+        </div>
+        <div class="concept-card">
+          <h3 class="concept-card__title">Mamba: Compressed Memory</h3>
+          <p class="concept-card__body">
+            The state vector x &isin; &Ropf;^{D&times;N} is a <strong>lossy compression</strong>
+            of the entire history. Important information is selectively retained (via large &Delta;),
+            unimportant information decays. The price: some information is irrecoverably lost.
+          </p>
+        </div>
+      </div>
+
+      <p>
+        This maps directly to a fundamental information-theoretic tradeoff:
+      </p>
+
+      <div class="math-block">
+        <code>
+          Attention: &nbsp; I(y[n]; u[1..n]) = I(u[1..n]; u[1..n]) &nbsp;&nbsp; (full mutual information)<br>
+          Mamba: &nbsp;&nbsp;&nbsp;&nbsp; I(y[n]; u[1..n]) &le; I(x[n]; u[1..n]) &le; D&times;N bits &nbsp; (bounded by state size)
+        </code>
+      </div>
+
+      <p>
+        Attention has <em>unlimited</em> capacity to represent relationships between any pair
+        of tokens. Mamba&rsquo;s capacity is bounded by the state dimension. For most practical
+        tasks, the state is large enough &mdash; but for tasks requiring exact retrieval of
+        arbitrary past tokens, attention has a structural advantage.
+      </p>
+    </section>
+
+    <!-- ============================================================
+         20.4 — The DSP Lens: FIR vs IIR
+         ============================================================ -->
+    <section class="content-section bridge-teaser" id="dsp-lens">
+      <h2 class="section-heading"><span class="section-number">20.4</span> The DSP Lens &mdash; FIR vs IIR, Full Circle</h2>
+
+      <p>
+        This is the culmination of the entire course. In Chapter 7, we studied FIR and IIR
+        filters. In Chapter 16, we mapped them to attention and recurrence. Now we can make
+        the complete correspondence precise:
+      </p>
+
+      <table class="comparison-table">
+        <thead>
+          <tr>
+            <th>Property</th>
+            <th>FIR Filter / Attention</th>
+            <th>IIR Filter / Mamba</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Memory type</td>
+            <td>Finite window &mdash; stores all taps explicitly</td>
+            <td>Infinite impulse response via state feedback</td>
+          </tr>
+          <tr>
+            <td>Impulse response</td>
+            <td>Finite length (T taps = T past tokens)</td>
+            <td>Infinite (exponentially decaying via poles)</td>
+          </tr>
+          <tr>
+            <td>Computation</td>
+            <td>Convolution over full window: O(T&sup2;)</td>
+            <td>Recursive state update: O(T)</td>
+          </tr>
+          <tr>
+            <td>Perfect recall</td>
+            <td>Yes &mdash; any token in the window is directly accessible</td>
+            <td>No &mdash; older tokens are compressed into state</td>
+          </tr>
+          <tr>
+            <td>Stability</td>
+            <td>Always stable (no feedback)</td>
+            <td>Requires |poles| &lt; 1 (guaranteed by design in Mamba)</td>
+          </tr>
+          <tr>
+            <td>Adaptivity</td>
+            <td>Weights are content-dependent (Q&middot;K)</td>
+            <td>Parameters are content-dependent (&Delta;, B, C)</td>
+          </tr>
+          <tr>
+            <td>Phase response</td>
+            <td>Content-dependent phase; bidirectional attention can be symmetric</td>
+            <td>Inherently non-linear phase (causal IIR)</td>
+          </tr>
+          <tr>
+            <td>Long-range</td>
+            <td>O(T&sup2;) cost, but perfect at any distance within window</td>
+            <td>O(T) cost, long-range via state persistence (but lossy)</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="progressive-section">
+        <button class="progressive-toggle" aria-expanded="false">Show the Math</button>
+        <div class="progressive-content">
+          <p><strong>Attention as a time-varying FIR filter:</strong></p>
+          <div class="math-block">
+            <code>
+              y[n] = &Sigma;_{k=1}^{n} h[n,k] &middot; v[k]<br><br>
+              where h[n,k] = softmax(q[n] &middot; k[k]<sup>T</sup> / &radic;d)<br><br>
+              This is an FIR filter with n taps, where the tap weights h[n,k]<br>
+              are recomputed at every output position n.
+            </code>
+          </div>
+          <p><strong>Mamba as a time-varying IIR filter bank:</strong></p>
+          <div class="math-block">
+            <code>
+              x_d[n] = e^{a_d &middot; &Delta;_d[n]} x_d[n-1] + &Delta;_d[n] B_d[n] u[n]<br>
+              y[n] = &Sigma;_d C_d[n] x_d[n]<br><br>
+              This is a bank of D first-order IIR filters with time-varying<br>
+              poles (e^{a_d &middot; &Delta;_d[n]}) and time-varying taps (B_d[n], C_d[n]).
+            </code>
+          </div>
+          <p><strong>The Mamba-2 unification (Dao &amp; Gu, 2024):</strong></p>
+          <p>
+            Mamba-2 proves that the selective SSM is equivalent to a specific form of
+            <strong>structured masked attention</strong> where the attention matrix is
+            constrained to be a <em>semiseparable matrix</em> (a matrix whose submatrices
+            all have rank &le; N). Standard attention has rank T; Mamba has rank N.
+            This rank constraint is what makes Mamba linear: you only need N values to
+            represent each row of the &ldquo;attention matrix&rdquo; instead of T values.
+          </p>
+          <div class="math-block">
+            <code>
+              Standard Attention: &nbsp; M &isin; &Ropf;^{T&times;T}, &nbsp; rank(M) = T &nbsp;&nbsp; &rarr; O(T&sup2;)<br>
+              Mamba (as SMA): &nbsp;&nbsp;&nbsp;&nbsp; M &isin; SSS(N), &nbsp;&nbsp; rank(M_sub) &le; N &rarr; O(TN)
+            </code>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         20.5 — When Each Wins
+         ============================================================ -->
+    <section class="content-section" id="tradeoffs">
+      <h2 class="section-heading"><span class="section-number">20.5</span> When Each Wins</h2>
+
+      <p>
+        Neither architecture universally dominates. The winner depends on the task:
+      </p>
+
+      <div class="card-grid" style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));">
+        <div class="concept-card">
+          <h3 class="concept-card__title">Attention Wins</h3>
+          <p class="concept-card__body">
+            <strong>In-context learning</strong> &mdash; few-shot examples need exact recall.<br>
+            <strong>Retrieval tasks</strong> &mdash; &ldquo;what word appeared after X?&rdquo;<br>
+            <strong>Long-range copy</strong> &mdash; reproduce a sequence from 10K tokens ago.<br>
+            <strong>Associative recall</strong> &mdash; arbitrary key-value lookup in context.<br>
+            <strong>Reasoning chains</strong> &mdash; multi-step logic requiring random access to premises.
+          </p>
+        </div>
+        <div class="concept-card">
+          <h3 class="concept-card__title">Mamba Wins</h3>
+          <p class="concept-card__body">
+            <strong>Long sequences</strong> &mdash; audio (100K+), genomics (1M+), video.<br>
+            <strong>Real-time processing</strong> &mdash; O(1) per token, no KV-cache growth.<br>
+            <strong>Continuous signals</strong> &mdash; speech, time series, sensor data.<br>
+            <strong>Edge deployment</strong> &mdash; fixed memory footprint, predictable latency.<br>
+            <strong>Throughput</strong> &mdash; batch inference is memory-bound; Mamba is lighter.
+          </p>
+        </div>
+      </div>
+
+      <p>
+        In DSP terms: FIR filters are preferred when you need <strong>exact phase control</strong>
+        (exact recall). IIR filters are preferred when you need <strong>efficiency</strong>
+        (low order = few computations for the same frequency selectivity). The same engineering
+        tradeoff, 50 years later, at the scale of language models.
+      </p>
+    </section>
+
+    <!-- ============================================================
+         20.6 — The Hybrid Future
+         ============================================================ -->
+    <section class="content-section" id="hybrid">
+      <h2 class="section-heading"><span class="section-number">20.6</span> The Hybrid Future</h2>
+
+      <p>
+        The field is rapidly converging on <strong>hybrid architectures</strong> that interleave
+        attention and SSM layers:
+      </p>
+
+      <div class="card-grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));">
+        <div class="concept-card">
+          <h3 class="concept-card__title">Jamba (AI21, 2024)</h3>
+          <p class="concept-card__body">
+            1 attention layer for every 7 Mamba layers. The attention layers handle retrieval;
+            the Mamba layers handle efficient context propagation. 52B parameters, 256K context.
+          </p>
+        </div>
+        <div class="concept-card">
+          <h3 class="concept-card__title">Griffin (Google, 2024)</h3>
+          <p class="concept-card__body">
+            Recurrent layers (gated linear recurrence) with local sliding-window attention.
+            Matches Transformer quality with ~3&times; faster inference at long contexts.
+          </p>
+        </div>
+        <div class="concept-card">
+          <h3 class="concept-card__title">Zamba (Zyphra, 2024)</h3>
+          <p class="concept-card__body">
+            Shared attention layers interleaved with Mamba blocks. Achieves strong quality
+            at 7B scale with significantly reduced KV-cache memory.
+          </p>
+        </div>
+        <div class="concept-card">
+          <h3 class="concept-card__title">The DSP Principle</h3>
+          <p class="concept-card__body">
+            No real-world DSP system uses <em>only</em> FIR or <em>only</em> IIR filters.
+            Audio codecs combine them. Equalizers cascade them. The same wisdom applies:
+            <strong>use each where it&rsquo;s strongest</strong>.
+          </p>
+        </div>
+      </div>
+
+      <p>
+        The emerging recipe: <strong>SSM layers for most of the network</strong> (cheap,
+        handles long context) with <strong>sparse attention layers at key positions</strong>
+        (retrieval, reasoning, in-context learning). The attention layers act like
+        &ldquo;checkpoints&rdquo; that give the model exact access to specific tokens when
+        needed, while the SSM layers efficiently propagate and compress information between
+        those checkpoints.
+      </p>
+
+      <div class="progressive-section">
+        <button class="progressive-toggle" aria-expanded="false">Show the Math</button>
+        <div class="progressive-content">
+          <p><strong>Hybrid complexity analysis:</strong></p>
+          <p>
+            For a model with L total layers, L_a attention layers (with sliding window W),
+            and L_m = L - L_a Mamba layers:
+          </p>
+          <div class="math-block">
+            <code>
+              Training: &nbsp; L_m &middot; O(TdEN) + L_a &middot; O(TWd) &nbsp; (W &lt;&lt; T for sliding window)<br>
+              Inference: &nbsp; L_m &middot; O(dEN) + L_a &middot; O(Wd) &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (per token)<br>
+              Memory: &nbsp;&nbsp;&nbsp; L_m &middot; O(dN) + L_a &middot; O(Wd) &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (KV-cache only for attn layers)
+            </code>
+          </div>
+          <p>
+            With L_a/L = 1/7 (Jamba ratio) and W = 4096, the hybrid model processes
+            sequences of 100K+ tokens with memory comparable to a pure Mamba model, while
+            retaining attention&rsquo;s retrieval capability at the few layers where it matters.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         TOOL 20.1 — Complexity / Scaling Explorer
+         ============================================================ -->
+    <section class="content-section" id="tool-complexity">
+      <h2 class="section-heading"><span class="section-number">Tool 20.1</span> Scaling Explorer</h2>
+
+      <p>
+        Drag the sequence length slider and watch the compute cost and memory curves diverge.
+        The blue O(n&sup2;) curve rises as a parabola; the green O(n) line stays flat.
+        Toggle log scale to see the full picture at extreme lengths.
+      </p>
+
+      <div class="tool-container" id="tool-complexity-viz">
+        <div class="tool-header">
+          <span class="tool-header__label">Tool 20.1</span>
+          <span class="tool-header__title">O(n&sup2;) vs O(n) Scaling Explorer</span>
+        </div>
+        <div class="tool-body">
+          <div class="tool-controls">
+            <div class="control-group">
+              <label class="control-label">Sequence Length T</label>
+              <input type="range" min="64" max="131072" value="4096" step="64" data-control="cx-seqlen">
+              <span class="control-value" aria-live="polite" data-value="cx-seqlen">4096</span>
+            </div>
+            <div class="control-group">
+              <label class="control-label">Model Dim d</label>
+              <select class="tool-select" data-control="cx-dim">
+                <option value="512">512</option>
+                <option value="1024" selected>1024</option>
+                <option value="2048">2048</option>
+                <option value="4096">4096</option>
+              </select>
+            </div>
+            <div class="control-group">
+              <label class="control-label">Scale</label>
+              <select class="tool-select" data-control="cx-scale">
+                <option value="linear">Linear</option>
+                <option value="log" selected>Log</option>
+              </select>
+            </div>
+          </div>
+          <div class="tool-canvas-wrapper"></div>
+        </div>
+      </div>
+
+      <div class="insight-box">
+        <h3 class="insight-box__title">Try This</h3>
+        <ul>
+          <li>Drag <strong>Sequence Length</strong> from 64 to 131K. On <strong>Log scale</strong>, attention rises as a parabola (slope 2 on log-log); Mamba stays linear (slope 1).</li>
+          <li>Switch to <strong>Linear scale</strong> at T=4096 &mdash; the curves start separating visibly. At T=16K, attention is off the chart.</li>
+          <li>Increase <strong>Model Dim</strong> to 4096 &mdash; both curves shift up, but the <em>ratio</em> between them stays the same (it depends only on T vs N).</li>
+          <li>Watch the <strong>memory panel</strong> (bottom) &mdash; attention&rsquo;s KV-cache grows linearly in T, while Mamba&rsquo;s state stays constant.</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         TOOL 20.2 — FIR vs IIR Paradigm
+         ============================================================ -->
+    <section class="content-section" id="tool-fir-iir">
+      <h2 class="section-heading"><span class="section-number">Tool 20.2</span> FIR vs IIR &mdash; The Filter Paradigm</h2>
+
+      <p>
+        The same input signal processed by an FIR filter (attention-like: finite window,
+        explicit taps) and an IIR filter (Mamba-like: recursive state, infinite impulse
+        response). Watch how each captures and forgets information differently.
+      </p>
+
+      <div class="tool-container" id="tool-fir-iir-viz">
+        <div class="tool-header">
+          <span class="tool-header__label">Tool 20.2</span>
+          <span class="tool-header__title">FIR vs IIR Filter Paradigm</span>
+        </div>
+        <div class="tool-body">
+          <div class="tool-controls">
+            <div class="control-group">
+              <label class="control-label">Signal</label>
+              <select class="tool-select" data-control="fir-signal">
+                <option value="impulse">Impulse (memory test)</option>
+                <option value="step">Step (long-range test)</option>
+                <option value="keywords">Keyword + Noise</option>
+                <option value="chirp">Chirp (frequency sweep)</option>
+              </select>
+            </div>
+            <div class="control-group">
+              <label class="control-label">FIR Window (taps)</label>
+              <input type="range" min="4" max="32" value="12" step="1" data-control="fir-taps">
+              <span class="control-value" aria-live="polite" data-value="fir-taps">12</span>
+            </div>
+            <div class="control-group">
+              <label class="control-label">IIR Pole Radius</label>
+              <input type="range" min="0.5" max="0.99" value="0.9" step="0.01" data-control="iir-pole">
+              <span class="control-value" aria-live="polite" data-value="iir-pole">0.90</span>
+            </div>
+          </div>
+          <div class="tool-canvas-wrapper"></div>
+        </div>
+      </div>
+
+      <div class="insight-box">
+        <h3 class="insight-box__title">Try This</h3>
+        <ul>
+          <li>Select <strong>Impulse</strong> &mdash; the FIR response dies after exactly W taps (finite memory). The IIR response decays exponentially but <em>never fully dies</em> (infinite memory). This is the fundamental difference.</li>
+          <li>Select <strong>Step</strong> &mdash; the FIR adapts instantly when the step arrives, but &ldquo;forgets&rdquo; the step after W samples. The IIR integrates the step and maintains a permanent offset.</li>
+          <li>Adjust <strong>FIR Window</strong> &mdash; more taps = longer explicit memory = higher cost (like attention with longer context). There&rsquo;s always a hard cutoff.</li>
+          <li>Adjust <strong>IIR Pole Radius</strong> closer to 1.0 &mdash; longer implicit memory (slower decay). At 0.99, information persists for hundreds of samples. This is Mamba with small &Delta; (preserve state).</li>
+          <li>Select <strong>Keyword + Noise</strong> &mdash; FIR with short window loses early keywords. IIR retains a trace of all keywords in its state (but blurred).</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         TOOL 20.3 — Head-to-Head Arena
+         ============================================================ -->
+    <section class="content-section" id="tool-arena">
+      <h2 class="section-heading"><span class="section-number">Tool 20.3</span> Head-to-Head Arena</h2>
+
+      <p>
+        Feed the same task to simplified Attention and Mamba models. Attention builds
+        an explicit similarity matrix (shown as a heatmap). Mamba evolves a compressed
+        state (shown as a state trajectory). Watch which approach captures the task
+        structure better.
+      </p>
+
+      <div class="tool-container" id="tool-arena-viz">
+        <div class="tool-header">
+          <span class="tool-header__label">Tool 20.3</span>
+          <span class="tool-header__title">Attention vs Mamba &mdash; Head-to-Head</span>
+        </div>
+        <div class="tool-body">
+          <div class="tool-controls">
+            <div class="control-group">
+              <label class="control-label">Task</label>
+              <select class="tool-select" data-control="arena-task">
+                <option value="retrieval">Exact Retrieval (Attention wins)</option>
+                <option value="longrange">Long-Range Dependency (Mamba wins)</option>
+                <option value="local">Local Patterns (Tie)</option>
+                <option value="selective">Selective Copy (Both compete)</option>
+              </select>
+            </div>
+          </div>
+          <div class="tool-canvas-wrapper"></div>
+          <div class="tool-actions">
+            <button class="tool-btn" data-action="arena-run">Run Task</button>
+            <button class="tool-btn" data-action="arena-reset">Reset</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="insight-box">
+        <h3 class="insight-box__title">Try This</h3>
+        <ul>
+          <li>Run <strong>Exact Retrieval</strong> &mdash; a key-value pair appears early, then a query appears late. Attention&rsquo;s matrix shows a bright dot connecting query to key (direct access). Mamba must hope the key survived in its compressed state.</li>
+          <li>Run <strong>Long-Range Dependency</strong> &mdash; a pattern spans thousands of tokens. Attention&rsquo;s matrix is sparse and misses the long-range connection (or costs O(T&sup2;) to find it). Mamba&rsquo;s state carries the information forward cheaply.</li>
+          <li>Run <strong>Local Patterns</strong> &mdash; both excel at nearby dependencies. The attention matrix shows a bright diagonal band; the Mamba state updates rapidly.</li>
+          <li>Run <strong>Selective Copy</strong> &mdash; copy specific tokens while ignoring noise. Both architectures compete, but Mamba must be selective about <em>what</em> to compress, while Attention can simply look back.</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- Further Reading -->
+    <section class="content-section" id="further-reading">
+      <h2 class="section-heading">Further Reading</h2>
+      <ul class="further-reading-list">
+        <li>
+          <a href="https://arxiv.org/abs/2312.00752" target="_blank" rel="noopener">Mamba: Linear-Time Sequence Modeling with Selective State Spaces</a>
+          <span class="further-reading__authors">Gu &amp; Dao, 2024</span>
+          <span class="further-reading__note">Section 4.4: direct comparison with Transformer on language modeling benchmarks</span>
+        </li>
+        <li>
+          <a href="https://arxiv.org/abs/2402.19427" target="_blank" rel="noopener">Can Mamba Learn How to Learn? A Comparative Study on In-Context Learning Tasks</a>
+          <span class="further-reading__authors">Park et al., 2024</span>
+          <span class="further-reading__note">Systematic comparison of attention vs SSM on in-context learning and retrieval tasks</span>
+        </li>
+        <li>
+          <a href="https://arxiv.org/abs/2405.04517" target="_blank" rel="noopener">An Empirical Study of Mamba-based Language Models</a>
+          <span class="further-reading__authors">Waleffe et al., 2024</span>
+          <span class="further-reading__note">NVIDIA study: hybrid Mamba-attention outperforms both pure architectures</span>
+        </li>
+      </ul>
+    </section>
+
+    <!-- Chapter Navigation -->
+    <nav class="chapter-nav">
+      <a class="chapter-nav__prev" href="ch19-mamba.html">
+        <span class="chapter-nav__dir">&larr; Previous</span>
+        <span class="chapter-nav__label">Ch 19: Mamba</span>
+      </a>
+      <a class="chapter-nav__next" href="../part4/ch21-ssm-evolution.html">
+        <span class="chapter-nav__dir">Next &rarr;</span>
+        <span class="chapter-nav__label">Ch 21: SSM Evolution Timeline</span>
+      </a>
+    </nav>
+
+  </main>
+</div>
+
+<!-- Scripts -->
+<script src="../../js/core/navigation.js"></script>
+<script src="../../js/core/progressive-disclosure.js"></script>
+<script src="../../js/core/chapter-nav.js"></script>
+<script src="../../js/tools/shared/plot-utils.js"></script>
+<script src="../../js/tools/ch20-complexity.js"></script>
+<script src="../../js/tools/ch20-fir-vs-iir.js"></script>
+<script src="../../js/tools/ch20-arena.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    if (window.DSPtoAI && window.DSPtoAI.ComplexityExplorer) {
+      window.DSPtoAI.ComplexityExplorer.init('tool-complexity-viz');
+    }
+    if (window.DSPtoAI && window.DSPtoAI.FIRvsIIR) {
+      window.DSPtoAI.FIRvsIIR.init('tool-fir-iir-viz');
+    }
+    if (window.DSPtoAI && window.DSPtoAI.Arena) {
+      window.DSPtoAI.Arena.init('tool-arena-viz');
+    }
+  });
+</script>
+
+<script src="../../js/core/search-index.js"></script>
+<script src="../../js/core/search.js"></script>
+</body>
+</html>

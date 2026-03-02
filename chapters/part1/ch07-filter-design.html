@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ch 7: FIR &amp; IIR Filter Design &mdash; DSP to AI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Outfit:wght@300;400;500;600;700;800;900&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../style/global.css">
+  <link rel="stylesheet" href="../../style/theme-dark.css">
+  <link rel="stylesheet" href="../../style/theme-light.css">
+  <link rel="stylesheet" href="../../style/components.css">
+  <link rel="stylesheet" href="../../style/chapter.css">
+  <script src="../../js/core/theme-switcher.js"></script>
+</head>
+<body>
+
+<div class="noise"></div>
+
+<!-- Navigation -->
+<nav class="site-nav">
+  <a href="../../index.html" class="site-nav__logo">DSP <span class="arrow">&rarr;</span> AI</a>
+  <ul class="site-nav__links">
+    <li><a href="../../index.html#part1" class="active">Part I</a></li>
+    <li><a href="../../index.html#part2">Part II</a></li>
+    <li><a href="../../index.html#part3">Part III</a></li>
+    <li><a href="../../index.html#part4">Part IV</a></li>
+    <li><a href="../../gallery/index.html">Gallery</a></li>
+    <li><a href="../../reference/glossary.html">Reference</a></li>
+  </ul>
+  <button class="search-toggle" aria-label="Search site (press /)">🔍</button>
+  <button class="theme-toggle" aria-label="Toggle theme"></button>
+  <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false">&#9776;</button>
+</nav>
+<div class="progress-bar"></div>
+
+<!-- Page Layout -->
+<div class="chapter-page" data-chapter-id="ch07">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar__part-label">Part I: DSP Foundations</div>
+    <ul class="sidebar__chapters">
+      <li><a class="sidebar__chapter-link" href="ch01-signals.html"><span class="sidebar__chapter-num">01</span> What Is a Signal?</a></li>
+      <li><a class="sidebar__chapter-link" href="ch02-systems.html"><span class="sidebar__chapter-num">02</span> Systems That Process Signals</a></li>
+      <li><a class="sidebar__chapter-link" href="ch03-convolution.html"><span class="sidebar__chapter-num">03</span> Convolution</a></li>
+      <li><a class="sidebar__chapter-link" href="ch04-fourier.html"><span class="sidebar__chapter-num">04</span> The Fourier Transform</a></li>
+      <li><a class="sidebar__chapter-link" href="ch05-z-transform.html"><span class="sidebar__chapter-num">05</span> The Z-Transform</a></li>
+      <li><a class="sidebar__chapter-link" href="ch06-poles-zeros.html"><span class="sidebar__chapter-num">06</span> Poles &amp; Zeros</a></li>
+      <li><a class="sidebar__chapter-link active" href="ch07-filter-design.html"><span class="sidebar__chapter-num">07</span> FIR &amp; IIR Filters</a>
+        <ul class="sidebar__sections">
+          <li><a class="sidebar__section-link" href="#the-big-choice">The Big Choice</a></li>
+          <li><a class="sidebar__section-link" href="#fir-design">FIR Design</a></li>
+          <li><a class="sidebar__section-link" href="#iir-design">IIR Design</a></li>
+          <li><a class="sidebar__section-link" href="#comparison">Side-by-Side</a></li>
+          <li><a class="sidebar__section-link" href="#bridge">Bridge: FIR=Attention IIR=Mamba</a></li>
+          <li><a class="sidebar__section-link" href="#tool-design">Filter Design Workbench</a></li>
+          <li><a class="sidebar__section-link" href="#tool-audio">Audio Filter Playground</a></li>
+        </ul>
+      </li>
+      <li><a class="sidebar__chapter-link" href="ch08-advanced-dsp.html"><span class="sidebar__chapter-num">08</span> Adaptive Filters</a></li>
+    </ul>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="chapter-content">
+
+    <nav class="breadcrumb" aria-label="Breadcrumb"></nav>
+
+    <header class="chapter-header">
+      <div class="chapter-header__part">Part I &mdash; DSP Foundations</div>
+      <div class="chapter-header__number">Chapter 07</div>
+      <h1 class="chapter-header__title">FIR and IIR Filter Design</h1>
+      <p class="chapter-header__subtitle">
+        Every digital filter falls into one of two families: FIR (Finite Impulse Response) or
+        IIR (Infinite Impulse Response). Their tradeoffs &mdash; memory, computation, stability, phase &mdash;
+        map directly onto the most important architectural choice in modern AI: Attention vs. Mamba.
+      </p>
+    </header>
+
+    <!-- === Section 1: The Big Choice === -->
+    <section class="chapter-section" id="the-big-choice">
+      <h2 class="chapter-section__title">7.1 &mdash; FIR vs IIR: The Fundamental Tradeoff</h2>
+
+      <div class="motivation-box">
+        <div class="motivation-box__title">Why should I care?</div>
+        <p>The FIR/IIR distinction is not just a DSP concept &mdash; it's the <em>exact same</em> tradeoff that separates Attention-based Transformers from State-Space Models like Mamba. Understanding it here gives you the vocabulary and intuition to understand the hottest debate in AI architecture design.</p>
+      </div>
+
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap: var(--sp-md); margin: var(--sp-md) 0 var(--sp-lg);">
+        <div class="card card--dsp">
+          <h4>FIR &mdash; Finite Impulse Response</h4>
+          <p style="font-size:13px; color:var(--text-dim); margin-top:var(--sp-sm);">
+            <strong>No feedback.</strong> Output depends only on current and past M inputs.
+          </p>
+          <div class="math-block" style="font-size:12px; margin:var(--sp-sm) 0;">
+            y[n] = &sum;<sub>k=0</sub><sup>M</sup> b<sub>k</sub> &middot; x[n&minus;k]
+          </div>
+          <ul style="font-size:12px; color:var(--text-dim); padding-left:var(--sp-md); line-height:1.8;">
+            <li><strong>Always stable</strong> (no poles to escape)</li>
+            <li>Linear phase (symmetric h[n])</li>
+            <li>Finite memory (M samples)</li>
+            <li>Needs many taps for sharp cutoff</li>
+            <li>O(M) computation per sample</li>
+          </ul>
+        </div>
+        <div class="card card--ai">
+          <h4>IIR &mdash; Infinite Impulse Response</h4>
+          <p style="font-size:13px; color:var(--text-dim); margin-top:var(--sp-sm);">
+            <strong>Feedback.</strong> Output depends on past inputs AND past outputs.
+          </p>
+          <div class="math-block" style="font-size:12px; margin:var(--sp-sm) 0;">
+            y[n] = &sum;<sub>k</sub> b<sub>k</sub> x[n&minus;k] &minus; &sum;<sub>k=1</sub><sup>N</sup> a<sub>k</sub> y[n&minus;k]
+          </div>
+          <ul style="font-size:12px; color:var(--text-dim); padding-left:var(--sp-md); line-height:1.8;">
+            <li><strong>Can be unstable</strong> (poles must stay inside unit circle)</li>
+            <li>Nonlinear phase (generally)</li>
+            <li>Infinite memory (exponentially decaying)</li>
+            <li>Sharp cutoff with few coefficients</li>
+            <li>O(N) computation, N &lt;&lt; M for same spec</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="insight-box">
+        <div class="insight-box__title">The Core Tradeoff</div>
+        <div class="insight-box__content">
+          <strong>FIR trades efficiency for safety.</strong> It needs more computation (more taps) but is always stable and has clean phase properties. <strong>IIR trades safety for efficiency.</strong> It achieves the same filtering with fewer operations, but introduces feedback, stability concerns, and phase distortion. This is exactly the Attention vs. Mamba tradeoff: Attention (FIR-like) looks at all context explicitly; Mamba (IIR-like) compresses context into a small state.
+        </div>
+      </div>
+    </section>
+
+    <!-- === Section 2: FIR Design === -->
+    <section class="chapter-section" id="fir-design">
+      <h2 class="chapter-section__title">7.2 &mdash; Designing FIR Filters: The Windowed Sinc Method</h2>
+
+      <p>The ideal lowpass filter has an impulse response that is a <strong>sinc function</strong>: <span class="math-inline">h[n] = sin(&pi;f<sub>c</sub>n) / (&pi;n)</span>. Problem: this is infinite in both directions. We can't implement an infinite filter.</p>
+
+      <p>Solution: <strong>truncate</strong> the sinc to M taps and apply a <strong>window function</strong> to smooth the truncation edges:</p>
+
+      <div class="math-block">
+        h[n] = w[n] &middot; sinc(f<sub>c</sub> &middot; (n &minus; M/2)) &nbsp;&nbsp;&nbsp; n = 0, 1, ..., M&minus;1
+      </div>
+
+      <p>The window determines the tradeoff between <strong>main-lobe width</strong> (transition sharpness) and <strong>side-lobe level</strong> (ripple/leakage):</p>
+
+      <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: var(--sp-md); margin: var(--sp-md) 0 var(--sp-lg);">
+        <div class="card card--dsp">
+          <h5>Rectangular</h5>
+          <p style="font-size:12px; color:var(--text-dim); margin-top:var(--sp-xs);">No windowing. Sharpest transition but worst side lobes (&minus;13 dB). Causes ringing (Gibbs phenomenon).</p>
+        </div>
+        <div class="card card--dsp">
+          <h5>Hann</h5>
+          <p style="font-size:12px; color:var(--text-dim); margin-top:var(--sp-xs);">Raised cosine. Good side-lobe suppression (&minus;31 dB). Wider transition band.</p>
+        </div>
+        <div class="card card--dsp">
+          <h5>Hamming</h5>
+          <p style="font-size:12px; color:var(--text-dim); margin-top:var(--sp-xs);">Optimized Hann variant (&minus;42 dB side lobes). The most popular general-purpose window.</p>
+        </div>
+        <div class="card card--dsp">
+          <h5>Blackman</h5>
+          <p style="font-size:12px; color:var(--text-dim); margin-top:var(--sp-xs);">Three-term cosine (&minus;58 dB). Excellent side-lobe rejection but widest transition. Used when stopband matters most.</p>
+        </div>
+      </div>
+
+      <!-- Show the Math -->
+      <div class="progressive-section">
+        <button class="progressive-toggle" aria-expanded="false">
+          <span class="arrow">&#9654;</span> Show the Math &mdash; Why the Sinc Function?
+        </button>
+        <div class="progressive-content">
+          <div class="progressive-content__inner">
+            <p>The ideal lowpass filter has frequency response:</p>
+            <div class="math-block">
+              H(e<sup>j&omega;</sup>) = { 1 if |&omega;| &le; &omega;<sub>c</sub>, &nbsp; 0 otherwise }
+            </div>
+            <p>Taking the inverse DTFT:</p>
+            <div class="math-block">
+              h[n] = (1/2&pi;) &int;<sub>&minus;&pi;</sub><sup>&pi;</sup> H(e<sup>j&omega;</sup>) e<sup>j&omega;n</sup> d&omega; = sin(&omega;<sub>c</sub>n) / (&pi;n)
+            </div>
+            <p>This is the sinc function &mdash; non-causal and infinite. Truncation to M samples and windowing is the practical approximation. Increasing M improves the approximation (sharper transition). The window controls the quality of the approximation (side-lobe behavior).</p>
+            <p><strong>Design recipe</strong>: (1) Choose cutoff frequency. (2) Choose filter order M (more taps = sharper). (3) Choose window (Hamming for general use). (4) Generate windowed sinc. (5) Normalize for unity gain at DC (lowpass) or Nyquist (highpass).</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- === Section 3: IIR Design === -->
+    <section class="chapter-section" id="iir-design">
+      <h2 class="chapter-section__title">7.3 &mdash; Designing IIR Filters: Analog Prototypes</h2>
+
+      <p>IIR design typically starts from well-known <strong>analog filter prototypes</strong> (designed over a century of electrical engineering), then transforms them to the digital domain:</p>
+
+      <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: var(--sp-md); margin: var(--sp-md) 0 var(--sp-lg);">
+        <div class="card card--ai">
+          <h5>Butterworth</h5>
+          <p style="font-size:12px; color:var(--text-dim); margin-top:var(--sp-xs);">Maximally flat passband. No ripple. The smoothest possible magnitude response. Most common starting point.</p>
+        </div>
+        <div class="card card--ai">
+          <h5>Chebyshev Type I</h5>
+          <p style="font-size:12px; color:var(--text-dim); margin-top:var(--sp-xs);">Sharper cutoff than Butterworth, but has equiripple in the passband. Trades flatness for selectivity.</p>
+        </div>
+        <div class="card card--ai">
+          <h5>Chebyshev Type II</h5>
+          <p style="font-size:12px; color:var(--text-dim); margin-top:var(--sp-xs);">Flat passband, equiripple in the stopband. Complementary to Type I.</p>
+        </div>
+        <div class="card card--ai">
+          <h5>Elliptic (Cauer)</h5>
+          <p style="font-size:12px; color:var(--text-dim); margin-top:var(--sp-xs);">Sharpest possible cutoff for a given order. Ripple in both pass and stop bands. Maximum efficiency.</p>
+        </div>
+      </div>
+
+      <p>The <strong>bilinear transform</strong> maps the analog prototype to the digital domain:</p>
+
+      <div class="math-block">
+        s = 2 &middot; (z &minus; 1) / (z + 1)
+      </div>
+
+      <!-- Show the Math -->
+      <div class="progressive-section">
+        <button class="progressive-toggle" aria-expanded="false">
+          <span class="arrow">&#9654;</span> Show the Math &mdash; Bilinear Transform
+        </button>
+        <div class="progressive-content">
+          <div class="progressive-content__inner">
+            <p>The bilinear transform maps the entire left half of the s-plane (stable analog) to the interior of the unit circle (stable digital). Key properties:</p>
+            <ul style="margin:var(--sp-sm) 0; padding-left:var(--sp-lg); line-height:1.8;">
+              <li><strong>Stability preserving</strong>: stable analog &rarr; stable digital</li>
+              <li><strong>Frequency warping</strong>: <span class="math-inline">&omega;<sub>digital</sub> = 2 arctan(&Omega;<sub>analog</sub>/2)</span>. Compresses the infinite analog frequency axis onto [0, &pi;]. Requires pre-warping the cutoff: <span class="math-inline">&Omega;<sub>c</sub> = tan(&pi;f<sub>c</sub>)</span></li>
+              <li><strong>Aliasing-free</strong>: unlike impulse invariance, no spectral aliasing</li>
+            </ul>
+            <p>For a Butterworth lowpass of order N, the analog poles are equally spaced on a semicircle in the left half s-plane. The bilinear transform maps these inside the unit circle, preserving the maximally-flat property.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- === Section 4: Side-by-Side Comparison === -->
+    <section class="chapter-section" id="comparison">
+      <h2 class="chapter-section__title">7.4 &mdash; FIR vs IIR: Head-to-Head</h2>
+
+      <p>For the <em>same</em> filtering specification (cutoff, attenuation), how do FIR and IIR compare?</p>
+
+      <div style="overflow-x:auto; margin: var(--sp-md) 0 var(--sp-lg);">
+        <table style="width:100%; border-collapse:collapse; font-size:13px; color:var(--text);">
+          <thead>
+            <tr style="border-bottom: 2px solid var(--border);">
+              <th style="padding:var(--sp-sm); text-align:left; color:var(--text-dim);">Property</th>
+              <th style="padding:var(--sp-sm); text-align:center; color:var(--color-dsp);">FIR</th>
+              <th style="padding:var(--sp-sm); text-align:center; color:var(--color-ai);">IIR</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="border-bottom: 1px solid var(--border-subtle);">
+              <td style="padding:var(--sp-sm);">Stability</td>
+              <td style="padding:var(--sp-sm); text-align:center;">Always stable</td>
+              <td style="padding:var(--sp-sm); text-align:center;">Must check poles</td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border-subtle);">
+              <td style="padding:var(--sp-sm);">Phase</td>
+              <td style="padding:var(--sp-sm); text-align:center;">Linear (if symmetric)</td>
+              <td style="padding:var(--sp-sm); text-align:center;">Nonlinear</td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border-subtle);">
+              <td style="padding:var(--sp-sm);">Memory</td>
+              <td style="padding:var(--sp-sm); text-align:center;">Finite (M samples)</td>
+              <td style="padding:var(--sp-sm); text-align:center;">Infinite (exponential decay)</td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border-subtle);">
+              <td style="padding:var(--sp-sm);">Computation</td>
+              <td style="padding:var(--sp-sm); text-align:center;">M multiplies/sample</td>
+              <td style="padding:var(--sp-sm); text-align:center;">2N multiplies (N &lt;&lt; M)</td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border-subtle);">
+              <td style="padding:var(--sp-sm);">Sharp cutoff</td>
+              <td style="padding:var(--sp-sm); text-align:center;">Needs many taps</td>
+              <td style="padding:var(--sp-sm); text-align:center;">Fewer coefficients</td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border-subtle);">
+              <td style="padding:var(--sp-sm);">Design method</td>
+              <td style="padding:var(--sp-sm); text-align:center;">Windowed sinc / Parks-McClellan</td>
+              <td style="padding:var(--sp-sm); text-align:center;">Bilinear transform</td>
+            </tr>
+            <tr>
+              <td style="padding:var(--sp-sm); font-weight:bold;">AI Analog</td>
+              <td style="padding:var(--sp-sm); text-align:center; color:var(--color-dsp); font-weight:bold;">Attention (Transformer)</td>
+              <td style="padding:var(--sp-sm); text-align:center; color:var(--color-ai); font-weight:bold;">Mamba (SSM)</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- === Section 5: Bridge === -->
+    <section class="chapter-section" id="bridge">
+      <h2 class="chapter-section__title">7.5 &mdash; The Bridge: FIR = Attention, IIR = Mamba</h2>
+
+      <p>This is the most important conceptual mapping in the entire course:</p>
+
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap: var(--sp-md); margin: var(--sp-md) 0 var(--sp-lg);">
+        <div class="card card--dsp">
+          <h4>FIR &harr; Attention</h4>
+          <ul style="font-size:13px; color:var(--text-dim); margin-top:var(--sp-sm); padding-left:var(--sp-md); line-height:1.9;">
+            <li>Looks at <strong>all</strong> context within window</li>
+            <li>Fixed context window (finite memory)</li>
+            <li>No hidden state / no feedback</li>
+            <li>O(L&sup2;) cost for sequence length L</li>
+            <li>Perfect recall within window</li>
+            <li>Always "stable" (no divergence)</li>
+            <li>Weights (attention scores) computed from data</li>
+          </ul>
+        </div>
+        <div class="card card--ai">
+          <h4>IIR &harr; Mamba / SSM</h4>
+          <ul style="font-size:13px; color:var(--text-dim); margin-top:var(--sp-sm); padding-left:var(--sp-md); line-height:1.9;">
+            <li>Compresses context into <strong>fixed-size state</strong></li>
+            <li>Infinite effective memory (exponential decay)</li>
+            <li>Hidden state with feedback (recurrence)</li>
+            <li>O(L) cost for sequence length L</li>
+            <li>Approximate recall (lossy compression)</li>
+            <li>Must control eigenvalues for stability</li>
+            <li>State transition (A matrix) learned from data</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="insight-box">
+        <div class="insight-box__title">The Deep Connection</div>
+        <div class="insight-box__content">
+          Attention sees the <em>entire</em> context at each step (like an FIR filter scanning its full window). Mamba compresses the past into a fixed-size hidden state that evolves recurrently (like an IIR filter's feedback). Both approaches have the same goal &mdash; use past information to produce good outputs &mdash; but make fundamentally different tradeoffs in how they store and access that information. The FIR/IIR framework gives us the mathematical language to reason about these tradeoffs precisely.
+        </div>
+      </div>
+
+      <div class="bridge-teaser">
+        <div class="bridge-teaser__label">Looking Ahead</div>
+        <div class="bridge-teaser__content">
+          In <strong>Chapter 8</strong>, we'll see what happens when fixed filters aren't enough: <em>adaptive filters</em> that learn their coefficients from data in real-time. This is the final DSP concept before we cross into AI territory &mdash; and adaptive filtering is the direct ancestor of neural network training.
+        </div>
+      </div>
+    </section>
+
+    <!-- === TOOL 7.1: Filter Design Workbench === -->
+    <section class="chapter-section" id="tool-design">
+      <h2 class="chapter-section__title">Interactive Tool</h2>
+
+      <div class="tool-container" id="filterDesignTool">
+        <div class="tool-header">
+          <span class="tool-header__icon">&#9881;</span>
+          <span class="tool-header__title">Tool 7.1 &mdash; Filter Design Workbench</span>
+          <span class="tool-header__badge">Flagship</span>
+        </div>
+
+        <div class="tool-body">
+          <p style="font-size:14px; color:var(--text-dim); margin-bottom:var(--sp-md);">
+            Design FIR and IIR filters side-by-side with the same specification. Compare their frequency responses,
+            impulse responses, and computational cost. The FIR uses windowed sinc design; the IIR uses Butterworth via bilinear transform.
+            Listen to the difference by filtering a test signal through each.
+          </p>
+          <div class="tool-canvas-wrapper"></div>
+        </div>
+
+        <div class="tool-controls">
+          <div class="control-group">
+            <label class="control-label">Filter Type</label>
+            <select class="control-select" data-control="filter-type">
+              <option value="lowpass" selected>Lowpass</option>
+              <option value="highpass">Highpass</option>
+            </select>
+          </div>
+          <div class="control-group">
+            <label class="control-label">Cutoff <span class="control-value" aria-live="polite" data-value="cutoff">0.25</span></label>
+            <input type="range" data-control="cutoff" min="0.05" max="0.45" value="0.25" step="0.01">
+          </div>
+          <div class="control-group">
+            <label class="control-label">FIR Taps <span class="control-value" aria-live="polite" data-value="fir-order">31</span></label>
+            <input type="range" data-control="fir-order" min="5" max="101" value="31" step="2">
+          </div>
+          <div class="control-group">
+            <label class="control-label">IIR Order <span class="control-value" aria-live="polite" data-value="iir-order">4</span></label>
+            <input type="range" data-control="iir-order" min="1" max="8" value="4" step="1">
+          </div>
+          <div class="control-group">
+            <label class="control-label">Window</label>
+            <select class="control-select" data-control="window-type">
+              <option value="hamming" selected>Hamming</option>
+              <option value="hann">Hann</option>
+              <option value="blackman">Blackman</option>
+              <option value="rectangular">Rectangular</option>
+            </select>
+          </div>
+          <div class="control-group">
+            <label class="control-label">View</label>
+            <select class="control-select" data-control="design-view">
+              <option value="both" selected>Both (overlay)</option>
+              <option value="fir">FIR only</option>
+              <option value="iir">IIR only</option>
+            </select>
+          </div>
+          <div class="control-group" style="display:flex; gap:var(--sp-sm); justify-content:center; flex-wrap:wrap;">
+            <button class="btn" data-action="play-raw">&#9654; Original</button>
+            <button class="btn" data-action="play-fir">&#9654; FIR</button>
+            <button class="btn" data-action="play-iir">&#9654; IIR</button>
+            <button class="btn" data-action="stop-design">&#9632; Stop</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="insight-box" style="margin-top:var(--sp-lg);">
+        <div class="insight-box__title">Try this</div>
+        <div class="insight-box__content">
+          <strong>1.</strong> Start with Lowpass, cutoff 0.25, FIR 31 taps, IIR order 4. Both curves overlap &mdash; they achieve similar filtering. But look at the impulse response: FIR (cyan stems) is finite; IIR (orange line) decays to infinity.<br>
+          <strong>2.</strong> Increase FIR taps to 101. The FIR transition band gets sharper. Now decrease to 11 &mdash; the FIR response barely rolls off. Meanwhile the IIR (order 4) maintains sharp cutoff with only 9 coefficients.<br>
+          <strong>3.</strong> Set FIR taps to 11 and IIR order to 2. Click "Original" then "FIR" then "IIR" to hear the difference. IIR achieves better filtering with fewer operations.<br>
+          <strong>4.</strong> Switch window from Hamming to Rectangular. Notice the ripples (side lobes) that appear in the FIR response. Hamming suppresses these at the cost of a slightly wider transition.<br>
+          <strong>5.</strong> Switch to Highpass. The responses invert &mdash; low frequencies are blocked, high frequencies pass. The zero at z=1 (DC) blocks the constant component.<br>
+          <strong>6.</strong> Bottom section shows coefficient counts: FIR needs 31 multiplies per sample vs IIR's ~9. For the same result, IIR is ~3&times; more efficient. This efficiency gap maps directly to Attention (expensive, thorough) vs Mamba (cheap, compressed).
+        </div>
+      </div>
+    </section>
+
+    <!-- === TOOL 7.2: Audio Filter Playground === -->
+    <section class="chapter-section" id="tool-audio">
+      <h2 class="chapter-section__title">Interactive Tool</h2>
+
+      <div class="tool-container" id="audioFilterTool">
+        <div class="tool-header">
+          <span class="tool-header__icon">&#127911;</span>
+          <span class="tool-header__title">Tool 7.2 &mdash; Audio Filter Playground</span>
+          <span class="tool-header__badge">Interactive</span>
+        </div>
+
+        <div class="tool-body">
+          <p style="font-size:14px; color:var(--text-dim); margin-bottom:var(--sp-md);">
+            See and hear what filters do to real audio signals. The top panel shows original (cyan) vs filtered (orange)
+            waveforms. The bottom panel shows their frequency spectra. Adjust the cutoff and listen to how the sound changes.
+          </p>
+          <div class="tool-canvas-wrapper"></div>
+        </div>
+
+        <div class="tool-controls">
+          <div class="control-group">
+            <label class="control-label">Signal</label>
+            <select class="control-select" data-control="audio-signal">
+              <option value="mixed" selected>Mixed Frequencies</option>
+              <option value="speech-like">Speech-like</option>
+              <option value="noise">White Noise</option>
+              <option value="chirp">Chirp (Sweep)</option>
+            </select>
+          </div>
+          <div class="control-group">
+            <label class="control-label">Filter</label>
+            <select class="control-select" data-control="audio-filter-mode">
+              <option value="lowpass" selected>Lowpass</option>
+              <option value="highpass">Highpass</option>
+            </select>
+          </div>
+          <div class="control-group">
+            <label class="control-label">Cutoff <span class="control-value" aria-live="polite" data-value="audio-cutoff">0.25</span></label>
+            <input type="range" data-control="audio-cutoff" min="0.05" max="0.45" value="0.25" step="0.01">
+          </div>
+          <div class="control-group">
+            <label class="control-label">Method</label>
+            <select class="control-select" data-control="audio-method">
+              <option value="fir" selected>FIR (windowed sinc)</option>
+              <option value="iir">IIR (recursive)</option>
+            </select>
+          </div>
+          <div class="control-group">
+            <label class="control-label">Order <span class="control-value" aria-live="polite" data-value="audio-order">21</span></label>
+            <input type="range" data-control="audio-order" min="3" max="61" value="21" step="2">
+          </div>
+          <div class="control-group" style="display:flex; gap:var(--sp-sm); justify-content:center;">
+            <button class="btn" data-action="play-original">&#9654; Original</button>
+            <button class="btn" data-action="play-filtered">&#9654; Filtered</button>
+            <button class="btn" data-action="stop-audio-filter">&#9632; Stop</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="insight-box" style="margin-top:var(--sp-lg);">
+        <div class="insight-box__title">Try this</div>
+        <div class="insight-box__content">
+          <strong>1.</strong> Start with "Mixed Frequencies" + Lowpass at cutoff 0.25. Press "Original" &mdash; hear all frequencies. Press "Filtered" &mdash; high frequencies are gone, sound is muffled. The spectrum shows the difference clearly: energy above the cutoff line disappears.<br>
+          <strong>2.</strong> Switch to Highpass. Now the low frequencies are removed &mdash; the sound becomes thin and tinny. The spectrum confirms: only energy above the cutoff survives.<br>
+          <strong>3.</strong> Drag the cutoff slider while watching the spectrum. See the filter boundary move in real-time. Very low cutoff = almost no sound passes. Very high cutoff = almost everything passes.<br>
+          <strong>4.</strong> Try "Chirp" + Lowpass. The original sweeps from low to high. After filtering, the sweep abruptly stops when it hits the cutoff frequency &mdash; you can hear the moment the filter kicks in.<br>
+          <strong>5.</strong> Try "White Noise" + Lowpass. Noise has energy at all frequencies. Filtering removes the hiss and leaves a rumble. Switch to Highpass &mdash; you get only the hiss without the rumble.<br>
+          <strong>6.</strong> Compare FIR vs IIR on the same signal. Switch method and listen &mdash; the filtering effect is similar but subtle differences in phase behavior can be audible on transient-rich signals.
+        </div>
+      </div>
+    </section>
+
+    <!-- Further Reading -->
+    <section class="content-section" id="further-reading">
+      <h2 class="section-heading">Further Reading</h2>
+      <ul class="further-reading-list">
+        <li>
+          <a href="https://ccrma.stanford.edu/~jos/sasp/FIR_Digital_Filter_Design.html" target="_blank" rel="noopener">FIR Digital Filter Design</a>
+          <span class="further-reading__authors">Smith, J.O. — Stanford CCRMA</span>
+          <span class="further-reading__note">Windowed sinc design, Parks-McClellan, and optimal FIR methods</span>
+        </li>
+        <li>
+          <a href="https://www.dspguide.com/ch14.htm" target="_blank" rel="noopener">DSP Guide — Introduction to Digital Filters</a>
+          <span class="further-reading__authors">Smith, S.W. — Free online</span>
+          <span class="further-reading__note">Practical FIR and IIR design with worked examples</span>
+        </li>
+        <li>
+          <a href="https://en.wikipedia.org/wiki/Butterworth_filter" target="_blank" rel="noopener">Butterworth Filter Design</a>
+          <span class="further-reading__authors">Wikipedia</span>
+          <span class="further-reading__note">Mathematical derivation and properties of maximally-flat magnitude response</span>
+        </li>
+      </ul>
+    </section>
+
+    <!-- Chapter Navigation -->
+    <nav class="chapter-nav" aria-label="Chapter navigation"></nav>
+
+  </main>
+</div>
+
+<!-- Scripts -->
+<script src="../../js/core/navigation.js"></script>
+<script src="../../js/core/progressive-disclosure.js"></script>
+<script src="../../js/core/chapter-nav.js"></script>
+<script src="../../js/tools/shared/signal-generator.js"></script>
+<script src="../../js/tools/shared/plot-utils.js"></script>
+<script src="../../js/tools/shared/audio-engine.js"></script>
+<script src="../../js/tools/ch07-filter-design.js"></script>
+<script src="../../js/tools/ch07-audio-filter.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    DSPtoAI.FilterDesign.init('filterDesignTool');
+    DSPtoAI.AudioFilter.init('audioFilterTool');
+  });
+</script>
+
+<script src="../../js/core/search-index.js"></script>
+<script src="../../js/core/search.js"></script>
+</body>
+</html>

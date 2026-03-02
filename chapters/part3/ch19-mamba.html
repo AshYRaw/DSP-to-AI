@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ch 19: Mamba &mdash; DSP to AI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Outfit:wght@300;400;500;600;700;800;900&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../style/global.css">
+  <link rel="stylesheet" href="../../style/theme-dark.css">
+  <link rel="stylesheet" href="../../style/theme-light.css">
+  <link rel="stylesheet" href="../../style/components.css">
+  <link rel="stylesheet" href="../../style/chapter.css">
+  <script src="../../js/core/theme-switcher.js"></script>
+</head>
+<body>
+
+<div class="noise"></div>
+
+<!-- Navigation -->
+<nav class="site-nav">
+  <a href="../../index.html" class="site-nav__logo">DSP <span class="arrow">&rarr;</span> AI</a>
+  <ul class="site-nav__links">
+    <li><a href="../../index.html#part1">Part I</a></li>
+    <li><a href="../../index.html#part2">Part II</a></li>
+    <li><a href="../../index.html#part3" class="active">Part III</a></li>
+    <li><a href="../../index.html#part4">Part IV</a></li>
+    <li><a href="../../gallery/index.html">Gallery</a></li>
+    <li><a href="../../reference/glossary.html">Reference</a></li>
+  </ul>
+  <button class="search-toggle" aria-label="Search site (press /)">🔍</button>
+  <button class="theme-toggle" aria-label="Toggle theme"></button>
+  <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false">&#9776;</button>
+</nav>
+<div class="progress-bar"></div>
+
+<!-- Page Layout -->
+<div class="chapter-page" data-chapter-id="ch19">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar__part-label">Part III: The Bridge</div>
+    <ul class="sidebar__chapters">
+      <li><a class="sidebar__chapter-link" href="ch16-rosetta.html"><span class="sidebar__chapter-num">16</span> The Rosetta Stone</a></li>
+      <li><a class="sidebar__chapter-link" href="ch17-matched-to-attn.html"><span class="sidebar__chapter-num">17</span> Matched Filter &rarr; Attention</a></li>
+      <li><a class="sidebar__chapter-link" href="ch18-ssm.html"><span class="sidebar__chapter-num">18</span> State-Space Models</a></li>
+      <li><a class="sidebar__chapter-link active" href="ch19-mamba.html"><span class="sidebar__chapter-num">19</span> Mamba</a>
+        <ul class="sidebar__sections">
+          <li><a class="sidebar__section-link" href="#problem">The S4 Limitation</a></li>
+          <li><a class="sidebar__section-link" href="#selection">Selection Mechanism</a></li>
+          <li><a class="sidebar__section-link" href="#hardware">Hardware-Aware Scan</a></li>
+          <li><a class="sidebar__section-link" href="#architecture">Mamba Block</a></li>
+          <li><a class="sidebar__section-link" href="#iir-bridge">Mamba = Learnable IIR</a></li>
+          <li><a class="sidebar__section-link" href="#results">Why It Works</a></li>
+          <li><a class="sidebar__section-link" href="#tool-mamba-block">Mamba Block Sim</a></li>
+          <li><a class="sidebar__section-link" href="#tool-selective-scan">Selective Scan</a></li>
+          <li><a class="sidebar__section-link" href="#tool-mamba-iir">Mamba &harr; IIR</a></li>
+        </ul>
+      </li>
+      <li><a class="sidebar__chapter-link" href="ch20-attn-vs-mamba.html"><span class="sidebar__chapter-num">20</span> Attention vs Mamba</a></li>
+    </ul>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="chapter-content">
+
+    <nav class="breadcrumb" aria-label="Breadcrumb"></nav>
+
+    <header class="chapter-header">
+      <div class="chapter-header__part">Part III &mdash; The Bridge</div>
+      <div class="chapter-header__number">Chapter 19</div>
+      <h1 class="chapter-header__title">Mamba &mdash; The Learnable IIR Filter Bank</h1>
+      <p class="chapter-header__subtitle">
+        S4 proved that state-space models could rival Transformers. But it had a critical
+        limitation: <em>fixed</em> dynamics. The A, B, C matrices didn&rsquo;t change based on
+        the input &mdash; the system processed every token with the same filter. Mamba&rsquo;s
+        breakthrough: make the SSM parameters <strong>input-dependent</strong>. In DSP terms,
+        this turns a fixed IIR filter bank into a <em>learnable, adaptive</em> one &mdash;
+        where the filter coefficients change at every timestep based on what the signal looks like.
+      </p>
+    </header>
+
+    <!-- ============================================================
+         19.1 — The S4 Limitation
+         ============================================================ -->
+    <section class="content-section" id="problem">
+      <h2 class="section-heading"><span class="section-number">19.1</span> The S4 Limitation &mdash; Content-Blind Processing</h2>
+
+      <p>
+        Recall from Chapter 18: S4&rsquo;s state-space model uses fixed matrices A, B, C that
+        are the same for every input token. The discretized recurrence is:
+      </p>
+
+      <div class="math-block">
+        <code>
+          x[n+1] = A&#x0305; x[n] + B&#x0305; u[n] &nbsp;&nbsp; (A&#x0305;, B&#x0305; fixed for all n)<br>
+          y[n] &nbsp;&nbsp;= C x[n]
+        </code>
+      </div>
+
+      <p>
+        This is a <strong>Linear Time-Invariant (LTI)</strong> system &mdash; the exact class
+        of systems we studied in DSP (Chapter 2). LTI systems are powerful for many tasks, but
+        they have a fundamental limitation: they process a keyword and noise with the same
+        dynamics. They can&rsquo;t <em>decide</em> what to remember and what to forget based
+        on the content they see.
+      </p>
+
+      <div class="card-grid" style="grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));">
+        <div class="concept-card">
+          <h3 class="concept-card__title">S4&rsquo;s Strength</h3>
+          <p class="concept-card__body">
+            Fixed dynamics + convolution-recurrence duality = efficient training and inference.
+            Excellent on continuous signals (audio, time series) where the same dynamics apply
+            uniformly.
+          </p>
+        </div>
+        <div class="concept-card">
+          <h3 class="concept-card__title">S4&rsquo;s Weakness</h3>
+          <p class="concept-card__body">
+            Cannot perform <strong>content-based reasoning</strong>. Struggles with tasks
+            like selective copying (&ldquo;copy only the vowels&rdquo;) or induction heads
+            (&ldquo;after pattern AB, predict B&rdquo;). The system is blind to <em>what</em>
+            the input contains.
+          </p>
+        </div>
+      </div>
+
+      <p>
+        In DSP terms: S4 is a beautifully designed <strong>fixed filter bank</strong>. But
+        language understanding requires an <strong>adaptive filter</strong> &mdash; one that
+        changes its coefficients based on the signal content. This is exactly the leap from
+        Chapter 7 (fixed filters) to Chapter 8 (adaptive filters), now applied at the scale
+        of deep learning.
+      </p>
+    </section>
+
+    <!-- ============================================================
+         19.2 — The Selection Mechanism
+         ============================================================ -->
+    <section class="content-section" id="selection">
+      <h2 class="section-heading"><span class="section-number">19.2</span> The Selection Mechanism &mdash; Input-Dependent SSM</h2>
+
+      <p>
+        Mamba&rsquo;s key innovation (Gu &amp; Dao, 2023) is radical and simple: make the
+        SSM parameters <strong>functions of the input</strong>.
+      </p>
+
+      <div class="math-block" style="font-size: 1.05em;">
+        <code>
+          &Delta;[n] = softplus(Linear(u[n])) &nbsp;&nbsp; (step size &mdash; input-dependent!)<br>
+          B[n] &nbsp;&nbsp;= Linear(u[n]) &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (input matrix &mdash; input-dependent!)<br>
+          C[n] &nbsp;&nbsp;= Linear(u[n]) &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (output matrix &mdash; input-dependent!)<br><br>
+          A&#x0305;[n] = e^{A&middot;&Delta;[n]} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (discretized with input-dependent &Delta;)<br>
+          B&#x0305;[n] = (&Delta;[n] &middot; A)&supmin;&sup1;(A&#x0305;[n] - I) &middot; &Delta;[n] &middot; B[n] &nbsp; (exact ZOH)<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&asymp; &Delta;[n] &middot; B[n] &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (Euler approximation, used in practice)
+        </code>
+      </div>
+
+      <p>
+        Now the state transition matrix A&#x0305;[n] and input matrix B&#x0305;[n] change at
+        <em>every single timestep</em>. The system is no longer LTI &mdash; it is
+        <strong>Linear Time-Varying (LTV)</strong>.
+      </p>
+
+      <div class="card-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+        <div class="concept-card">
+          <h3 class="concept-card__title">&Delta;[n] &mdash; The Gate</h3>
+          <p class="concept-card__body">
+            Controls <em>how much</em> to update the state. Large &Delta; = absorb the current
+            input strongly. Small &Delta; = ignore it, preserve existing memory. This is the
+            <strong>forget/remember gate</strong>.
+          </p>
+        </div>
+        <div class="concept-card">
+          <h3 class="concept-card__title">B[n] &mdash; The Input Selector</h3>
+          <p class="concept-card__body">
+            Controls <em>which dimensions</em> of the state receive the input. Different tokens
+            project into different subspaces &mdash; the network learns <em>where</em> to store
+            each type of information.
+          </p>
+        </div>
+        <div class="concept-card">
+          <h3 class="concept-card__title">C[n] &mdash; The Output Reader</h3>
+          <p class="concept-card__body">
+            Controls <em>what to read</em> from the state. Each token&rsquo;s output is a
+            different linear combination of the state dimensions &mdash; reading different
+            &ldquo;memories&rdquo; depending on context.
+          </p>
+        </div>
+        <div class="concept-card">
+          <h3 class="concept-card__title">A &mdash; The Backbone</h3>
+          <p class="concept-card__body">
+            Stays <strong>fixed</strong> (diagonal, initialized with HiPPO). It provides the
+            base dynamics. &Delta;[n] modulates it: e^{A&middot;&Delta;[n]} varies from
+            &ldquo;full decay&rdquo; to &ldquo;perfect memory&rdquo;.
+          </p>
+        </div>
+      </div>
+
+      <div class="progressive-section">
+        <button class="progressive-toggle" aria-expanded="false">Show the Math</button>
+        <div class="progressive-content">
+          <p><strong>Why &Delta; is the master control:</strong></p>
+          <p>
+            Since A is diagonal with negative entries (from HiPPO), the discrete eigenvalues
+            are e^{a_i &middot; &Delta;[n]}. When &Delta;[n] &rarr; 0, each eigenvalue
+            &rarr; e^0 = 1: the state is <em>perfectly preserved</em> (no decay). When
+            &Delta;[n] is large, eigenvalues &rarr; 0: the state is <em>flushed</em>,
+            making room for new input via B[n].
+          </p>
+          <div class="math-block">
+            <code>
+              &Delta;[n] &rarr; 0: &nbsp; A&#x0305;[n] &rarr; I (identity) &nbsp;&rarr; state preserved<br>
+              &Delta;[n] &rarr; &infin;: A&#x0305;[n] &rarr; 0 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &rarr; state flushed
+            </code>
+          </div>
+          <p>
+            This is functionally analogous to the LSTM forget gate:
+            f[n] = &sigma;(W_f x[n] + b_f). Both control state retention based on the input.
+            The difference: LSTM uses a sigmoid producing values in (0,1) that directly scale the cell state,
+            while Mamba exponentiates continuous-time decay rates e<sup>a&middot;&Delta;</sup>,
+            which is more principled from the SSM perspective.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         19.3 — Hardware-Aware Parallel Scan
+         ============================================================ -->
+    <section class="content-section" id="hardware">
+      <h2 class="section-heading"><span class="section-number">19.3</span> The Hardware-Aware Parallel Scan</h2>
+
+      <p>
+        Making B, C, &Delta; input-dependent creates a problem: the system is no longer LTI,
+        so the convolution-recurrence duality from Chapter 18 <strong>breaks</strong>.
+        You can&rsquo;t pre-compute a global convolution kernel because the kernel changes at
+        every timestep.
+      </p>
+
+      <p>
+        Mamba&rsquo;s solution: the <strong>parallel associative scan</strong>, implemented with
+        a hardware-aware algorithm by Tri Dao.
+      </p>
+
+      <div class="card-grid" style="grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));">
+        <div class="concept-card">
+          <h3 class="concept-card__title">The Naive Problem</h3>
+          <p class="concept-card__body">
+            Sequential recurrence: x[n] depends on x[n-1]. Processing T tokens takes O(T)
+            sequential steps. On GPUs with thousands of parallel cores, this is wasteful.
+          </p>
+        </div>
+        <div class="concept-card">
+          <h3 class="concept-card__title">The Scan Solution</h3>
+          <p class="concept-card__body">
+            The recurrence x[n] = A&#x0305;[n] x[n-1] + B&#x0305;[n] u[n] is an
+            <strong>associative operation</strong>. Associative operations can be parallelized
+            via prefix scan in O(log T) parallel steps &mdash; a classic parallel algorithms
+            technique.
+          </p>
+        </div>
+      </div>
+
+      <div class="progressive-section">
+        <button class="progressive-toggle" aria-expanded="false">Show the Math</button>
+        <div class="progressive-content">
+          <p><strong>Associativity of the SSM recurrence:</strong></p>
+          <p>
+            Define the binary operator &oplus; on pairs (a, b):
+          </p>
+          <div class="math-block">
+            <code>
+              (a_2, b_2) &oplus; (a_1, b_1) = (a_2 &middot; a_1, &nbsp; a_2 &middot; b_1 + b_2)
+            </code>
+          </div>
+          <p>Then the SSM recurrence x[n] = A&#x0305;[n] x[n-1] + B&#x0305;[n] u[n] is equivalent to:</p>
+          <div class="math-block">
+            <code>
+              (A&#x0305;[n], B&#x0305;[n] u[n]) &oplus; (A&#x0305;[n-1], B&#x0305;[n-1] u[n-1]) &oplus; &hellip; &oplus; (A&#x0305;[1], B&#x0305;[1] u[1])
+            </code>
+          </div>
+          <p>
+            Since &oplus; is associative, the prefix scan computes all partial products
+            in O(log T) parallel steps using a balanced binary tree. For T = 1024, this means
+            ~10 parallel steps instead of 1024 sequential ones.
+          </p>
+          <p><strong>Hardware awareness:</strong> Dao&rsquo;s implementation avoids
+            materializing the full (T &times; N) state matrix in GPU HBM. Instead, it keeps
+            the scan in fast SRAM and writes only the final outputs to HBM, reducing memory
+            IO by orders of magnitude.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         19.4 — The Mamba Block
+         ============================================================ -->
+    <section class="content-section" id="architecture">
+      <h2 class="section-heading"><span class="section-number">19.4</span> The Mamba Block</h2>
+
+      <p>
+        The full Mamba block wraps the selective SSM in a gated architecture inspired by
+        gated MLPs and the H3 architecture:
+      </p>
+
+      <div class="math-block" style="font-size: 0.95em;">
+        <code>
+          Input: u &isin; &Ropf;^{T &times; D}<br><br>
+          Branch A: &nbsp; z = Linear(u) &rarr; SiLU &rarr; Conv1D(k=4) &rarr; SelectiveSSM &rarr; z'<br>
+          Branch B: &nbsp; g = Linear(u) &rarr; SiLU<br><br>
+          Output: &nbsp;&nbsp; y = Linear(z' &otimes; g) &nbsp;&nbsp; (&otimes; = element-wise multiply)
+        </code>
+      </div>
+
+      <div class="card-grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));">
+        <div class="concept-card">
+          <h3 class="concept-card__title">Expand &rarr; Process &rarr; Project</h3>
+          <p class="concept-card__body">
+            The input is projected to a larger dimension (expansion factor 2&times;), processed
+            by the selective SSM, then projected back. This inner expansion gives the SSM more
+            capacity without increasing the model&rsquo;s external dimension.
+          </p>
+        </div>
+        <div class="concept-card">
+          <h3 class="concept-card__title">Conv1D (k=4)</h3>
+          <p class="concept-card__body">
+            A short depthwise 1D convolution before the SSM. It provides local context
+            (like a bigram/trigram) that the SSM&rsquo;s &Delta;, B, C projections can use
+            to make better selection decisions. Think of it as a <strong>local feature
+            extractor</strong> before the global filter.
+          </p>
+        </div>
+        <div class="concept-card">
+          <h3 class="concept-card__title">Gating Branch</h3>
+          <p class="concept-card__body">
+            The parallel branch (SiLU activation) acts as a multiplicative gate on the SSM
+            output. This is the same design pattern as GLU (Gated Linear Units) &mdash; letting
+            one branch control the information flow of the other.
+          </p>
+        </div>
+        <div class="concept-card">
+          <h3 class="concept-card__title">No Attention, No MLP</h3>
+          <p class="concept-card__body">
+            A Mamba layer <strong>replaces</strong> both the attention and feed-forward blocks
+            of a Transformer. The SSM handles sequence mixing, the gating provides
+            nonlinearity. This simplifies the architecture dramatically.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         19.5 — DSP Bridge: Mamba = Learnable IIR Filter Bank
+         ============================================================ -->
+    <section class="content-section bridge-teaser" id="iir-bridge">
+      <h2 class="section-heading"><span class="section-number">19.5</span> The DSP Bridge &mdash; Mamba as a Learnable IIR Filter Bank</h2>
+
+      <p>
+        This is the deepest connection in the entire course. Let&rsquo;s build the complete
+        mapping between Mamba and classical DSP:
+      </p>
+
+      <table class="comparison-table">
+        <thead>
+          <tr>
+            <th>DSP Concept</th>
+            <th>Mamba Equivalent</th>
+            <th>Key Difference from S4</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Fixed IIR filter bank</td>
+            <td>S4 (Chapter 18)</td>
+            <td>Same filter for all inputs</td>
+          </tr>
+          <tr>
+            <td><strong>Adaptive IIR filter bank</strong></td>
+            <td><strong>Mamba (this chapter)</strong></td>
+            <td><strong>Filter coefficients change per input</strong></td>
+          </tr>
+          <tr>
+            <td>LMS adaptation (Ch 8)</td>
+            <td>&Delta;[n] = softplus(Linear(u[n]))</td>
+            <td>LMS uses error signal; Mamba uses input directly</td>
+          </tr>
+          <tr>
+            <td>Filter poles (Ch 6)</td>
+            <td>Eigenvalues of e^{A&middot;&Delta;[n]}</td>
+            <td>Poles <em>move</em> at every timestep via &Delta;[n]</td>
+          </tr>
+          <tr>
+            <td>Pole radius (stability)</td>
+            <td>|e^{a_i &middot; &Delta;[n]}|</td>
+            <td>Decay rate adapts: fast decay (forget) vs slow decay (remember)</td>
+          </tr>
+          <tr>
+            <td>Filter bank channels</td>
+            <td>D independent SSM channels</td>
+            <td>Each channel has its own &Delta;, B, C &mdash; each adapts independently</td>
+          </tr>
+          <tr>
+            <td>Mel filter bank (Ch 8)</td>
+            <td>HiPPO-initialized A matrix</td>
+            <td>Mel is perceptually motivated; HiPPO is optimally motivated</td>
+          </tr>
+          <tr>
+            <td>Adaptive noise cancellation</td>
+            <td>Selective forgetting via large &Delta;</td>
+            <td>Mamba learns to cancel irrelevant tokens, not acoustic noise</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <p>
+        The DSP engineer&rsquo;s interpretation of Mamba: <strong>at every timestep, the network
+        examines the incoming token, adjusts the pole locations of D parallel IIR filters
+        (via &Delta;), adjusts the input routing (via B), adjusts the output mixing (via C),
+        and then runs one step of each filter.</strong> The state vector across all D channels
+        is the compressed memory of the entire sequence history, shaped by content-aware
+        filtering.
+      </p>
+
+      <div class="progressive-section">
+        <button class="progressive-toggle" aria-expanded="false">Show the Math</button>
+        <div class="progressive-content">
+          <p><strong>The complete Mamba-IIR correspondence for a single channel:</strong></p>
+          <div class="math-block">
+            <code>
+              IIR filter state: &nbsp;&nbsp; s[n] = a[n] &middot; s[n-1] + b[n] &middot; u[n]<br>
+              Mamba SSM state: &nbsp; x[n] = e^{A &Delta;[n]} x[n-1] + &Delta;[n] B[n] u[n]<br><br>
+              IIR output: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; y[n] = c &middot; s[n]<br>
+              Mamba output: &nbsp;&nbsp;&nbsp;&nbsp; y[n] = C[n] x[n]
+            </code>
+          </div>
+          <p>
+            In the fixed case (&Delta;, B, C constant), this is literally an IIR filter.
+            Mamba generalizes to the time-varying case where a[n], b[n], c[n] are all
+            functions of u[n]. The &ldquo;filter&rdquo; reshapes itself at every sample.
+          </p>
+          <p><strong>What &Delta; controls in pole terms:</strong></p>
+          <p>
+            For a diagonal A with entries a_i &lt; 0 (guaranteed by initialization), the
+            discrete pole radius for channel i at timestep n is:
+          </p>
+          <div class="math-block">
+            <code>
+              |pole_i[n]| = |e^{a_i &middot; &Delta;[n]}| = e^{a_i &middot; &Delta;[n]}
+            </code>
+          </div>
+          <p>
+            Since a_i &lt; 0 and &Delta;[n] &gt; 0 (softplus output), the pole is always
+            inside the unit circle (stable!). When &Delta; is small, the pole is near |z| = 1
+            (long memory). When &Delta; is large, the pole moves toward |z| = 0 (fast decay,
+            state reset). The network learns to modulate this continuously.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         19.6 — Why It Works
+         ============================================================ -->
+    <section class="content-section" id="results">
+      <h2 class="section-heading"><span class="section-number">19.6</span> Why Mamba Works &mdash; The Computational Advantage</h2>
+
+      <div class="card-grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));">
+        <div class="concept-card">
+          <h3 class="concept-card__title">O(T) vs O(T&sup2;)</h3>
+          <p class="concept-card__body">
+            Attention computes all-pairs similarity: O(T&sup2;) in sequence length. Mamba&rsquo;s
+            scan is O(T). For a 100K-token document, that&rsquo;s 10 billion operations vs
+            100 thousand. Not even close.
+          </p>
+        </div>
+        <div class="concept-card">
+          <h3 class="concept-card__title">O(1) Inference per Token</h3>
+          <p class="concept-card__body">
+            During generation, Mamba processes each new token by updating a fixed-size state
+            vector. No growing KV cache. The 1000th token is as fast as the 1st. This is the
+            IIR advantage: constant memory, constant time.
+          </p>
+        </div>
+        <div class="concept-card">
+          <h3 class="concept-card__title">Content-Based Reasoning</h3>
+          <p class="concept-card__body">
+            Unlike S4, Mamba solves selective copying, induction heads, and in-context learning.
+            The selection mechanism gives it the ability to <em>decide</em> what to store and
+            retrieve &mdash; approaching attention&rsquo;s capability with linear cost.
+          </p>
+        </div>
+        <div class="concept-card">
+          <h3 class="concept-card__title">Linear Scaling with State Size</h3>
+          <p class="concept-card__body">
+            Mamba-2 (Dao &amp; Gu, 2024) increases state dimension from N=16 to N=128+
+            by exploiting matrix structure. More state = better memory = better performance,
+            with efficient hardware utilization.
+          </p>
+        </div>
+      </div>
+
+      <p>
+        Mamba-1 (2023) matched Transformer quality at half the parameter count on language
+        modeling. Mamba-2 (2024) further closed the gap by showing that the selective SSM
+        is equivalent to a structured form of attention &mdash; unifying the two paradigms
+        mathematically.
+      </p>
+    </section>
+
+    <!-- ============================================================
+         TOOL 19.1 — Mamba Block Simulator
+         ============================================================ -->
+    <section class="content-section" id="tool-mamba-block">
+      <h2 class="section-heading"><span class="section-number">Tool 19.1</span> Mamba Block Simulator</h2>
+
+      <p>
+        Watch data flow through a complete Mamba block. The input sequence is projected,
+        convolved locally, processed by the selective SSM, gated, and projected back.
+        Observe how the &Delta; values change per token &mdash; high &Delta; means
+        &ldquo;absorb this token,&rdquo; low &Delta; means &ldquo;ignore it.&rdquo;
+      </p>
+
+      <div class="tool-container" id="tool-mamba-block-sim">
+        <div class="tool-header">
+          <span class="tool-header__label">Tool 19.1</span>
+          <span class="tool-header__title">Mamba Block Simulator</span>
+        </div>
+        <div class="tool-body">
+          <div class="tool-controls">
+            <div class="control-group">
+              <label class="control-label">Input Sequence</label>
+              <select class="tool-select" data-control="mamba-input">
+                <option value="selective">Selective Copy (keyword + noise)</option>
+                <option value="memorize">Memorize &amp; Recall</option>
+                <option value="impulse">Single Impulse</option>
+                <option value="periodic">Periodic Signal</option>
+              </select>
+            </div>
+            <div class="control-group">
+              <label class="control-label">State Dim N</label>
+              <select class="tool-select" data-control="mamba-N">
+                <option value="4">4</option>
+                <option value="8" selected>8</option>
+                <option value="16">16</option>
+              </select>
+            </div>
+          </div>
+          <div class="tool-controls" style="padding-top: 0;">
+            <div class="control-group">
+              <label class="control-label">Expansion Factor</label>
+              <input type="range" min="1" max="4" value="2" step="1" data-control="mamba-expand">
+              <span class="control-value" aria-live="polite" data-value="mamba-expand">2</span>
+            </div>
+            <div class="control-group">
+              <label class="control-label">Observe Token</label>
+              <input type="range" min="0" max="15" value="8" step="1" data-control="mamba-token">
+              <span class="control-value" aria-live="polite" data-value="mamba-token">8</span>
+            </div>
+          </div>
+          <div class="tool-canvas-wrapper"></div>
+        </div>
+      </div>
+
+      <div class="insight-box">
+        <h3 class="insight-box__title">Try This</h3>
+        <ul>
+          <li>Select <strong>Selective Copy</strong> &mdash; watch &Delta; spike on keyword tokens (red) and stay low on noise tokens (gray). The SSM learns to only absorb the keywords.</li>
+          <li>Drag <strong>Observe Token</strong> through the sequence &mdash; see how the state evolves. After a keyword, the state changes dramatically. After noise, it barely moves.</li>
+          <li>Increase <strong>State Dim N</strong> from 4 to 16. The state heatmap becomes richer &mdash; more dimensions means finer-grained memory.</li>
+          <li>Watch the <strong>gating branch</strong> (bottom) &mdash; it multiplicatively controls which SSM outputs pass through.</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         TOOL 19.2 — Selective Scan Visualizer
+         ============================================================ -->
+    <section class="content-section" id="tool-selective-scan">
+      <h2 class="section-heading"><span class="section-number">Tool 19.2</span> Selective Scan Visualizer</h2>
+
+      <p>
+        Compare fixed-parameter SSM (S4-style) vs input-dependent SSM (Mamba-style).
+        Watch how the selection mechanism lets Mamba focus on important tokens while S4
+        treats everything uniformly.
+      </p>
+
+      <div class="tool-container" id="tool-selective-scan-viz">
+        <div class="tool-header">
+          <span class="tool-header__label">Tool 19.2</span>
+          <span class="tool-header__title">Selective Scan &mdash; Fixed vs Adaptive</span>
+        </div>
+        <div class="tool-body">
+          <div class="tool-controls">
+            <div class="control-group">
+              <label class="control-label">Sequence Pattern</label>
+              <select class="tool-select" data-control="scan-pattern">
+                <option value="keyword">Keywords in Noise</option>
+                <option value="repeat">Repeat After Delay</option>
+                <option value="spike">Spike Train</option>
+              </select>
+            </div>
+            <div class="control-group">
+              <label class="control-label">Fixed &Delta;</label>
+              <input type="range" min="0.05" max="1.0" value="0.3" step="0.05" data-control="scan-fixed-dt">
+              <span class="control-value" aria-live="polite" data-value="scan-fixed-dt">0.30</span>
+            </div>
+          </div>
+          <div class="tool-canvas-wrapper"></div>
+          <div class="tool-actions">
+            <button class="tool-btn" data-action="scan-step">Step Forward</button>
+            <button class="tool-btn" data-action="scan-play">Play</button>
+            <button class="tool-btn" data-action="scan-reset">Reset</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="insight-box">
+        <h3 class="insight-box__title">Try This</h3>
+        <ul>
+          <li>Click <strong>Play</strong> with &ldquo;Keywords in Noise&rdquo; &mdash; the top row (S4, fixed &Delta;) absorbs everything equally. The bottom row (Mamba, adaptive &Delta;) selectively absorbs only keywords.</li>
+          <li>Try <strong>Repeat After Delay</strong> &mdash; the sequence has tokens A, B early on, then asks for them later. Mamba remembers them; fixed SSM has decayed them away.</li>
+          <li>Adjust <strong>Fixed &Delta;</strong> &mdash; small values make S4 remember more but with a blurred, averaged state. Large values make it forget quickly. Mamba sidesteps this tradeoff by using large &Delta; on important tokens and small &Delta; on noise.</li>
+          <li>Click <strong>Step Forward</strong> to advance one token at a time and study the state changes.</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         TOOL 19.3 — Mamba ↔ IIR Dual View
+         ============================================================ -->
+    <section class="content-section" id="tool-mamba-iir">
+      <h2 class="section-heading"><span class="section-number">Tool 19.3</span> Mamba &harr; IIR Filter Bank &mdash; Dual View</h2>
+
+      <p>
+        The definitive visualization: see Mamba&rsquo;s selective SSM as a bank of parallel
+        IIR filters with time-varying poles. The left shows the DSP view (pole locations
+        in the z-plane moving over time), the right shows the AI view (state evolution and
+        &Delta; heatmap).
+      </p>
+
+      <div class="tool-container" id="tool-mamba-iir-viz">
+        <div class="tool-header">
+          <span class="tool-header__label">Tool 19.3</span>
+          <span class="tool-header__title">Mamba &harr; IIR Filter Bank</span>
+        </div>
+        <div class="tool-body">
+          <div class="tool-controls">
+            <div class="control-group">
+              <label class="control-label">Channels</label>
+              <select class="tool-select" data-control="iir-channels">
+                <option value="2">2 channels</option>
+                <option value="4" selected>4 channels</option>
+                <option value="8">8 channels</option>
+              </select>
+            </div>
+            <div class="control-group">
+              <label class="control-label">Observe Step</label>
+              <input type="range" min="0" max="23" value="0" step="1" data-control="iir-step">
+              <span class="control-value" aria-live="polite" data-value="iir-step">0</span>
+            </div>
+          </div>
+          <div class="tool-canvas-wrapper"></div>
+          <div class="tool-actions">
+            <button class="tool-btn" data-action="iir-animate">Animate Sequence</button>
+            <button class="tool-btn" data-action="iir-reset">Reset</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="insight-box">
+        <h3 class="insight-box__title">Try This</h3>
+        <ul>
+          <li>Click <strong>Animate Sequence</strong> &mdash; watch the poles move inside the unit circle as each token is processed. When a keyword appears, poles jump closer to |z|=0 (fast decay/reset). During noise, poles hover near |z|=1 (memory preservation).</li>
+          <li>Drag <strong>Observe Step</strong> &mdash; the z-plane shows the pole positions at that exact timestep. The right panel highlights the corresponding state and &Delta; value.</li>
+          <li>Increase to <strong>8 channels</strong> &mdash; more filters running in parallel, each adapting independently. Some channels may specialize (e.g., one for keywords, one for position).</li>
+          <li>Compare the <strong>impulse response</strong> (bottom-left) at different timesteps. It changes shape because the filter changes &mdash; this is what makes Mamba adaptive.</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- Further Reading -->
+    <section class="content-section" id="further-reading">
+      <h2 class="section-heading">Further Reading</h2>
+      <ul class="further-reading-list">
+        <li>
+          <a href="https://arxiv.org/abs/2312.00752" target="_blank" rel="noopener">Mamba: Linear-Time Sequence Modeling with Selective State Spaces</a>
+          <span class="further-reading__authors">Gu &amp; Dao, 2024</span>
+          <span class="further-reading__note">The Mamba paper: selection mechanism, hardware-aware scan, and the Mamba block architecture</span>
+        </li>
+        <li>
+          <a href="https://arxiv.org/abs/2405.21060" target="_blank" rel="noopener">Transformers are SSMs: Generalized Models and Efficient Algorithms Through Structured State Space Duality</a>
+          <span class="further-reading__authors">Dao &amp; Gu, 2024</span>
+          <span class="further-reading__note">Mamba-2: unifies SSMs and attention under structured matrix theory (SSD framework)</span>
+        </li>
+        <li>
+          <a href="https://srush.github.io/annotated-mamba/hard.html" target="_blank" rel="noopener">The Annotated Mamba</a>
+          <span class="further-reading__authors">Rush, A., 2024</span>
+          <span class="further-reading__note">Line-by-line implementation of Mamba with detailed mathematical annotations</span>
+        </li>
+      </ul>
+    </section>
+
+    <!-- Chapter Navigation -->
+    <nav class="chapter-nav">
+      <a class="chapter-nav__prev" href="ch18-ssm.html">
+        <span class="chapter-nav__dir">&larr; Previous</span>
+        <span class="chapter-nav__label">Ch 18: State-Space Models</span>
+      </a>
+      <a class="chapter-nav__next" href="ch20-attn-vs-mamba.html">
+        <span class="chapter-nav__dir">Next &rarr;</span>
+        <span class="chapter-nav__label">Ch 20: Attention vs Mamba</span>
+      </a>
+    </nav>
+
+  </main>
+</div>
+
+<!-- Scripts -->
+<script src="../../js/core/navigation.js"></script>
+<script src="../../js/core/progressive-disclosure.js"></script>
+<script src="../../js/core/chapter-nav.js"></script>
+<script src="../../js/tools/shared/plot-utils.js"></script>
+<script src="../../js/tools/ch19-mamba-block.js"></script>
+<script src="../../js/tools/ch19-selective-scan.js"></script>
+<script src="../../js/tools/ch19-mamba-iir.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    if (window.DSPtoAI && window.DSPtoAI.MambaBlock) {
+      window.DSPtoAI.MambaBlock.init('tool-mamba-block-sim');
+    }
+    if (window.DSPtoAI && window.DSPtoAI.SelectiveScan) {
+      window.DSPtoAI.SelectiveScan.init('tool-selective-scan-viz');
+    }
+    if (window.DSPtoAI && window.DSPtoAI.MambaIIR) {
+      window.DSPtoAI.MambaIIR.init('tool-mamba-iir-viz');
+    }
+  });
+</script>
+
+<script src="../../js/core/search-index.js"></script>
+<script src="../../js/core/search.js"></script>
+</body>
+</html>

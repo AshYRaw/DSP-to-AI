@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ch 17: Matched Filter &rarr; Attention &mdash; DSP to AI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Outfit:wght@300;400;500;600;700;800;900&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../style/global.css">
+  <link rel="stylesheet" href="../../style/theme-dark.css">
+  <link rel="stylesheet" href="../../style/theme-light.css">
+  <link rel="stylesheet" href="../../style/components.css">
+  <link rel="stylesheet" href="../../style/chapter.css">
+  <script src="../../js/core/theme-switcher.js"></script>
+</head>
+<body>
+
+<div class="noise"></div>
+
+<!-- Navigation -->
+<nav class="site-nav">
+  <a href="../../index.html" class="site-nav__logo">DSP <span class="arrow">&rarr;</span> AI</a>
+  <ul class="site-nav__links">
+    <li><a href="../../index.html#part1">Part I</a></li>
+    <li><a href="../../index.html#part2">Part II</a></li>
+    <li><a href="../../index.html#part3" class="active">Part III</a></li>
+    <li><a href="../../index.html#part4">Part IV</a></li>
+    <li><a href="../../gallery/index.html">Gallery</a></li>
+    <li><a href="../../reference/glossary.html">Reference</a></li>
+  </ul>
+  <button class="search-toggle" aria-label="Search site (press /)">🔍</button>
+  <button class="theme-toggle" aria-label="Toggle theme"></button>
+  <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false">&#9776;</button>
+</nav>
+<div class="progress-bar"></div>
+
+<!-- Page Layout -->
+<div class="chapter-page" data-chapter-id="ch17">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar__part-label">Part III: The Bridge</div>
+    <ul class="sidebar__chapters">
+      <li><a class="sidebar__chapter-link" href="ch16-rosetta.html"><span class="sidebar__chapter-num">16</span> The Rosetta Stone</a></li>
+      <li><a class="sidebar__chapter-link active" href="ch17-matched-to-attn.html"><span class="sidebar__chapter-num">17</span> Matched Filter &rarr; Attention</a>
+        <ul class="sidebar__sections">
+          <li><a class="sidebar__section-link" href="#stage1">Stage 1: Fixed Matched Filter</a></li>
+          <li><a class="sidebar__section-link" href="#stage2">Stage 2: Filter Bank</a></li>
+          <li><a class="sidebar__section-link" href="#stage3">Stage 3: Learned Projections</a></li>
+          <li><a class="sidebar__section-link" href="#stage4">Stage 4: Self-Attention</a></li>
+          <li><a class="sidebar__section-link" href="#synthesis">The Full Picture</a></li>
+          <li><a class="sidebar__section-link" href="#tool-evolution">Evolution Playground</a></li>
+        </ul>
+      </li>
+      <li><a class="sidebar__chapter-link" href="ch18-ssm.html"><span class="sidebar__chapter-num">18</span> State-Space Models</a></li>
+      <li><a class="sidebar__chapter-link" href="ch19-mamba.html"><span class="sidebar__chapter-num">19</span> Mamba</a></li>
+      <li><a class="sidebar__chapter-link" href="ch20-attn-vs-mamba.html"><span class="sidebar__chapter-num">20</span> Attention vs Mamba</a></li>
+    </ul>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="chapter-content">
+
+    <nav class="breadcrumb" aria-label="Breadcrumb"></nav>
+
+    <header class="chapter-header">
+      <div class="chapter-header__part">Part III &mdash; The Bridge</div>
+      <div class="chapter-header__number">Chapter 17</div>
+      <h1 class="chapter-header__title">From Matched Filter to Self-Attention</h1>
+      <p class="chapter-header__subtitle">
+        Self-attention didn&rsquo;t appear from nowhere. It is the endpoint of a four-stage
+        evolution that begins with the matched filter &mdash; the oldest and most fundamental
+        signal detection technique in DSP. Each stage adds one capability, and by the fourth
+        stage you have the full Transformer attention mechanism. This chapter traces that
+        evolution step by step.
+      </p>
+    </header>
+
+    <!-- ============================================================
+         17.1 — Stage 1: Fixed Matched Filter
+         ============================================================ -->
+    <section class="content-section" id="stage1">
+      <h2 class="section-heading"><span class="section-number">17.1</span> Stage 1 &mdash; The Fixed Matched Filter</h2>
+
+      <p>
+        <strong>Problem:</strong> You have a known signal template (a radar pulse, a musical note,
+        a whale call) and you want to find where it appears in a noisy signal.
+      </p>
+
+      <p>
+        <strong>Solution:</strong> Slide the template across the signal, computing the
+        dot product at each position. The output peaks where the template matches best.
+        This is <em>cross-correlation</em> &mdash; the matched filter.
+      </p>
+
+      <div class="math-block">
+        <code>
+          R_{xh}[n] = &Sigma;_{k} x[n+k] &middot; h[k]
+        </code>
+      </div>
+
+      <div class="card-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+        <div class="concept-card">
+          <h3 class="concept-card__title">Strengths</h3>
+          <p class="concept-card__body">
+            Optimal in white Gaussian noise (maximizes SNR). Simple, fast, well-understood.
+            No training needed &mdash; the template <em>is</em> the filter.
+          </p>
+        </div>
+        <div class="concept-card">
+          <h3 class="concept-card__title">Limitation</h3>
+          <p class="concept-card__body">
+            The template is <strong>fixed</strong>. If the target signal varies
+            (different speaker, different word, slightly different pulse), the filter
+            misses it. One template = one pattern.
+          </p>
+        </div>
+      </div>
+
+      <p>
+        In AI terms: this is a single neuron with fixed weights, computing one inner product
+        (Chapter 9). It can detect exactly one pattern.
+      </p>
+    </section>
+
+    <!-- ============================================================
+         17.2 — Stage 2: Adaptive Filter Bank
+         ============================================================ -->
+    <section class="content-section" id="stage2">
+      <h2 class="section-heading"><span class="section-number">17.2</span> Stage 2 &mdash; The Adaptive Filter Bank</h2>
+
+      <p>
+        <strong>Problem:</strong> What if there are multiple patterns to detect? And what if
+        those patterns change over time?
+      </p>
+
+      <p>
+        <strong>Solution:</strong> Run <em>multiple</em> matched filters in parallel, each
+        looking for a different template. Use an adaptive algorithm (LMS, Chapter 8) to
+        update the templates based on which ones produce the best matches.
+      </p>
+
+      <div class="math-block">
+        <code>
+          R_k[n] = &Sigma;_{m} x[n+m] &middot; h_k[m], &nbsp; k = 1, &hellip;, K<br>
+          output[n] = max_k R_k[n]
+        </code>
+      </div>
+
+      <div class="card-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+        <div class="concept-card">
+          <h3 class="concept-card__title">What&rsquo;s new</h3>
+          <p class="concept-card__body">
+            Multiple templates running in parallel. Each specialized for a different pattern.
+            Templates can adapt to the data.
+          </p>
+        </div>
+        <div class="concept-card">
+          <h3 class="concept-card__title">Limitation</h3>
+          <p class="concept-card__body">
+            Templates are still <strong>input-independent</strong>. The same K filters run
+            regardless of what&rsquo;s in the signal right now. Can&rsquo;t dynamically
+            change what we search for based on context.
+          </p>
+        </div>
+      </div>
+
+      <p>
+        In AI terms: this is a multi-channel convolutional layer with fixed (or slowly adapting)
+        kernels. Each kernel detects one feature. This is exactly what CNN layers do.
+      </p>
+
+      <div class="progressive-section">
+        <button class="progressive-toggle" aria-expanded="false">Show the Math</button>
+        <div class="progressive-content">
+          <p>
+            A bank of K filters with templates h_1, &hellip;, h_K is equivalent to a
+            <strong>multi-channel 1D convolution</strong>:
+          </p>
+          <div class="math-block">
+            <code>
+              Y = [h_1 * x; h_2 * x; &hellip;; h_K * x] &nbsp; &isin; &Ropf;^{K &times; T}
+            </code>
+          </div>
+          <p>
+            Each row is the output of one filter. This is what the convolutional layer in
+            a CNN computes, with K = number of output channels. The limitation: the kernels
+            h_k are fixed after training &mdash; they don&rsquo;t change based on the
+            input at inference time.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         17.3 — Stage 3: Learned Q/K Projections
+         ============================================================ -->
+    <section class="content-section" id="stage3">
+      <h2 class="section-heading"><span class="section-number">17.3</span> Stage 3 &mdash; Learned Q/K Projections</h2>
+
+      <p>
+        <strong>Problem:</strong> What if the template itself should depend on the current
+        input? When reading &ldquo;The cat sat on the ___&rdquo;, what we search for
+        depends on what we&rsquo;ve already seen.
+      </p>
+
+      <p>
+        <strong>Solution:</strong> Instead of using fixed templates, <em>project</em> both
+        the query and the key through learned weight matrices. The template becomes
+        <strong>data-dependent</strong>:
+      </p>
+
+      <div class="math-block">
+        <code>
+          query: q = W_Q &middot; x_current<br>
+          keys: &nbsp; k_n = W_K &middot; x_n<br>
+          score: s_n = q &middot; k_n / &radic;d_k
+        </code>
+      </div>
+
+      <div class="card-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+        <div class="concept-card">
+          <h3 class="concept-card__title">What&rsquo;s new</h3>
+          <p class="concept-card__body">
+            The &ldquo;template&rdquo; (query) is generated from the current input. Different
+            inputs produce different queries &mdash; the system dynamically decides what to
+            search for based on context.
+          </p>
+        </div>
+        <div class="concept-card">
+          <h3 class="concept-card__title">Limitation</h3>
+          <p class="concept-card__body">
+            Still a single query per position. Can only ask one &ldquo;question&rdquo; of
+            the sequence at a time. What if you need to find both the subject AND the verb?
+          </p>
+        </div>
+      </div>
+
+      <p>
+        This is the key insight of attention: the matched filter template is no longer fixed &mdash;
+        it&rsquo;s computed from the input itself. The weight matrices W_Q and W_K are learned
+        to produce good &ldquo;questions&rdquo; and &ldquo;advertisements.&rdquo;
+      </p>
+    </section>
+
+    <!-- ============================================================
+         17.4 — Stage 4: Full Multi-Head Self-Attention
+         ============================================================ -->
+    <section class="content-section" id="stage4">
+      <h2 class="section-heading"><span class="section-number">17.4</span> Stage 4 &mdash; Full Multi-Head Self-Attention</h2>
+
+      <p>
+        <strong>Problem:</strong> One query per position captures only one relationship.
+        Language has many simultaneous relationships: syntax, semantics, co-reference, proximity.
+      </p>
+
+      <p>
+        <strong>Solution:</strong> Run <em>multiple attention heads in parallel</em>, each
+        with its own W_Q, W_K, W_V projections. Each head asks a different question.
+        Concatenate and project the results.
+      </p>
+
+      <div class="math-block">
+        <code>
+          head_i = softmax(Q_i K_i&sup1; / &radic;d_k) &middot; V_i<br><br>
+          MultiHead = Concat(head_1, &hellip;, head_h) &middot; W_O
+        </code>
+      </div>
+
+      <div class="card-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+        <div class="concept-card">
+          <h3 class="concept-card__title">What&rsquo;s new</h3>
+          <p class="concept-card__body">
+            Multiple parallel attention heads (a <strong>learned filter bank</strong>).
+            Data-dependent queries and keys. Soft weighting via softmax (not hard peak detection).
+            End-to-end differentiable.
+          </p>
+        </div>
+        <div class="concept-card">
+          <h3 class="concept-card__title">The cost</h3>
+          <p class="concept-card__body">
+            O(T&sup2;) computation &mdash; every position compares with every other.
+            Finite context window. Needs KV cache for efficient inference.
+            This is the FIR nature of attention.
+          </p>
+        </div>
+      </div>
+
+      <p>
+        We have arrived. The full evolution:
+      </p>
+    </section>
+
+    <!-- ============================================================
+         17.5 — Synthesis
+         ============================================================ -->
+    <section class="content-section bridge-teaser" id="synthesis">
+      <h2 class="section-heading"><span class="section-number">17.5</span> The Full Picture</h2>
+
+      <table class="comparison-table">
+        <thead>
+          <tr>
+            <th>Stage</th>
+            <th>DSP Name</th>
+            <th>AI Name</th>
+            <th>Key Addition</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>1</td>
+            <td>Fixed matched filter</td>
+            <td>Single neuron (fixed weights)</td>
+            <td>&mdash; (baseline)</td>
+          </tr>
+          <tr>
+            <td>2</td>
+            <td>Adaptive filter bank</td>
+            <td>CNN layer (multiple kernels)</td>
+            <td>+ multiple parallel templates</td>
+          </tr>
+          <tr>
+            <td>3</td>
+            <td>Data-dependent correlator</td>
+            <td>Single-head attention</td>
+            <td>+ data-dependent templates (Q/K)</td>
+          </tr>
+          <tr>
+            <td>4</td>
+            <td>Adaptive multi-channel correlator</td>
+            <td>Multi-head self-attention</td>
+            <td>+ multiple heads + softmax + values</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <p>
+        Each stage adds exactly one capability. The final result is more powerful but also
+        more expensive. This is why efficiency research (sparse attention, linear attention,
+        Mamba) focuses on approximating Stage 4 with the cost of Stage 2.
+      </p>
+
+      <div class="progressive-section">
+        <button class="progressive-toggle" aria-expanded="false">Show the Math</button>
+        <div class="progressive-content">
+          <p><strong>Unifying all four stages in one equation:</strong></p>
+          <div class="math-block">
+            <code>
+              Stage 1: y[n] = &Sigma;_k h[k] &middot; x[n+k]<br>
+              Stage 2: y_c[n] = &Sigma;_k h_c[k] &middot; x[n+k], &nbsp; c = 1&hellip;C<br>
+              Stage 3: y[n] = &Sigma;_m softmax(q_n &middot; k_m) &middot; v_m<br>
+              Stage 4: y[n] = Concat_h(&Sigma;_m softmax(q_n^h &middot; k_m^h) &middot; v_m^h) &middot; W_O
+            </code>
+          </div>
+          <p>
+            Stage 1 &rarr; 2: add parallel channels.<br>
+            Stage 2 &rarr; 3: make the kernel data-dependent (q = W_Q x, k = W_K x).<br>
+            Stage 3 &rarr; 4: add multiple heads and a final projection.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         TOOL 17.1 — Evolution Playground
+         ============================================================ -->
+    <section class="content-section" id="tool-evolution">
+      <h2 class="section-heading"><span class="section-number">Tool 17.1</span> Evolution Playground</h2>
+
+      <p>
+        See all four stages process the same input signal simultaneously. Correlation
+        scores (left) show the raw matching result; detection weights (right) show what
+        each stage decides to attend to. Red dashed lines mark the true template positions.
+      </p>
+
+      <div class="tool-container" id="tool-evolution-playground">
+        <div class="tool-header">
+          <span class="tool-header__label">Tool 17.1</span>
+          <span class="tool-header__title">Evolution Playground</span>
+        </div>
+        <div class="tool-body">
+          <div class="tool-controls">
+            <div class="control-group">
+              <label class="control-label">Noise</label>
+              <input type="range" min="0" max="2.0" value="0.3" step="0.1" data-control="evo-noise">
+              <span class="control-value" aria-live="polite" data-value="evo-noise">0.3</span>
+            </div>
+            <div class="control-group">
+              <label class="control-label">Template Variability</label>
+              <input type="range" min="0" max="1.0" value="0.0" step="0.1" data-control="evo-variability">
+              <span class="control-value" aria-live="polite" data-value="evo-variability">0.0</span>
+            </div>
+            <div class="control-group">
+              <label class="control-label">Templates</label>
+              <input type="range" min="1" max="3" value="2" step="1" data-control="evo-templates">
+              <span class="control-value" aria-live="polite" data-value="evo-templates">2</span>
+            </div>
+          </div>
+          <div class="tool-controls" style="padding-top: 0;">
+            <div class="control-group" style="display: flex; gap: 0.5em; flex-wrap: wrap;">
+              <button class="tool-btn" data-stage="0">Stage 1: Fixed</button>
+              <button class="tool-btn" data-stage="1">Stage 2: Bank</button>
+              <button class="tool-btn" data-stage="2">Stage 3: Q/K</button>
+              <button class="tool-btn" data-stage="3">Stage 4: Attention</button>
+            </div>
+          </div>
+          <div class="tool-canvas-wrapper"></div>
+        </div>
+      </div>
+
+      <div class="insight-box">
+        <h3 class="insight-box__title">Try This</h3>
+        <ul>
+          <li>Start with default settings and compare <strong>detection scores</strong> across all 4 stages. Stage 1 (fixed) detects only template A. Stage 2 (bank) detects both templates.</li>
+          <li>Crank <strong>Noise to 1.5</strong> &mdash; Stage 1 degrades first. Later stages are more robust because they use more sophisticated matching.</li>
+          <li>Set <strong>Variability to 0.8</strong> &mdash; now the embedded templates differ from the reference. Stage 1 (fixed template) fails badly. Stage 3 and 4 handle it better because their templates are data-dependent.</li>
+          <li>Click the <strong>stage buttons</strong> to highlight one stage at a time and compare its scores and weights against the red dashed ground truth lines.</li>
+          <li>Set <strong>Templates to 3</strong> with <strong>Noise = 1.0</strong> &mdash; only the later stages can reliably detect all three patterns.</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- Further Reading -->
+    <section class="content-section" id="further-reading">
+      <h2 class="section-heading">Further Reading</h2>
+      <ul class="further-reading-list">
+        <li>
+          <a href="https://ieeexplore.ieee.org/document/1450747" target="_blank" rel="noopener">An Introduction to Matched Filters</a>
+          <span class="further-reading__authors">Turin, G.L., 1960 — IRE Transactions</span>
+          <span class="further-reading__note">The foundational paper on matched filtering — the DSP ancestor of attention</span>
+        </li>
+        <li>
+          <a href="https://arxiv.org/abs/1706.03762" target="_blank" rel="noopener">Attention Is All You Need</a>
+          <span class="further-reading__authors">Vaswani et al., 2017 — NeurIPS</span>
+          <span class="further-reading__note">The AI endpoint of the evolution from matched filters to self-attention</span>
+        </li>
+        <li>
+          <a href="https://arxiv.org/abs/1409.0473" target="_blank" rel="noopener">Neural Machine Translation by Jointly Learning to Align and Translate</a>
+          <span class="further-reading__authors">Bahdanau, Cho &amp; Bengio, 2015</span>
+          <span class="further-reading__note">The intermediate step: additive attention as a learned template matcher</span>
+        </li>
+      </ul>
+    </section>
+
+    <!-- Chapter Navigation -->
+    <nav class="chapter-nav">
+      <a class="chapter-nav__prev" href="ch16-rosetta.html">
+        <span class="chapter-nav__dir">&larr; Previous</span>
+        <span class="chapter-nav__label">Ch 16: The Rosetta Stone</span>
+      </a>
+      <a class="chapter-nav__next" href="ch18-ssm.html">
+        <span class="chapter-nav__dir">Next &rarr;</span>
+        <span class="chapter-nav__label">Ch 18: State-Space Models</span>
+      </a>
+    </nav>
+
+  </main>
+</div>
+
+<!-- Scripts -->
+<script src="../../js/core/navigation.js"></script>
+<script src="../../js/core/progressive-disclosure.js"></script>
+<script src="../../js/core/chapter-nav.js"></script>
+<script src="../../js/tools/shared/plot-utils.js"></script>
+<script src="../../js/tools/ch17-evolution.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    if (window.DSPtoAI && window.DSPtoAI.EvolutionPlayground) {
+      window.DSPtoAI.EvolutionPlayground.init('tool-evolution-playground');
+    }
+  });
+</script>
+
+<script src="../../js/core/search-index.js"></script>
+<script src="../../js/core/search.js"></script>
+</body>
+</html>

@@ -1,0 +1,245 @@
+/* ============================================================
+   DSP to AI — Chapter Page Layout
+   ============================================================ */
+
+/* --- Chapter Page Layout --- */
+.chapter-page {
+  display: grid;
+  grid-template-columns: var(--sidebar-width) 1fr;
+  min-height: calc(100vh - var(--nav-height));
+}
+
+/* --- Sidebar --- */
+.sidebar {
+  position: sticky;
+  top: var(--nav-height);
+  height: calc(100vh - var(--nav-height));
+  overflow-y: auto;
+  padding: var(--sp-lg) var(--sp-md);
+  border-right: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.sidebar__part-label {
+  font-family: var(--font-code);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  color: var(--text-dim);
+  margin-bottom: var(--sp-md);
+  padding: 0 var(--sp-sm);
+}
+
+.sidebar__chapters {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sidebar__chapter-link {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-sm);
+  padding: 8px var(--sp-sm);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  color: var(--text-dim);
+  text-decoration: none;
+  transition: all var(--transition-fast);
+  line-height: 1.4;
+}
+
+.sidebar__chapter-link:hover {
+  background: var(--surface2);
+  color: var(--text);
+}
+
+.sidebar__chapter-link.active {
+  background: var(--button-bg);
+  color: var(--color-dsp);
+  font-weight: 600;
+}
+
+.sidebar__chapter-num {
+  font-family: var(--font-code);
+  font-size: 11px;
+  color: var(--text-muted);
+  min-width: 24px;
+}
+
+/* Section anchors within a chapter */
+.sidebar__sections {
+  list-style: none;
+  margin-left: 32px;
+  padding: var(--sp-xs) 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.sidebar__section-link {
+  font-size: 12px;
+  color: var(--text-muted);
+  padding: 4px var(--sp-sm);
+  border-left: 2px solid transparent;
+  text-decoration: none;
+  transition: all var(--transition-fast);
+}
+
+.sidebar__section-link:hover {
+  color: var(--text-dim);
+  border-left-color: var(--border);
+}
+
+.sidebar__section-link.active {
+  color: var(--color-dsp);
+  border-left-color: var(--color-dsp);
+}
+
+/* --- Main Content Area --- */
+.chapter-content {
+  padding: var(--sp-xl) var(--sp-xl) var(--sp-2xl);
+  max-width: 900px;
+}
+
+/* Chapter Header */
+.chapter-header {
+  margin-bottom: var(--sp-xl);
+  animation: fadeIn 0.6s ease-out;
+}
+
+.chapter-header__part {
+  font-family: var(--font-code);
+  font-size: 12px;
+  color: var(--color-dsp);
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  margin-bottom: var(--sp-sm);
+}
+
+.chapter-header__number {
+  font-family: var(--font-code);
+  font-size: 14px;
+  color: var(--text-dim);
+  margin-bottom: var(--sp-sm);
+}
+
+.chapter-header__title {
+  font-size: clamp(28px, 4vw, 42px);
+  font-weight: 800;
+  line-height: 1.15;
+  margin-bottom: var(--sp-md);
+}
+
+.chapter-header__subtitle {
+  font-size: 17px;
+  color: var(--text-dim);
+  line-height: 1.6;
+  font-weight: 300;
+  max-width: 680px;
+}
+
+/* --- Chapter Sections --- */
+.chapter-section {
+  margin-bottom: var(--sp-2xl);
+  animation: slideUp 0.5s ease-out both;
+}
+
+.chapter-section__title {
+  font-size: 22px;
+  font-weight: 700;
+  margin-bottom: var(--sp-md);
+  padding-bottom: var(--sp-sm);
+  border-bottom: 1px solid var(--border);
+}
+
+/* --- Why Should I Care Box --- */
+.motivation-box {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--sp-lg);
+  margin-bottom: var(--sp-xl);
+}
+
+.motivation-box__title {
+  font-family: var(--font-code);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  color: var(--color-ai);
+  margin-bottom: var(--sp-sm);
+}
+
+/* --- Bridge Teaser (connects to later chapters) --- */
+.bridge-teaser {
+  background: var(--card-bridge-bg);
+  border: 1px solid rgba(167, 139, 250, 0.2);
+  border-left: 3px solid var(--color-bridge);
+  border-radius: var(--radius-md);
+  padding: var(--sp-lg);
+  margin: var(--sp-xl) 0;
+}
+
+.bridge-teaser__label {
+  font-family: var(--font-code);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  color: var(--color-bridge);
+  margin-bottom: var(--sp-sm);
+}
+
+.bridge-teaser__content {
+  font-size: 14px;
+  color: var(--text-dim);
+  line-height: 1.6;
+}
+
+/* --- KaTeX Overrides --- */
+.katex-display {
+  margin: var(--sp-md) 0;
+  padding: var(--sp-md);
+  background: var(--math-bg);
+  border-radius: var(--radius-sm);
+  overflow-x: auto;
+}
+
+.katex { font-size: 1.1em; }
+
+/* --- Responsive --- */
+@media (max-width: 1024px) {
+  .chapter-page {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    display: none;
+    position: fixed;
+    top: var(--nav-height);
+    left: 0;
+    width: var(--sidebar-width);
+    z-index: 50;
+    box-shadow: var(--shadow-lg);
+  }
+
+  .sidebar.open { display: block; }
+
+  .chapter-content {
+    padding: var(--sp-lg) var(--sp-md);
+  }
+}
+
+@media (max-width: 768px) {
+  .chapter-header__title {
+    font-size: 28px;
+  }
+
+  .chapter-content {
+    padding: var(--sp-md);
+  }
+}

@@ -1,0 +1,57 @@
+/* ============================================================
+   DSP to AI — Light Theme
+   Extracted from infographics 2, 4
+   ============================================================ */
+
+[data-theme="light"] {
+  --bg: #faf7f2;
+  --bg-alt: #fefce8;
+  --surface: #ffffff;
+  --surface2: #f8fafc;
+  --surface3: #f1f5f9;
+
+  --text: #1a1a2e;
+  --text-dim: #64748b;
+  --text-muted: #94a3b8;
+
+  --border: #e2e8f0;
+  --border-light: #d6d3d1;
+
+  --nav-bg: rgba(250, 247, 242, 0.9);
+
+  /* Card backgrounds */
+  --card-bg: #ffffff;
+  --card-dsp-bg: rgba(34, 211, 238, 0.06);
+  --card-ai-bg: rgba(251, 146, 60, 0.06);
+  --card-bridge-bg: rgba(124, 58, 237, 0.06);
+  --card-math-bg: rgba(5, 150, 105, 0.06);
+
+  /* Math blocks */
+  --math-bg: rgba(5, 150, 105, 0.08);
+  --math-border: rgba(5, 150, 105, 0.2);
+
+  /* Insight boxes */
+  --insight-bg: linear-gradient(135deg, rgba(37,99,235,0.06), rgba(124,58,237,0.06));
+  --insight-border: rgba(37, 99, 235, 0.3);
+
+  /* Tool containers */
+  --tool-bg: #ffffff;
+  --tool-border: #e2e8f0;
+  --tool-header-bg: rgba(37, 99, 235, 0.04);
+
+  /* Interactive controls */
+  --slider-track: #d6d3d1;
+  --slider-thumb: var(--color-stage1);
+  --button-bg: rgba(37, 99, 235, 0.08);
+  --button-border: rgba(37, 99, 235, 0.3);
+  --button-hover-bg: rgba(37, 99, 235, 0.14);
+  --button-text: var(--color-stage1);
+
+  /* Code blocks */
+  --code-bg: #f8fafc;
+  --code-border: #e2e8f0;
+
+  /* Override accent colors for better contrast on light bg */
+  --color-dsp: #0891b2;
+  --color-math: #059669;
+}

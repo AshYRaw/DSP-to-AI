@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ch 23: Capstone Project &mdash; DSP to AI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Outfit:wght@300;400;500;600;700;800;900&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../style/global.css">
+  <link rel="stylesheet" href="../../style/theme-dark.css">
+  <link rel="stylesheet" href="../../style/theme-light.css">
+  <link rel="stylesheet" href="../../style/components.css">
+  <link rel="stylesheet" href="../../style/chapter.css">
+  <script src="../../js/core/theme-switcher.js"></script>
+</head>
+<body>
+
+<div class="noise"></div>
+
+<!-- Navigation -->
+<nav class="site-nav">
+  <a href="../../index.html" class="site-nav__logo">DSP <span class="arrow">&rarr;</span> AI</a>
+  <ul class="site-nav__links">
+    <li><a href="../../index.html#part1">Part I</a></li>
+    <li><a href="../../index.html#part2">Part II</a></li>
+    <li><a href="../../index.html#part3">Part III</a></li>
+    <li><a href="../../index.html#part4" class="active">Part IV</a></li>
+    <li><a href="../../gallery/index.html">Gallery</a></li>
+    <li><a href="../../reference/glossary.html">Reference</a></li>
+  </ul>
+  <button class="search-toggle" aria-label="Search site (press /)">🔍</button>
+  <button class="theme-toggle" aria-label="Toggle theme"></button>
+  <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false">&#9776;</button>
+</nav>
+<div class="progress-bar"></div>
+
+<!-- Page Layout -->
+<div class="chapter-page" data-chapter-id="ch23">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar__part-label">Part IV: The Frontier</div>
+    <ul class="sidebar__chapters">
+      <li><a class="sidebar__chapter-link" href="ch21-ssm-evolution.html"><span class="sidebar__chapter-num">21</span> SSM Evolution Timeline</a></li>
+      <li><a class="sidebar__chapter-link" href="ch22-hybrid-architectures.html"><span class="sidebar__chapter-num">22</span> Hybrid Architectures</a></li>
+      <li><a class="sidebar__chapter-link active" href="ch23-capstone.html"><span class="sidebar__chapter-num">23</span> Capstone Project</a>
+        <ul class="sidebar__sections">
+          <li><a class="sidebar__section-link" href="#challenge">The Challenge</a></li>
+          <li><a class="sidebar__section-link" href="#pipeline">The Pipeline</a></li>
+          <li><a class="sidebar__section-link" href="#connections">Full-Circle Connections</a></li>
+          <li><a class="sidebar__section-link" href="#reflection">Reflection</a></li>
+          <li><a class="sidebar__section-link" href="#tool-capstone">Capstone Integrator</a></li>
+        </ul>
+      </li>
+    </ul>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="chapter-content">
+
+    <nav class="breadcrumb" aria-label="Breadcrumb"></nav>
+
+    <header class="chapter-header">
+      <div class="chapter-header__part">Part IV &mdash; The Frontier</div>
+      <div class="chapter-header__number">Chapter 23</div>
+      <h1 class="chapter-header__title">Capstone Project &mdash; Full Circle</h1>
+      <p class="chapter-header__subtitle">
+        You&rsquo;ve traveled from signals to neurons, from convolution to attention, from
+        fixed filters to adaptive state spaces. This final chapter brings it all together.
+        You&rsquo;ll build a complete hybrid sequence model &mdash; choosing each component
+        from the DSP and AI toolkits you&rsquo;ve mastered &mdash; and see the
+        <strong>complete DSP-to-AI pipeline</strong> in one unified interactive exercise.
+      </p>
+    </header>
+
+    <!-- ============================================================
+         23.1 — The Challenge
+         ============================================================ -->
+    <section class="content-section" id="challenge">
+      <h2 class="section-heading"><span class="section-number">23.1</span> The Challenge</h2>
+
+      <p>
+        Design a hybrid sequence model to process a signal that requires:
+      </p>
+
+      <div class="card-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+        <div class="concept-card">
+          <h3 class="concept-card__title">Local Features</h3>
+          <p class="concept-card__body">
+            Detect short-range patterns (bigrams, local edges). Requires
+            <strong>convolution</strong> &mdash; the operation that connects Ch 3 (DSP
+            convolution) to Ch 10 (neural network layers).
+          </p>
+        </div>
+        <div class="concept-card">
+          <h3 class="concept-card__title">Long-Range Memory</h3>
+          <p class="concept-card__body">
+            Track information across thousands of timesteps. Requires
+            <strong>state-space recurrence</strong> &mdash; the IIR filter bank from Ch 7 &rarr;
+            Ch 18 &rarr; Ch 19 (Mamba).
+          </p>
+        </div>
+        <div class="concept-card">
+          <h3 class="concept-card__title">Exact Retrieval</h3>
+          <p class="concept-card__body">
+            Look up a specific past token by content. Requires
+            <strong>attention</strong> &mdash; the matched filter from Ch 14 &rarr; Ch 17,
+            generalized to self-attention.
+          </p>
+        </div>
+        <div class="concept-card">
+          <h3 class="concept-card__title">Efficient Scaling</h3>
+          <p class="concept-card__body">
+            Process sequences of 100K+ tokens on limited hardware. Requires
+            <strong>hybrid architecture</strong> &mdash; the cascaded FIR+IIR design from
+            Ch 22.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         23.2 — The DSP-to-AI Pipeline
+         ============================================================ -->
+    <section class="content-section" id="pipeline">
+      <h2 class="section-heading"><span class="section-number">23.2</span> The Complete Pipeline</h2>
+
+      <p>
+        Every component in a modern hybrid model has a DSP ancestor:
+      </p>
+
+      <div class="math-block" style="font-size: 0.92em;">
+        <code>
+          Input &rarr; Embedding &rarr; { [SSM block] &times; k &rarr; [Attn block] } &times; repeat &rarr; Output<br><br>
+          DSP:&nbsp;&nbsp;&nbsp; Signal &rarr; Basis &rarr; { [IIR stage] &times; k &rarr; [FIR stage] } &times; repeat &rarr; Decoded<br><br>
+          (Real hybrids interleave SSM and attention layers &mdash; e.g., 7 SSM then 1 Attention, repeated)
+        </code>
+      </div>
+
+      <table class="comparison-table">
+        <thead>
+          <tr>
+            <th>Pipeline Stage</th>
+            <th>AI Component</th>
+            <th>DSP Origin</th>
+            <th>Chapter</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Input representation</td>
+            <td>Token embedding</td>
+            <td>Basis function expansion (Fourier, wavelets)</td>
+            <td>Ch 4, 13</td>
+          </tr>
+          <tr>
+            <td>Local feature extraction</td>
+            <td>Conv1D (k=4)</td>
+            <td>Short FIR filter</td>
+            <td>Ch 3, 7</td>
+          </tr>
+          <tr>
+            <td>Parameter generation</td>
+            <td>&Delta;, B, C projections</td>
+            <td>Adaptive filter coefficient update (LMS)</td>
+            <td>Ch 8, 19</td>
+          </tr>
+          <tr>
+            <td>Sequence processing</td>
+            <td>Selective SSM scan</td>
+            <td>Adaptive IIR filter bank</td>
+            <td>Ch 7, 18, 19</td>
+          </tr>
+          <tr>
+            <td>Gating</td>
+            <td>SiLU &otimes; branch</td>
+            <td>Modulator / variable-gain amplifier</td>
+            <td>Ch 9</td>
+          </tr>
+          <tr>
+            <td>Precision retrieval</td>
+            <td>Self-attention (Q&middot;K&middot;V)</td>
+            <td>Matched filter / cross-correlation</td>
+            <td>Ch 14, 17</td>
+          </tr>
+          <tr>
+            <td>Nonlinear transform</td>
+            <td>Feed-forward network</td>
+            <td>Nonlinear processing (clipping, saturation)</td>
+            <td>Ch 9, 10</td>
+          </tr>
+          <tr>
+            <td>Stability</td>
+            <td>LayerNorm, residual connections</td>
+            <td>Gain normalization, stability margins</td>
+            <td>Ch 6, 11</td>
+          </tr>
+          <tr>
+            <td>Training</td>
+            <td>Backprop + Adam</td>
+            <td>Gradient-based optimization (LMS family)</td>
+            <td>Ch 8, 11</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- ============================================================
+         23.3 — Full-Circle Connections
+         ============================================================ -->
+    <section class="content-section bridge-teaser" id="connections">
+      <h2 class="section-heading"><span class="section-number">23.3</span> The 12 Full-Circle Connections</h2>
+
+      <p>
+        As you build your capstone model, every decision connects back to a DSP principle
+        you learned in Part I:
+      </p>
+
+      <div class="card-grid" style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));">
+        <div class="concept-card">
+          <h3 class="concept-card__title">1. Convolution is everywhere</h3>
+          <p class="concept-card__body">
+            The operation that defines both DSP filtering (Ch 3) and neural network layers
+            (Ch 10). In your model: Conv1D for local features, the SSM kernel for global features.
+          </p>
+        </div>
+        <div class="concept-card">
+          <h3 class="concept-card__title">2. Poles determine memory</h3>
+          <p class="concept-card__body">
+            Pole locations control how long a filter remembers (Ch 6). In Mamba, &Delta;
+            moves the poles: close to |z|=1 = long memory, close to |z|=0 = forget (Ch 19).
+          </p>
+        </div>
+        <div class="concept-card">
+          <h3 class="concept-card__title">3. FIR = Attention, IIR = Mamba</h3>
+          <p class="concept-card__body">
+            The most fundamental mapping (Ch 16, 20). Your hybrid model cascades both, using
+            each where it&rsquo;s optimal &mdash; exactly like a real DSP processing chain.
+          </p>
+        </div>
+        <div class="concept-card">
+          <h3 class="concept-card__title">4. Adaptation is learning</h3>
+          <p class="concept-card__body">
+            Adaptive filters (Ch 8) adjust coefficients from data. Neural networks do the same
+            via backprop (Ch 10-11). Mamba&rsquo;s &Delta; is a real-time adaptive mechanism (Ch 19).
+          </p>
+        </div>
+        <div class="concept-card">
+          <h3 class="concept-card__title">5. Stability is trainability</h3>
+          <p class="concept-card__body">
+            Stable filters have poles inside the unit circle (Ch 6). Trainable networks need
+            controlled gradients (Ch 11-12). HiPPO solves both: stable dynamics with optimal
+            memory (Ch 18).
+          </p>
+        </div>
+        <div class="concept-card">
+          <h3 class="concept-card__title">6. The Fourier connection</h3>
+          <p class="concept-card__body">
+            Fourier analysis decomposes signals into basis functions (Ch 4). Embeddings
+            decompose tokens into learned basis functions (Ch 13). Positional encodings use
+            literal sinusoids (Ch 15). Full circle.
+          </p>
+        </div>
+        <div class="concept-card">
+          <h3 class="concept-card__title">7. Sampling = Tokenization</h3>
+          <p class="concept-card__body">
+            Sampling converts continuous signals to discrete (Ch 1). Tokenization converts
+            continuous text/audio into discrete tokens. Both must satisfy a &ldquo;Nyquist
+            condition&rdquo; &mdash; sample finely enough to not lose information.
+          </p>
+        </div>
+        <div class="concept-card">
+          <h3 class="concept-card__title">8. Windowing = Positional encoding</h3>
+          <p class="concept-card__body">
+            Window functions taper signals to reduce spectral leakage (Ch 7). Positional
+            encodings inject location information into otherwise order-agnostic attention (Ch 15).
+            Both solve the same problem: giving finite sequences position-aware structure.
+          </p>
+        </div>
+        <div class="concept-card">
+          <h3 class="concept-card__title">9. Cross-correlation = QK similarity</h3>
+          <p class="concept-card__body">
+            The matched filter computes cross-correlation to find templates in noise (Ch 17).
+            Attention computes Q&middot;K<sup>T</sup> to find relevant tokens. Both are
+            dot-product similarity measures &mdash; same math, different names.
+          </p>
+        </div>
+        <div class="concept-card">
+          <h3 class="concept-card__title">10. Filter order = Model depth</h3>
+          <p class="concept-card__body">
+            Higher-order filters produce sharper frequency responses (Ch 7). Deeper networks
+            learn more abstract features (Ch 10). Both trade complexity for expressiveness,
+            with diminishing returns and stability risks at extreme depth/order.
+          </p>
+        </div>
+        <div class="concept-card">
+          <h3 class="concept-card__title">11. Multi-rate = Multi-scale</h3>
+          <p class="concept-card__body">
+            Filter banks decompose signals into sub-bands at different rates (Ch 8). Multi-head
+            attention and multi-channel SSMs process features at different scales (Ch 14, 19).
+            Both exploit the insight that different features live at different resolutions.
+          </p>
+        </div>
+        <div class="concept-card">
+          <h3 class="concept-card__title">12. Quantization bridges both worlds</h3>
+          <p class="concept-card__body">
+            DSP quantization maps continuous amplitudes to fixed-point (Ch 1). Model quantization
+            maps float32 weights to int8/int4 for deployment. Both trade precision for efficiency,
+            both require understanding the signal&rsquo;s dynamic range to minimize error.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         23.4 — Reflection
+         ============================================================ -->
+    <section class="content-section" id="reflection">
+      <h2 class="section-heading"><span class="section-number">23.4</span> Reflection &mdash; What You&rsquo;ve Learned</h2>
+
+      <p>
+        You started this course asking: <em>&ldquo;What is a signal?&rdquo;</em> You end it
+        understanding that every component in a state-of-the-art language model &mdash;
+        from convolution to attention to state-space models to hybrid architectures &mdash;
+        is a <strong>direct mathematical descendant</strong> of ideas first developed in
+        signal processing.
+      </p>
+
+      <div class="card-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+        <div class="concept-card">
+          <h3 class="concept-card__title">Part I gave you</h3>
+          <p class="concept-card__body">
+            Signals, systems, convolution, Fourier analysis, Z-transforms, poles &amp; zeros,
+            FIR/IIR filters, adaptive filters. The <strong>mathematical vocabulary</strong>.
+          </p>
+        </div>
+        <div class="concept-card">
+          <h3 class="concept-card__title">Part II gave you</h3>
+          <p class="concept-card__body">
+            Neurons, backprop, training, RNNs, embeddings, attention, Transformers. The
+            <strong>AI toolkit</strong> &mdash; which you could now see as DSP with different
+            names.
+          </p>
+        </div>
+        <div class="concept-card">
+          <h3 class="concept-card__title">Part III gave you</h3>
+          <p class="concept-card__body">
+            The Rosetta Stone, the matched-filter-to-attention evolution, state-space models,
+            Mamba, attention vs Mamba. The <strong>bridge</strong> &mdash; the proof that
+            these are the same mathematics.
+          </p>
+        </div>
+        <div class="concept-card">
+          <h3 class="concept-card__title">Part IV gives you</h3>
+          <p class="concept-card__body">
+            The evolution, the hybrid designs, and this capstone. The <strong>frontier</strong>
+            &mdash; where this unified understanding is being used to build the next generation
+            of AI systems.
+          </p>
+        </div>
+      </div>
+
+      <p>
+        The DSP-to-AI journey is not just historical &mdash; it&rsquo;s <strong>predictive</strong>.
+        The next breakthrough in sequence modeling will almost certainly have a DSP antecedent.
+        If you understand both vocabularies, you&rsquo;ll recognize it before anyone else.
+      </p>
+    </section>
+
+    <!-- ============================================================
+         TOOL 23.1 — Capstone Integrator
+         ============================================================ -->
+    <section class="content-section" id="tool-capstone">
+      <h2 class="section-heading"><span class="section-number">Tool 23.1</span> Capstone Integrator</h2>
+
+      <p>
+        Build your hybrid model from scratch. Choose each layer type, configure its
+        parameters, and watch it process a signal. The visualization shows both the AI
+        view (layer activations) and the DSP view (filter responses) side by side.
+      </p>
+
+      <div class="tool-container" id="tool-capstone-viz">
+        <div class="tool-header">
+          <span class="tool-header__label">Tool 23.1</span>
+          <span class="tool-header__title">Capstone Integrator &mdash; Build Your Hybrid</span>
+        </div>
+        <div class="tool-body">
+          <div class="tool-controls">
+            <div class="control-group">
+              <label class="control-label">Architecture</label>
+              <select class="tool-select" data-control="cap-arch">
+                <option value="pure-ssm">Pure SSM (Mamba-like)</option>
+                <option value="pure-attn">Pure Attention (Transformer-like)</option>
+                <option value="hybrid-light" selected>Hybrid Light (1:7 ratio)</option>
+                <option value="hybrid-heavy">Hybrid Heavy (1:3 ratio)</option>
+              </select>
+            </div>
+            <div class="control-group">
+              <label class="control-label">Signal Type</label>
+              <select class="tool-select" data-control="cap-signal">
+                <option value="mixed">Mixed (local + long-range + retrieval)</option>
+                <option value="periodic">Periodic Pattern</option>
+                <option value="spike">Sparse Spikes</option>
+              </select>
+            </div>
+          </div>
+          <div class="tool-controls" style="padding-top: 0;">
+            <div class="control-group">
+              <label class="control-label">Layers</label>
+              <input type="range" min="4" max="16" value="8" step="1" data-control="cap-layers">
+              <span class="control-value" aria-live="polite" data-value="cap-layers">8</span>
+            </div>
+            <div class="control-group">
+              <label class="control-label">State Dim N</label>
+              <select class="tool-select" data-control="cap-N">
+                <option value="4">4</option>
+                <option value="8" selected>8</option>
+                <option value="16">16</option>
+              </select>
+            </div>
+          </div>
+          <div class="tool-canvas-wrapper"></div>
+        </div>
+      </div>
+
+      <div class="insight-box">
+        <h3 class="insight-box__title">Try This &mdash; The Final Experiments</h3>
+        <ul>
+          <li>Start with <strong>Hybrid Light (1:7)</strong> on <strong>Mixed signal</strong>. The visualization shows SSM layers handling long-range propagation and the sparse attention layers handling retrieval.</li>
+          <li>Switch to <strong>Pure SSM</strong> &mdash; retrieval performance drops (no attention to look back), but efficiency is maximum.</li>
+          <li>Switch to <strong>Pure Attention</strong> &mdash; retrieval is perfect, but compute bars grow quadratically with layer count.</li>
+          <li>Try <strong>Hybrid Heavy (1:3)</strong> &mdash; more attention = better quality but higher cost. Compare the tradeoff curve.</li>
+          <li>Increase <strong>State Dim N</strong> from 4 to 16 in SSM mode &mdash; more state = better memory compression = closer to attention quality.</li>
+          <li><strong>This is the DSP-to-AI principle in action</strong>: choose your filter types (FIR/IIR), choose your cascade order, optimize for your task. Engineering, not magic.</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- Further Reading -->
+    <section class="content-section" id="further-reading">
+      <h2 class="section-heading">Further Reading</h2>
+      <ul class="further-reading-list">
+        <li>
+          <a href="https://arxiv.org/abs/2312.00752" target="_blank" rel="noopener">Mamba: Linear-Time Sequence Modeling with Selective State Spaces</a>
+          <span class="further-reading__authors">Gu &amp; Dao, 2024</span>
+          <span class="further-reading__note">The core paper bridging DSP (state-space models) and AI (selective sequence modeling)</span>
+        </li>
+        <li>
+          <a href="https://arxiv.org/abs/1706.03762" target="_blank" rel="noopener">Attention Is All You Need</a>
+          <span class="further-reading__authors">Vaswani et al., 2017 — NeurIPS</span>
+          <span class="further-reading__note">The Transformer paper — understanding why hybrid architectures blend SSM with this</span>
+        </li>
+        <li>
+          <a href="https://www.dspguide.com/" target="_blank" rel="noopener">The Scientist and Engineer's Guide to DSP</a>
+          <span class="further-reading__authors">Smith, S.W. — Free online textbook</span>
+          <span class="further-reading__note">Complete DSP reference to revisit any signal processing concept from Parts I&ndash;III</span>
+        </li>
+        <li>
+          <a href="https://www.deeplearningbook.org/" target="_blank" rel="noopener">Deep Learning</a>
+          <span class="further-reading__authors">Goodfellow, Bengio &amp; Courville, 2016 — MIT Press (free online)</span>
+          <span class="further-reading__note">Comprehensive deep learning reference for all AI concepts in Parts II&ndash;IV</span>
+        </li>
+      </ul>
+    </section>
+
+    <!-- Chapter Navigation -->
+    <nav class="chapter-nav">
+      <a class="chapter-nav__prev" href="ch22-hybrid-architectures.html">
+        <span class="chapter-nav__dir">&larr; Previous</span>
+        <span class="chapter-nav__label">Ch 22: Hybrid Architectures</span>
+      </a>
+      <a class="chapter-nav__next" href="../../index.html">
+        <span class="chapter-nav__dir">Back to Home &rarr;</span>
+        <span class="chapter-nav__label">DSP &rarr; AI</span>
+      </a>
+    </nav>
+
+  </main>
+</div>
+
+<!-- Scripts -->
+<script src="../../js/core/navigation.js"></script>
+<script src="../../js/core/progressive-disclosure.js"></script>
+<script src="../../js/core/chapter-nav.js"></script>
+<script src="../../js/tools/shared/plot-utils.js"></script>
+<script src="../../js/tools/ch23-capstone.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    if (window.DSPtoAI && window.DSPtoAI.Capstone) {
+      window.DSPtoAI.Capstone.init('tool-capstone-viz');
+    }
+  });
+</script>
+
+<script src="../../js/core/search-index.js"></script>
+<script src="../../js/core/search.js"></script>
+</body>
+</html>

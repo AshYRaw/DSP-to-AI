@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ch 4: The Fourier Transform &mdash; DSP to AI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Outfit:wght@300;400;500;600;700;800;900&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../style/global.css">
+  <link rel="stylesheet" href="../../style/theme-dark.css">
+  <link rel="stylesheet" href="../../style/theme-light.css">
+  <link rel="stylesheet" href="../../style/components.css">
+  <link rel="stylesheet" href="../../style/chapter.css">
+  <script src="../../js/core/theme-switcher.js"></script>
+</head>
+<body>
+
+<div class="noise"></div>
+
+<!-- Navigation -->
+<nav class="site-nav">
+  <a href="../../index.html" class="site-nav__logo">DSP <span class="arrow">&rarr;</span> AI</a>
+  <ul class="site-nav__links">
+    <li><a href="../../index.html#part1" class="active">Part I</a></li>
+    <li><a href="../../index.html#part2">Part II</a></li>
+    <li><a href="../../index.html#part3">Part III</a></li>
+    <li><a href="../../index.html#part4">Part IV</a></li>
+    <li><a href="../../gallery/index.html">Gallery</a></li>
+    <li><a href="../../reference/glossary.html">Reference</a></li>
+  </ul>
+  <button class="search-toggle" aria-label="Search site (press /)">🔍</button>
+  <button class="theme-toggle" aria-label="Toggle theme"></button>
+  <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false">&#9776;</button>
+</nav>
+<div class="progress-bar"></div>
+
+<!-- Page Layout -->
+<div class="chapter-page" data-chapter-id="ch04">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar__part-label">Part I: DSP Foundations</div>
+    <ul class="sidebar__chapters">
+      <li><a class="sidebar__chapter-link" href="ch01-signals.html"><span class="sidebar__chapter-num">01</span> What Is a Signal?</a></li>
+      <li><a class="sidebar__chapter-link" href="ch02-systems.html"><span class="sidebar__chapter-num">02</span> Systems That Process Signals</a></li>
+      <li><a class="sidebar__chapter-link" href="ch03-convolution.html"><span class="sidebar__chapter-num">03</span> Convolution</a></li>
+      <li><a class="sidebar__chapter-link active" href="ch04-fourier.html"><span class="sidebar__chapter-num">04</span> The Fourier Transform</a>
+        <ul class="sidebar__sections">
+          <li><a class="sidebar__section-link" href="#sum-of-sinusoids">Sum of Sinusoids</a></li>
+          <li><a class="sidebar__section-link" href="#dft">The DFT</a></li>
+          <li><a class="sidebar__section-link" href="#magnitude-phase">Magnitude &amp; Phase</a></li>
+          <li><a class="sidebar__section-link" href="#fft">The FFT</a></li>
+          <li><a class="sidebar__section-link" href="#convolution-theorem">Convolution Theorem</a></li>
+          <li><a class="sidebar__section-link" href="#spectrograms">Spectrograms</a></li>
+          <li><a class="sidebar__section-link" href="#tool-decomp">Fourier Decomposition</a></li>
+          <li><a class="sidebar__section-link" href="#tool-spectrum">Spectrum Analyzer</a></li>
+          <li><a class="sidebar__section-link" href="#tool-spectro">Spectrogram Viewer</a></li>
+        </ul>
+      </li>
+      <li><a class="sidebar__chapter-link" href="ch05-z-transform.html"><span class="sidebar__chapter-num">05</span> Z-Transform</a></li>
+      <li><a class="sidebar__chapter-link" href="ch06-poles-zeros.html"><span class="sidebar__chapter-num">06</span> Poles &amp; Zeros</a></li>
+      <li><a class="sidebar__chapter-link" href="ch07-filter-design.html"><span class="sidebar__chapter-num">07</span> FIR &amp; IIR Filters</a></li>
+      <li><a class="sidebar__chapter-link" href="ch08-advanced-dsp.html"><span class="sidebar__chapter-num">08</span> Adaptive Filters</a></li>
+    </ul>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="chapter-content">
+
+    <nav class="breadcrumb" aria-label="Breadcrumb"></nav>
+
+    <header class="chapter-header">
+      <div class="chapter-header__part">Part I &mdash; DSP Foundations</div>
+      <div class="chapter-header__number">Chapter 04</div>
+      <h1 class="chapter-header__title">Frequency Domain &mdash; The Fourier Transform</h1>
+      <p class="chapter-header__subtitle">
+        Every signal &mdash; no matter how complex &mdash; can be decomposed into a sum of simple sinusoids.
+        The Fourier Transform is the lens that reveals this hidden structure, and it changes everything
+        about how we think about signals, filters, and computation.
+      </p>
+    </header>
+
+    <!-- === Section 1: Every Signal = Sum of Sinusoids === -->
+    <section class="chapter-section" id="sum-of-sinusoids">
+      <h2 class="chapter-section__title">4.1 &mdash; The Most Powerful Idea in Signal Processing</h2>
+
+      <div class="motivation-box">
+        <div class="motivation-box__title">Why should I care?</div>
+        <p>The Fourier Transform is everywhere: audio compression (MP3), image formats (JPEG), wireless communication (OFDM in WiFi/5G), speech recognition, medical imaging (MRI), and deep learning (positional encodings in Transformers use sinusoidal functions for exactly the same reason). Understanding frequency-domain thinking is non-negotiable for understanding modern AI architectures.</p>
+      </div>
+
+      <p>Here is the central insight of Fourier analysis:</p>
+
+      <div class="insight-box">
+        <div class="insight-box__title">Fourier's Theorem</div>
+        <div class="insight-box__content">
+          <strong>Any periodic signal can be represented as a sum of sinusoids</strong> at different frequencies, amplitudes, and phases. A square wave is really an infinite stack of sine waves. A violin note is a fundamental frequency plus harmonics. Your voice is dozens of frequencies mixed together. The Fourier Transform tells you <em>which</em> frequencies are present and <em>how much</em> of each.
+        </div>
+      </div>
+
+      <p>This means there are <strong>two equivalent ways</strong> to describe any signal:</p>
+
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap: var(--sp-md); margin: var(--sp-md) 0 var(--sp-lg);">
+        <div class="card card--dsp">
+          <h5>Time Domain</h5>
+          <p style="font-size:13px; color:var(--text-dim); margin-top:var(--sp-xs);">Amplitude vs. time. What we see on an oscilloscope. How we naturally perceive signals. x[n] tells us the value at each moment.</p>
+        </div>
+        <div class="card card--math">
+          <h5>Frequency Domain</h5>
+          <p style="font-size:13px; color:var(--text-dim); margin-top:var(--sp-xs);">Amplitude vs. frequency. What we see on a spectrum analyzer. X[k] tells us how much of each frequency is present. Reveals hidden structure.</p>
+        </div>
+      </div>
+
+      <p>The Fourier Transform converts between these two views. It's a <strong>change of basis</strong> &mdash; from the time basis (sample values) to the frequency basis (sinusoidal components). No information is lost; the transformation is perfectly reversible.</p>
+    </section>
+
+    <!-- === Section 2: The DFT === -->
+    <section class="chapter-section" id="dft">
+      <h2 class="chapter-section__title">4.2 &mdash; The Discrete Fourier Transform (DFT)</h2>
+
+      <p>For discrete signals (which is all we work with in digital systems), the <strong>Discrete Fourier Transform</strong> converts N time-domain samples into N frequency-domain coefficients:</p>
+
+      <div class="math-block">
+        X[k] = &sum;<sub>n=0</sub><sup>N&minus;1</sup> x[n] &middot; e<sup>&minus;j2&pi;kn/N</sup> &nbsp;&nbsp;&nbsp; k = 0, 1, ..., N&minus;1
+      </div>
+
+      <p>And the <strong>Inverse DFT</strong> recovers the original signal:</p>
+
+      <div class="math-block">
+        x[n] = (1/N) &sum;<sub>k=0</sub><sup>N&minus;1</sup> X[k] &middot; e<sup>j2&pi;kn/N</sup> &nbsp;&nbsp;&nbsp; n = 0, 1, ..., N&minus;1
+      </div>
+
+      <!-- Show the Math -->
+      <div class="progressive-section">
+        <button class="progressive-toggle" aria-expanded="false">
+          <span class="arrow">&#9654;</span> Show the Math &mdash; Understanding the DFT Formula
+        </button>
+        <div class="progressive-content">
+          <div class="progressive-content__inner">
+            <p>The complex exponential <span class="math-inline">e<sup>&minus;j2&pi;kn/N</sup></span> is a rotating phasor. By Euler's formula:</p>
+            <div class="math-block">
+              e<sup>&minus;j2&pi;kn/N</sup> = cos(2&pi;kn/N) &minus; j &middot; sin(2&pi;kn/N)
+            </div>
+            <p>So the DFT is essentially computing the <strong>correlation</strong> (inner product) between the signal x[n] and each sinusoidal basis function at frequency k. If the signal contains energy at frequency k, the inner product will be large; if not, it will be near zero.</p>
+            <p><strong>Key parameters:</strong></p>
+            <ul style="margin: var(--sp-sm) 0; padding-left: var(--sp-lg); line-height: 1.8;">
+              <li><span class="math-inline">N</span> = number of samples (determines frequency resolution)</li>
+              <li><span class="math-inline">X[k]</span> = complex number (magnitude + phase at frequency k)</li>
+              <li>Frequency resolution: <span class="math-inline">&Delta;f = f<sub>s</sub> / N</span> (sample rate / N)</li>
+              <li>X[0] = DC component (average value). X[N/2] = Nyquist frequency.</li>
+            </ul>
+            <p>The DFT is a <strong>matrix multiplication</strong>: X = F &middot; x, where F is the N&times;N DFT matrix with entries <span class="math-inline">F[k,n] = e<sup>&minus;j2&pi;kn/N</sup></span>. This matrix is unitary (up to a scale factor), which guarantees perfect reconstruction.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- === Section 3: Magnitude and Phase === -->
+    <section class="chapter-section" id="magnitude-phase">
+      <h2 class="chapter-section__title">4.3 &mdash; Magnitude and Phase: The Two Faces of Frequency</h2>
+
+      <p>Each DFT coefficient <span class="math-inline">X[k]</span> is a complex number with two parts:</p>
+
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap: var(--sp-md); margin: var(--sp-md) 0 var(--sp-lg);">
+        <div class="card card--math">
+          <h5>Magnitude |X[k]|</h5>
+          <div class="math-block" style="font-size:13px; margin-top:var(--sp-sm);">|X[k]| = &radic;(Re&sup2; + Im&sup2;)</div>
+          <p style="font-size:13px; color:var(--text-dim); margin-top:var(--sp-xs);"><strong>How much</strong> of frequency k is present. The magnitude spectrum is what most people think of as "the frequency content." It tells you which frequencies dominate.</p>
+        </div>
+        <div class="card card--math">
+          <h5>Phase &angle;X[k]</h5>
+          <div class="math-block" style="font-size:13px; margin-top:var(--sp-sm);">&angle;X[k] = atan2(Im, Re)</div>
+          <p style="font-size:13px; color:var(--text-dim); margin-top:var(--sp-xs);"><strong>When</strong> each frequency component starts. Phase determines the alignment of sinusoids. Change the phases, keep the magnitudes &mdash; the signal sounds the same (to human ears) but looks different.</p>
+        </div>
+      </div>
+
+      <p>Together, magnitude and phase fully describe each frequency component. The magnitude spectrum is typically plotted as a bar chart (Tool 4.1 below) or as a continuous curve (Tool 4.2).</p>
+
+      <div class="bridge-teaser">
+        <div class="bridge-teaser__label">Bridge to AI</div>
+        <div class="bridge-teaser__content">
+          The DFT computes <strong>correlations with sinusoidal templates</strong> &mdash; exactly like attention computes <strong>correlations with learned query/key vectors</strong>. Both are inner products that measure similarity. The DFT uses fixed sinusoidal bases; attention uses learned bases. This parallel runs deep through everything we'll see in Part III.
+        </div>
+      </div>
+    </section>
+
+    <!-- === Section 4: The FFT === -->
+    <section class="chapter-section" id="fft">
+      <h2 class="chapter-section__title">4.4 &mdash; The FFT: Making It Fast</h2>
+
+      <p>The DFT requires <span class="math-inline">O(N&sup2;)</span> multiplications &mdash; for a million-sample signal, that's a <em>trillion</em> operations. The <strong>Fast Fourier Transform</strong> (FFT) computes the exact same result in <span class="math-inline">O(N log N)</span> by exploiting symmetry in the DFT matrix.</p>
+
+      <div class="insight-box">
+        <div class="insight-box__title">Why the FFT Matters</div>
+        <div class="insight-box__content">
+          The Cooley-Tukey FFT algorithm (1965) is one of the most important algorithms in history. It reduced what took hours to seconds, enabling real-time audio processing, digital communication, medical imaging, and &mdash; as we'll see &mdash; efficient convolution. Without the FFT, most modern DSP and much of modern AI would be impractical.
+        </div>
+      </div>
+
+      <!-- Show the Math -->
+      <div class="progressive-section">
+        <button class="progressive-toggle" aria-expanded="false">
+          <span class="arrow">&#9654;</span> Show the Math &mdash; FFT Divide-and-Conquer
+        </button>
+        <div class="progressive-content">
+          <div class="progressive-content__inner">
+            <p>The key insight: an N-point DFT can be split into two N/2-point DFTs &mdash; one for even-indexed samples, one for odd:</p>
+            <div class="math-block">
+              X[k] = E[k] + W<sub>N</sub><sup>k</sup> &middot; O[k]
+            </div>
+            <div class="math-block">
+              X[k + N/2] = E[k] &minus; W<sub>N</sub><sup>k</sup> &middot; O[k]
+            </div>
+            <p>where <span class="math-inline">E[k]</span> is the DFT of even samples, <span class="math-inline">O[k]</span> is the DFT of odd samples, and <span class="math-inline">W<sub>N</sub> = e<sup>&minus;j2&pi;/N</sup></span> is the "twiddle factor."</p>
+            <p>This halving continues recursively: two N/2 DFTs become four N/4 DFTs, and so on, until we reach 2-point DFTs (which are trivial additions). The total: <span class="math-inline">log<sub>2</sub>(N)</span> stages, each with N/2 "butterfly" operations &rarr; <span class="math-inline">O(N log N)</span> total.</p>
+            <p><strong>Practical speedup:</strong> For N = 1024: DFT needs ~1M operations, FFT needs ~10K. For N = 1M: DFT needs 10<sup>12</sup>, FFT needs ~20M. That's a 50,000&times; speedup.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- === Section 5: Convolution Theorem === -->
+    <section class="chapter-section" id="convolution-theorem">
+      <h2 class="chapter-section__title">4.5 &mdash; The Convolution Theorem: Frequency Domain Multiplication</h2>
+
+      <p>This is the single most important theorem connecting Chapters 3 and 4:</p>
+
+      <div class="math-block" style="font-size:15px;">
+        Convolution in time &harr; Multiplication in frequency
+      </div>
+
+      <div class="math-block">
+        x[n] * h[n] &nbsp;&harr;&nbsp; X[k] &middot; H[k]
+      </div>
+
+      <p>In words: convolving two signals in the time domain is equivalent to multiplying their Fourier transforms element-by-element in the frequency domain.</p>
+
+      <div class="insight-box">
+        <div class="insight-box__title">Why This Changes Everything</div>
+        <div class="insight-box__content">
+          <strong>Fast convolution:</strong> Instead of the O(NM) direct convolution, compute:
+          <ol style="margin-top:var(--sp-xs); padding-left:var(--sp-md); line-height:1.8;">
+            <li>FFT of input: X = FFT(x) &mdash; O(N log N)</li>
+            <li>FFT of kernel: H = FFT(h) &mdash; O(N log N)</li>
+            <li>Multiply: Y = X &middot; H &mdash; O(N)</li>
+            <li>Inverse FFT: y = IFFT(Y) &mdash; O(N log N)</li>
+          </ol>
+          Total: <strong>O(N log N)</strong> instead of O(N&sup2;). This is how every large convolution is actually computed in practice &mdash; including in deep learning frameworks.
+        </div>
+      </div>
+
+      <!-- Show the Math -->
+      <div class="progressive-section">
+        <button class="progressive-toggle" aria-expanded="false">
+          <span class="arrow">&#9654;</span> Show the Math &mdash; Proving the Convolution Theorem
+        </button>
+        <div class="progressive-content">
+          <div class="progressive-content__inner">
+            <p>Take the DFT of the convolution <span class="math-inline">y[n] = &sum;<sub>m</sub> x[m] h[n&minus;m]</span>:</p>
+            <div class="math-block">
+              Y[k] = &sum;<sub>n</sub> (&sum;<sub>m</sub> x[m] h[n&minus;m]) e<sup>&minus;j2&pi;kn/N</sup>
+            </div>
+            <p>Swap summation order and substitute <span class="math-inline">p = n &minus; m</span>:</p>
+            <div class="math-block">
+              = &sum;<sub>m</sub> x[m] e<sup>&minus;j2&pi;km/N</sup> &middot; &sum;<sub>p</sub> h[p] e<sup>&minus;j2&pi;kp/N</sup>
+            </div>
+            <div class="math-block">
+              = X[k] &middot; H[k]
+            </div>
+            <p>The proof works because the complex exponentials are separable: <span class="math-inline">e<sup>&minus;j2&pi;k(m+p)/N</sup> = e<sup>&minus;j2&pi;km/N</sup> &middot; e<sup>&minus;j2&pi;kp/N</sup></span>.</p>
+            <p><strong>Dual result:</strong> Multiplication in time &harr; Convolution in frequency. This duality is used in windowing (multiplying by a window in time = convolving its spectrum with your signal's spectrum).</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="bridge-teaser">
+        <div class="bridge-teaser__label">Bridge to AI</div>
+        <div class="bridge-teaser__content">
+          The convolution theorem is why <strong>S4</strong> (Structured State Spaces for Sequences) can train efficiently: it converts recurrence into convolution mode during training, then applies the FFT. The duality between convolution (parallel, trainable) and recurrence (sequential, fast inference) is the mathematical foundation of Mamba's architecture, which we'll explore in Part III.
+        </div>
+      </div>
+    </section>
+
+    <!-- === Section 6: Spectrograms === -->
+    <section class="chapter-section" id="spectrograms">
+      <h2 class="chapter-section__title">4.6 &mdash; Spectrograms: Watching Frequencies Change Over Time</h2>
+
+      <p>A regular Fourier Transform analyzes the <em>entire</em> signal at once, giving you the average frequency content. But what if the frequency content <em>changes</em> over time? (A melody has different notes at different times. Speech moves through vowels and consonants.)</p>
+
+      <p>The <strong>spectrogram</strong> solves this by computing the FFT on short overlapping windows of the signal. The result is a 2D image:</p>
+
+      <ul style="margin: var(--sp-sm) 0 var(--sp-lg); padding-left: var(--sp-lg); line-height: 2;">
+        <li><strong>Horizontal axis</strong> = time</li>
+        <li><strong>Vertical axis</strong> = frequency</li>
+        <li><strong>Color intensity</strong> = energy at that frequency at that time</li>
+      </ul>
+
+      <p>There's a fundamental tradeoff:</p>
+
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap: var(--sp-md); margin: var(--sp-md) 0 var(--sp-lg);">
+        <div class="card card--dsp">
+          <h5>Short Window (small FFT)</h5>
+          <p style="font-size:13px; color:var(--text-dim); margin-top:var(--sp-xs);">Good time resolution (see when events happen). Poor frequency resolution (frequencies blur together). Like short-term memory.</p>
+        </div>
+        <div class="card card--dsp">
+          <h5>Long Window (large FFT)</h5>
+          <p style="font-size:13px; color:var(--text-dim); margin-top:var(--sp-xs);">Good frequency resolution (distinguish close frequencies). Poor time resolution (events blur together). Like long-term analysis.</p>
+        </div>
+      </div>
+
+      <p>This <strong>time-frequency uncertainty</strong> is fundamental &mdash; you cannot have perfect resolution in both simultaneously. It's related to the Heisenberg Uncertainty Principle in physics.</p>
+
+      <div class="bridge-teaser">
+        <div class="bridge-teaser__label">Bridge to AI</div>
+        <div class="bridge-teaser__content">
+          Spectrograms (often Mel-scaled) are the standard input representation for speech recognition models. A spectrogram converts 1D audio into a 2D image, which can then be processed by CNNs or Transformers. The frequency decomposition that the Fourier Transform provides is the first processing step in virtually every modern audio AI system.
+        </div>
+      </div>
+    </section>
+
+    <!-- === TOOL 4.1: Fourier Decomposition Playground === -->
+    <section class="chapter-section" id="tool-decomp">
+      <h2 class="chapter-section__title">Interactive Tool</h2>
+
+      <div class="tool-container" id="fourierDecompTool">
+        <div class="tool-header">
+          <span class="tool-header__icon">&#9835;</span>
+          <span class="tool-header__title">Tool 4.1 &mdash; Fourier Decomposition Playground</span>
+          <span class="tool-header__badge">Interactive</span>
+        </div>
+
+        <div class="tool-body">
+          <p style="font-size:14px; color:var(--text-dim); margin-bottom:var(--sp-md);">
+            See how individual sinusoidal components (colored lines) add up to form a composite signal (green bold line).
+            Each bar in the spectrum shows the amplitude of one frequency component.
+            Choose a preset to see how classic waveforms are built from harmonics, or click spectrum bars to highlight components.
+          </p>
+          <div class="tool-canvas-wrapper"></div>
+        </div>
+
+        <div class="tool-controls">
+          <div class="control-group">
+            <label class="control-label">Preset</label>
+            <select class="control-select" data-control="fourier-preset">
+              <option value="square" selected>Square Wave Harmonics</option>
+              <option value="sawtooth">Sawtooth Harmonics</option>
+              <option value="chord">Musical Chord (C Major)</option>
+              <option value="vowel-a">Vowel "ah" (Formants)</option>
+              <option value="two-sines">Two Frequencies</option>
+              <option value="single">Single Sinusoid</option>
+            </select>
+          </div>
+          <div class="control-group">
+            <label class="control-label">Base Freq <span class="control-value" aria-live="polite" data-value="base-freq">2</span> Hz</label>
+            <input type="range" data-control="base-freq" min="0.5" max="10" value="2" step="0.5">
+          </div>
+          <div class="control-group" style="justify-content:center;">
+            <label style="display:flex; align-items:center; gap:var(--sp-sm); font-size:12px; color:var(--text-dim); cursor:pointer;">
+              <input type="checkbox" data-control="show-individual" checked>
+              Show individual components
+            </label>
+          </div>
+          <div class="control-group" style="display:flex; gap:var(--sp-sm); justify-content:center;">
+            <button class="btn" data-action="play-all">&#9654; Play Sound</button>
+            <button class="btn" data-action="stop-audio">&#9632; Stop</button>
+          </div>
+          <div class="control-group" style="display:flex; gap:var(--sp-sm); justify-content:center;">
+            <button class="btn" data-action="add-component">+ Add</button>
+            <button class="btn" data-action="remove-component">&minus; Remove</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="insight-box" style="margin-top:var(--sp-lg);">
+        <div class="insight-box__title">Try this</div>
+        <div class="insight-box__content">
+          <strong>1.</strong> Start with "Square Wave Harmonics." See 8 odd harmonics (f, 3f, 5f, ...) with decreasing amplitudes. The green composite approximates a square wave &mdash; but with rounded corners because we only have 8 harmonics (a perfect square wave needs infinitely many).<br>
+          <strong>2.</strong> Click the bars in the spectrum to highlight individual components. Watch how each colored sine wave contributes to the total.<br>
+          <strong>3.</strong> Switch to "Single Sinusoid" &mdash; just one bar, one frequency, one pure sine wave. This is the simplest possible signal in Fourier terms.<br>
+          <strong>4.</strong> Try "Musical Chord" &mdash; frequencies at ratios 1 : 1.26 : 1.5 : 2 (C-E-G-C'). Press Play Sound to hear the chord. The harmonious ratios produce a consonant sound.<br>
+          <strong>5.</strong> Increase the base frequency and watch the composite wave compress horizontally &mdash; same shape, higher pitch.<br>
+          <strong>6.</strong> Remove components one at a time from the square wave and watch the approximation degrade. More harmonics = better approximation. This is the essence of Fourier synthesis.
+        </div>
+      </div>
+    </section>
+
+    <!-- === TOOL 4.2: Real-Time Spectrum Analyzer === -->
+    <section class="chapter-section" id="tool-spectrum">
+      <h2 class="chapter-section__title">Interactive Tool</h2>
+
+      <div class="tool-container" id="spectrumAnalyzerTool">
+        <div class="tool-header">
+          <span class="tool-header__icon">&#127897;</span>
+          <span class="tool-header__title">Tool 4.2 &mdash; Real-Time Spectrum Analyzer</span>
+          <span class="tool-header__badge">Interactive</span>
+        </div>
+
+        <div class="tool-body">
+          <p style="font-size:14px; color:var(--text-dim); margin-bottom:var(--sp-md);">
+            See the Fourier Transform in action on live signals. Use your microphone to analyze your voice in real-time,
+            or generate test tones. The top panel shows the waveform (time domain), the bottom shows the spectrum (frequency domain).
+            Whistle a steady pitch and watch a peak appear at that frequency.
+          </p>
+          <div class="tool-canvas-wrapper"></div>
+        </div>
+
+        <div class="tool-controls">
+          <div class="control-group">
+            <label class="control-label">Source</label>
+            <select class="control-select" data-control="spectrum-source">
+              <option value="tone" selected>Generated Tone</option>
+              <option value="mic">Microphone</option>
+            </select>
+          </div>
+          <div class="control-group">
+            <label class="control-label">Tone Type</label>
+            <select class="control-select" data-control="tone-type">
+              <option value="sine" selected>Sine</option>
+              <option value="square">Square</option>
+              <option value="sawtooth">Sawtooth</option>
+              <option value="triangle">Triangle</option>
+            </select>
+          </div>
+          <div class="control-group">
+            <label class="control-label">Tone Freq <span class="control-value" aria-live="polite" data-value="tone-freq">440</span> Hz</label>
+            <input type="range" data-control="tone-freq" min="100" max="4000" value="440" step="10">
+          </div>
+          <div class="control-group" style="justify-content:center;">
+            <label style="display:flex; align-items:center; gap:var(--sp-sm); font-size:12px; color:var(--text-dim); cursor:pointer;">
+              <input type="checkbox" data-control="log-scale">
+              Log frequency scale
+            </label>
+          </div>
+          <div class="control-group" style="justify-content:center;">
+            <button class="btn" data-action="start-analyzer">&#9654; Start</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="insight-box" style="margin-top:var(--sp-lg);">
+        <div class="insight-box__title">Try this</div>
+        <div class="insight-box__content">
+          <strong>1.</strong> Start with Generated Tone (Sine, 440 Hz). Press Start. The waveform shows a smooth sine wave, and the spectrum shows a single sharp peak at 440 Hz &mdash; a pure tone has exactly one frequency.<br>
+          <strong>2.</strong> Switch tone type to Square Wave. Now the spectrum shows peaks at 440 Hz, 1320 Hz (3&times;), 2200 Hz (5&times;), etc. &mdash; the odd harmonics from Section 4.1, now visualized in real-time.<br>
+          <strong>3.</strong> Sweep the frequency slider while watching the spectrum peak slide horizontally. This is what a frequency sweep (chirp) looks like.<br>
+          <strong>4.</strong> Switch source to Microphone (allow permission). Whistle a steady note &mdash; see a clean peak. Hum &mdash; see a fundamental plus harmonics. Say "aaah" &mdash; see the vowel formants. Clap &mdash; see broadband energy across all frequencies.<br>
+          <strong>5.</strong> Try Sawtooth at low frequency (200 Hz) &mdash; the spectrum shows ALL harmonics (not just odd), with amplitudes dropping as 1/k. This is the Fourier series of a sawtooth wave.<br>
+          <strong>6.</strong> Enable "Log frequency scale" for a perceptually more natural view &mdash; this spreads out the low frequencies and compresses the highs, similar to how human hearing works.
+        </div>
+      </div>
+    </section>
+
+    <!-- === TOOL 4.3: Spectrogram Viewer === -->
+    <section class="chapter-section" id="tool-spectro">
+      <h2 class="chapter-section__title">Interactive Tool</h2>
+
+      <div class="tool-container" id="spectrogramTool">
+        <div class="tool-header">
+          <span class="tool-header__icon">&#9618;</span>
+          <span class="tool-header__title">Tool 4.3 &mdash; Spectrogram Viewer</span>
+          <span class="tool-header__badge">Interactive</span>
+        </div>
+
+        <div class="tool-body">
+          <p style="font-size:14px; color:var(--text-dim); margin-bottom:var(--sp-md);">
+            A scrolling spectrogram shows frequency content evolving over time. Bright colors indicate strong energy at that frequency.
+            Try different signal sources and FFT sizes to see the time-frequency resolution tradeoff in action.
+          </p>
+          <div class="tool-canvas-wrapper"></div>
+        </div>
+
+        <div class="tool-controls">
+          <div class="control-group">
+            <label class="control-label">Source</label>
+            <select class="control-select" data-control="spectro-source">
+              <option value="chirp" selected>Chirp (Sweep)</option>
+              <option value="tone">Single Tone</option>
+              <option value="two-tone">Two Tones</option>
+              <option value="mic">Microphone</option>
+            </select>
+          </div>
+          <div class="control-group">
+            <label class="control-label">FFT Size</label>
+            <select class="control-select" data-control="fft-size">
+              <option value="256">256 (fast time, blurry freq)</option>
+              <option value="512">512</option>
+              <option value="1024" selected>1024 (balanced)</option>
+              <option value="2048">2048</option>
+              <option value="4096">4096 (sharp freq, blurry time)</option>
+            </select>
+          </div>
+          <div class="control-group">
+            <label class="control-label">Tone Freq <span class="control-value" aria-live="polite" data-value="spectro-freq">440</span> Hz</label>
+            <input type="range" data-control="spectro-freq" min="100" max="4000" value="440" step="10">
+          </div>
+          <div class="control-group" style="display:flex; gap:var(--sp-sm); justify-content:center;">
+            <button class="btn" data-action="start-spectro">&#9654; Start</button>
+            <button class="btn" data-action="clear-spectro">&#8634; Clear</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="insight-box" style="margin-top:var(--sp-lg);">
+        <div class="insight-box__title">Try this</div>
+        <div class="insight-box__content">
+          <strong>1.</strong> Start with Chirp (Sweep). Press Start. Watch a diagonal line sweep upward &mdash; the frequency increases over time. This is exactly what a spectrogram is designed to reveal: frequency changes over time.<br>
+          <strong>2.</strong> Switch FFT Size between 256 and 4096. With 256: the chirp line is thick (poor frequency resolution) but responds quickly. With 4096: the line is thin (sharp frequency) but smeared horizontally (poor time resolution). This is the uncertainty principle in action.<br>
+          <strong>3.</strong> Switch to Single Tone. A horizontal line appears at the tone frequency. Drag the frequency slider while running &mdash; see the line follow your changes.<br>
+          <strong>4.</strong> Try Two Tones. Two horizontal lines appear. This is how you can separate mixed signals in the frequency domain.<br>
+          <strong>5.</strong> Switch to Microphone. Whistle a rising note &mdash; see the frequency climb. Say vowels &mdash; see the formant structure (the "fingerprint" of each vowel sound).<br>
+          <strong>6.</strong> Compare FFT 256 vs 4096 with Microphone while speaking. Notice how 4096 gives cleaner frequency bands but smears rapid changes like consonants.
+        </div>
+      </div>
+    </section>
+
+    <!-- === Bridge Section === -->
+    <section class="chapter-section" id="bridge">
+      <h2 class="chapter-section__title">4.7 &mdash; The Fourier Transform: Connecting DSP to AI</h2>
+
+      <p>The Fourier Transform is more than a signal processing tool &mdash; it's a way of thinking that runs through modern AI:</p>
+
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap: var(--sp-md); margin: var(--sp-md) 0 var(--sp-lg);">
+        <div class="card card--dsp">
+          <h5>In DSP</h5>
+          <ul style="font-size:13px; color:var(--text-dim); margin-top:var(--sp-xs); padding-left:var(--sp-md); line-height:1.8;">
+            <li>Decomposes signals into sinusoids</li>
+            <li>Turns convolution into multiplication</li>
+            <li>Enables fast filtering via FFT</li>
+            <li>Spectrograms for time-frequency analysis</li>
+            <li>Fixed sinusoidal basis functions</li>
+          </ul>
+        </div>
+        <div class="card card--ai">
+          <h5>In AI</h5>
+          <ul style="font-size:13px; color:var(--text-dim); margin-top:var(--sp-xs); padding-left:var(--sp-md); line-height:1.8;">
+            <li>Positional encodings use sinusoids</li>
+            <li>S4/Mamba uses FFT for fast training</li>
+            <li>Mel spectrograms feed speech models</li>
+            <li>Attention = correlation with learned bases</li>
+            <li>Learned basis functions (embeddings)</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="bridge-teaser">
+        <div class="bridge-teaser__label">Looking Ahead</div>
+        <div class="bridge-teaser__content">
+          In <strong>Chapter 5</strong>, we'll meet the <strong>Z-Transform</strong> &mdash; a generalization of the Fourier Transform that adds a dimension of exponential growth or decay. While the Fourier Transform lives on the unit circle of the complex plane, the Z-Transform covers the entire plane &mdash; and this extra dimension is precisely what we need to understand filter stability, poles and zeros, and ultimately the eigenvalue structure of state-space models like Mamba.
+        </div>
+      </div>
+    </section>
+
+    <!-- Further Reading -->
+    <section class="content-section" id="further-reading">
+      <h2 class="section-heading">Further Reading</h2>
+      <ul class="further-reading-list">
+        <li>
+          <a href="https://www.youtube.com/watch?v=spUNpyF58BY" target="_blank" rel="noopener">But what is the Fourier Transform? A visual introduction</a>
+          <span class="further-reading__authors">3Blue1Brown, 2018 — YouTube</span>
+          <span class="further-reading__note">The most popular visual explanation of the Fourier Transform</span>
+        </li>
+        <li>
+          <a href="https://www.dspguide.com/ch8.htm" target="_blank" rel="noopener">DSP Guide — Chapter 8: The DFT</a>
+          <span class="further-reading__authors">Smith, S.W. — Free online</span>
+          <span class="further-reading__note">Practical guide to the Discrete Fourier Transform and its properties</span>
+        </li>
+        <li>
+          <a href="https://ccrma.stanford.edu/~jos/mdft/" target="_blank" rel="noopener">Mathematics of the DFT</a>
+          <span class="further-reading__authors">Smith, J.O. — Stanford CCRMA</span>
+          <span class="further-reading__note">Rigorous mathematical treatment with DSP applications</span>
+        </li>
+      </ul>
+    </section>
+
+    <!-- Chapter Navigation -->
+    <nav class="chapter-nav" aria-label="Chapter navigation"></nav>
+
+  </main>
+</div>
+
+<!-- Scripts -->
+<script src="../../js/core/navigation.js"></script>
+<script src="../../js/core/progressive-disclosure.js"></script>
+<script src="../../js/core/chapter-nav.js"></script>
+<script src="../../js/tools/shared/signal-generator.js"></script>
+<script src="../../js/tools/shared/plot-utils.js"></script>
+<script src="../../js/tools/shared/audio-engine.js"></script>
+<script src="../../js/tools/ch04-fourier-decomposition.js"></script>
+<script src="../../js/tools/ch04-spectrum-analyzer.js"></script>
+<script src="../../js/tools/ch04-spectrogram.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    DSPtoAI.FourierDecomp.init('fourierDecompTool');
+    DSPtoAI.SpectrumAnalyzer.init('spectrumAnalyzerTool');
+    DSPtoAI.Spectrogram.init('spectrogramTool');
+  });
+</script>
+
+<script src="../../js/core/search-index.js"></script>
+<script src="../../js/core/search.js"></script>
+</body>
+</html>

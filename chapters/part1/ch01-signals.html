@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ch 1: What Is a Signal? &mdash; DSP to AI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Outfit:wght@300;400;500;600;700;800;900&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <link rel="stylesheet" href="../../style/global.css">
+  <link rel="stylesheet" href="../../style/theme-dark.css">
+  <link rel="stylesheet" href="../../style/theme-light.css">
+  <link rel="stylesheet" href="../../style/components.css">
+  <link rel="stylesheet" href="../../style/chapter.css">
+  <script src="../../js/core/theme-switcher.js"></script>
+</head>
+<body>
+
+<div class="noise"></div>
+
+<!-- Navigation -->
+<nav class="site-nav">
+  <a href="../../index.html" class="site-nav__logo">DSP <span class="arrow">&rarr;</span> AI</a>
+  <ul class="site-nav__links">
+    <li><a href="../../index.html#part1" class="active">Part I</a></li>
+    <li><a href="../../index.html#part2">Part II</a></li>
+    <li><a href="../../index.html#part3">Part III</a></li>
+    <li><a href="../../index.html#part4">Part IV</a></li>
+    <li><a href="../../gallery/index.html">Gallery</a></li>
+    <li><a href="../../reference/glossary.html">Reference</a></li>
+  </ul>
+  <button class="search-toggle" aria-label="Search site (press /)">🔍</button>
+  <button class="theme-toggle" aria-label="Toggle theme"></button>
+  <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false">&#9776;</button>
+</nav>
+<div class="progress-bar"></div>
+
+<!-- Page Layout -->
+<div class="chapter-page" data-chapter-id="ch01">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar__part-label">Part I: DSP Foundations</div>
+    <ul class="sidebar__chapters">
+      <li><a class="sidebar__chapter-link active" href="ch01-signals.html"><span class="sidebar__chapter-num">01</span> What Is a Signal?</a>
+        <ul class="sidebar__sections">
+          <li><a class="sidebar__section-link" href="#signals-everywhere">Signals Are Everywhere</a></li>
+          <li><a class="sidebar__section-link" href="#continuous-vs-discrete">Continuous vs Discrete</a></li>
+          <li><a class="sidebar__section-link" href="#sampling">Sampling &amp; Nyquist</a></li>
+          <li><a class="sidebar__section-link" href="#signal-types">Common Signal Types</a></li>
+          <li><a class="sidebar__section-link" href="#tool-signal-lab">Signal Laboratory</a></li>
+          <li><a class="sidebar__section-link" href="#tool-aliasing">Aliasing Demonstrator</a></li>
+        </ul>
+      </li>
+      <li><a class="sidebar__chapter-link" href="ch02-systems.html"><span class="sidebar__chapter-num">02</span> Systems That Process Signals</a></li>
+      <li><a class="sidebar__chapter-link" href="ch03-convolution.html"><span class="sidebar__chapter-num">03</span> Convolution</a></li>
+      <li><a class="sidebar__chapter-link" href="ch04-fourier.html"><span class="sidebar__chapter-num">04</span> The Fourier Transform</a></li>
+      <li><a class="sidebar__chapter-link" href="ch05-z-transform.html"><span class="sidebar__chapter-num">05</span> Z-Transform</a></li>
+      <li><a class="sidebar__chapter-link" href="ch06-poles-zeros.html"><span class="sidebar__chapter-num">06</span> Poles &amp; Zeros</a></li>
+      <li><a class="sidebar__chapter-link" href="ch07-filter-design.html"><span class="sidebar__chapter-num">07</span> FIR &amp; IIR Filters</a></li>
+      <li><a class="sidebar__chapter-link" href="ch08-advanced-dsp.html"><span class="sidebar__chapter-num">08</span> Adaptive Filters</a></li>
+    </ul>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="chapter-content">
+
+    <!-- Breadcrumb -->
+    <nav class="breadcrumb" aria-label="Breadcrumb"></nav>
+
+    <!-- Chapter Header -->
+    <header class="chapter-header">
+      <div class="chapter-header__part">Part I &mdash; DSP Foundations</div>
+      <div class="chapter-header__number">Chapter 01</div>
+      <h1 class="chapter-header__title">What Is a Signal?</h1>
+      <p class="chapter-header__subtitle">
+        Before we can process signals or build AI systems that understand them,
+        we need to know what a signal actually is &mdash; and how a computer captures one.
+      </p>
+    </header>
+
+    <!-- === Section 1: Signals Are Everywhere === -->
+    <section class="chapter-section" id="signals-everywhere">
+      <h2 class="chapter-section__title">1.1 &mdash; Signals Are Everywhere</h2>
+
+      <div class="motivation-box">
+        <div class="motivation-box__title">Why should I care?</div>
+        <p>Every piece of data that changes over time or space is a signal. The audio you hear, the images you see, your heartbeat on a monitor, stock prices ticking by &mdash; all signals. Understanding signals is step one to understanding how AI models like Transformers and Mamba process the world.</p>
+      </div>
+
+      <p>A <strong>signal</strong> is any quantity that varies as a function of some independent variable &mdash; usually time, but it could be space, frequency, or something else entirely.</p>
+
+      <p>Think of it this way: if you can draw it on a graph with an axis, it's a signal.</p>
+
+      <ul style="margin: var(--sp-md) 0 var(--sp-lg); padding-left: var(--sp-lg); line-height: 2;">
+        <li><strong>Audio</strong> &mdash; air pressure varying over time</li>
+        <li><strong>Images</strong> &mdash; brightness varying over 2D space (pixels)</li>
+        <li><strong>EKG</strong> &mdash; electrical voltage from your heart over time</li>
+        <li><strong>Stock prices</strong> &mdash; value varying over trading days</li>
+        <li><strong>Text</strong> &mdash; a sequence of tokens varying over position (yes, this is a signal too!)</li>
+      </ul>
+
+      <div class="bridge-teaser">
+        <div class="bridge-teaser__label">Bridge to AI</div>
+        <div class="bridge-teaser__content">
+          When GPT processes text or Mamba processes audio, they are processing signals &mdash; sequences of numbers that change over time or position. Every AI model, at its core, is a signal processing system.
+        </div>
+      </div>
+    </section>
+
+    <!-- === Section 2: Continuous vs Discrete === -->
+    <section class="chapter-section" id="continuous-vs-discrete">
+      <h2 class="chapter-section__title">1.2 &mdash; Continuous vs Discrete Time</h2>
+
+      <p>In the physical world, signals are <strong>continuous</strong> &mdash; sound pressure varies smoothly, never "jumping" between values. We write continuous signals as <span class="math-inline">x(t)</span> where <span class="math-inline">t</span> is continuous time.</p>
+
+      <p>But computers can't store infinitely smooth curves. They take <strong>snapshots</strong> at regular intervals, creating a <strong>discrete-time signal</strong>: a sequence of numbers. We write this as <span class="math-inline">x[n]</span> where <span class="math-inline">n = 0, 1, 2, ...</span> is the sample index.</p>
+
+      <p>This conversion from continuous to discrete is called <strong>sampling</strong>, and it's one of the most important ideas in all of signal processing.</p>
+
+      <!-- Show the Math -->
+      <div class="progressive-section">
+        <button class="progressive-toggle" aria-expanded="false">
+          <span class="arrow">&#9654;</span> Show the Math
+        </button>
+        <div class="progressive-content">
+          <div class="progressive-content__inner">
+            <div class="math-block">
+              x[n] = x(nT<sub>s</sub>)
+            </div>
+            <p>where <span class="math-inline">T<sub>s</sub></span> is the <strong>sampling period</strong> (time between samples) and <span class="math-inline">f<sub>s</sub> = 1/T<sub>s</sub></span> is the <strong>sampling rate</strong> (samples per second, measured in Hz).</p>
+            <p>Common sampling rates:</p>
+            <ul style="margin: var(--sp-sm) 0; padding-left: var(--sp-lg); line-height: 2;">
+              <li><span class="math-inline">8,000 Hz</span> &mdash; telephone</li>
+              <li><span class="math-inline">44,100 Hz</span> &mdash; CD audio</li>
+              <li><span class="math-inline">48,000 Hz</span> &mdash; professional audio</li>
+              <li><span class="math-inline">96,000 Hz</span> &mdash; high-resolution audio</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- === Section 3: Sampling & Nyquist === -->
+    <section class="chapter-section" id="sampling">
+      <h2 class="chapter-section__title">1.3 &mdash; Sampling &amp; the Nyquist Theorem</h2>
+
+      <p>Here's the critical question: <strong>how fast do we need to sample to capture a signal faithfully?</strong></p>
+
+      <p>If we sample too slowly, we lose information. Worse, we get <strong>aliasing</strong> &mdash; the discrete samples look like they came from a completely different, lower-frequency signal. It's like watching a helicopter blade spin under a strobe light &mdash; it appears to spin slowly or even backward.</p>
+
+      <div class="insight-box">
+        <div class="insight-box__title">The Nyquist-Shannon Theorem</div>
+        <div class="insight-box__content">
+          To perfectly capture a signal with maximum frequency <strong>f<sub>max</sub></strong>, you must sample at a rate of at least <strong>2 &times; f<sub>max</sub></strong>. This minimum rate is called the <strong>Nyquist rate</strong>.
+        </div>
+      </div>
+
+      <p>Below the Nyquist rate, high frequencies "fold" back and masquerade as lower frequencies. This is aliasing, and once it happens, <em>you cannot undo it</em> &mdash; the information is permanently corrupted.</p>
+
+      <!-- Show the Math -->
+      <div class="progressive-section">
+        <button class="progressive-toggle" aria-expanded="false">
+          <span class="arrow">&#9654;</span> Show the Math
+        </button>
+        <div class="progressive-content">
+          <div class="progressive-content__inner">
+            <div class="math-block">
+              f<sub>s</sub> &ge; 2 &middot; f<sub>max</sub>
+            </div>
+            <p>The <strong>Nyquist frequency</strong> is half the sampling rate:</p>
+            <div class="math-block">
+              f<sub>Nyquist</sub> = f<sub>s</sub> / 2
+            </div>
+            <p>Any signal component above <span class="math-inline">f<sub>Nyquist</sub></span> gets "folded" to a frequency below it. Specifically, a frequency <span class="math-inline">f</span> that exceeds <span class="math-inline">f<sub>Nyquist</sub></span> appears as:</p>
+            <div class="math-block">
+              f<sub>alias</sub> = |f<sub>s</sub> &minus; f| &nbsp;&nbsp;(when f<sub>s</sub>/2 &lt; f &lt; f<sub>s</sub>)
+            </div>
+            <p>This is why CD audio (44.1 kHz) can capture up to 22.05 kHz &mdash; just above the range of human hearing (20 kHz).</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- === Section 4: Common Signal Types === -->
+    <section class="chapter-section" id="signal-types">
+      <h2 class="chapter-section__title">1.4 &mdash; Common Signal Types</h2>
+
+      <p>Before we dive into the interactive tools, here are the fundamental building blocks you'll encounter everywhere in DSP and AI:</p>
+
+      <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: var(--sp-md); margin: var(--sp-lg) 0;">
+        <div class="card card--dsp">
+          <h4>Sinusoid</h4>
+          <p style="font-size:13.5px; color:var(--text-dim); margin-top:var(--sp-xs);">The most fundamental signal. Pure tone. Building block of all others (Fourier's insight). Defined by frequency, amplitude, and phase.</p>
+        </div>
+        <div class="card card--dsp">
+          <h4>Square Wave</h4>
+          <p style="font-size:13.5px; color:var(--text-dim); margin-top:var(--sp-xs);">Switches between +A and &minus;A. Rich in odd harmonics. Used in digital electronics. Made of infinitely many sinusoids.</p>
+        </div>
+        <div class="card card--dsp">
+          <h4>Impulse</h4>
+          <p style="font-size:13.5px; color:var(--text-dim); margin-top:var(--sp-xs);">A single spike at one instant, zero everywhere else. The "ping" that reveals a system's complete character (Chapter 2).</p>
+        </div>
+        <div class="card card--dsp">
+          <h4>White Noise</h4>
+          <p style="font-size:13.5px; color:var(--text-dim); margin-top:var(--sp-xs);">Random values at every sample. Equal energy at all frequencies. Sounds like static. Essential test signal.</p>
+        </div>
+        <div class="card card--dsp">
+          <h4>Chirp</h4>
+          <p style="font-size:13.5px; color:var(--text-dim); margin-top:var(--sp-xs);">Frequency sweeps from low to high (or high to low). Used in radar (the ancestor of attention &mdash; Chapter 17).</p>
+        </div>
+        <div class="card card--dsp">
+          <h4>Triangle / Sawtooth</h4>
+          <p style="font-size:13.5px; color:var(--text-dim); margin-top:var(--sp-xs);">Linear ramps create harsh, bright tones. Rich in harmonics. Common in synthesizers.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- === TOOL 1.1: Signal Laboratory === -->
+    <section class="chapter-section" id="tool-signal-lab">
+      <h2 class="chapter-section__title">Interactive Tool</h2>
+
+      <div class="tool-container" id="signalLabTool">
+        <div class="tool-header">
+          <span class="tool-header__icon">&#9835;</span>
+          <span class="tool-header__title">Tool 1.1 &mdash; Signal Laboratory</span>
+          <span class="tool-header__badge">Interactive</span>
+        </div>
+
+        <div class="tool-body">
+          <p style="font-size:14px; color:var(--text-dim); margin-bottom:var(--sp-md);">
+            Generate signals, hear them, and see both the smooth continuous waveform and the discrete sample points a computer captures. Try different waveform types and frequencies.
+          </p>
+          <div class="tool-canvas-wrapper"></div>
+        </div>
+
+        <div class="tool-controls">
+          <div class="control-group">
+            <label class="control-label">Waveform</label>
+            <select class="control-select" data-control="signal-type">
+              <option value="sine">Sine</option>
+              <option value="square">Square</option>
+              <option value="triangle">Triangle</option>
+              <option value="sawtooth">Sawtooth</option>
+              <option value="noise">Noise</option>
+              <option value="chirp">Chirp</option>
+            </select>
+          </div>
+          <div class="control-group">
+            <label class="control-label">Frequency <span class="control-value" aria-live="polite" data-value="frequency">440</span> Hz</label>
+            <input type="range" data-control="frequency" min="20" max="2000" value="440" step="1">
+          </div>
+          <div class="control-group">
+            <label class="control-label">Amplitude <span class="control-value" aria-live="polite" data-value="amplitude">0.8</span></label>
+            <input type="range" data-control="amplitude" min="0" max="1" value="0.8" step="0.01">
+          </div>
+          <div class="control-group">
+            <label class="control-label">DC Offset <span class="control-value" aria-live="polite" data-value="offset">0</span></label>
+            <input type="range" data-control="offset" min="-0.5" max="0.5" value="0" step="0.01">
+          </div>
+          <div class="control-group">
+            <label class="control-label">Sample Points <span class="control-value" aria-live="polite" data-value="sample-points">40</span></label>
+            <input type="range" data-control="sample-points" min="4" max="100" value="40" step="1">
+          </div>
+          <div class="control-group" style="justify-content:center;">
+            <label style="display:flex; align-items:center; gap:var(--sp-sm); font-size:12px; color:var(--text-dim); cursor:pointer;">
+              <input type="checkbox" data-control="show-discrete" checked>
+              Show discrete samples
+            </label>
+          </div>
+          <div class="control-group" style="justify-content:center;">
+            <button class="btn" data-action="play">&#9654; Play</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="insight-box" style="margin-top:var(--sp-lg);">
+        <div class="insight-box__title">Try this</div>
+        <div class="insight-box__content">
+          <strong>1.</strong> Set frequency to 440 Hz and press Play &mdash; you'll hear concert A.<br>
+          <strong>2.</strong> Switch to Square wave &mdash; notice the harsher, brighter sound (more harmonics).<br>
+          <strong>3.</strong> Turn on "Show discrete samples" and reduce sample points to 8 &mdash; see how the computer's view becomes a poor approximation of the smooth wave.<br>
+          <strong>4.</strong> Try the Chirp &mdash; frequency sweeps upward. This is what radar uses!
+        </div>
+      </div>
+    </section>
+
+    <!-- === TOOL 1.2: Aliasing Demonstrator === -->
+    <section class="chapter-section" id="tool-aliasing">
+      <h2 class="chapter-section__title">Interactive Tool</h2>
+
+      <div class="tool-container" id="aliasingTool">
+        <div class="tool-header">
+          <span class="tool-header__icon">&#9888;</span>
+          <span class="tool-header__title">Tool 1.2 &mdash; Sampling &amp; Aliasing Demonstrator</span>
+          <span class="tool-header__badge">Interactive</span>
+        </div>
+
+        <div class="tool-body">
+          <p style="font-size:14px; color:var(--text-dim); margin-bottom:var(--sp-md);">
+            The <span style="color:var(--color-dsp);">cyan wave</span> is the original signal.
+            The <span style="color:var(--color-ai);">orange dots</span> are what the computer captures.
+            When the sample rate drops below 2&times; the signal frequency, the dots trace out a
+            <span style="color:var(--color-danger);">red ghost signal</span> &mdash; that's aliasing.
+          </p>
+          <div class="tool-canvas-wrapper"></div>
+        </div>
+
+        <div class="tool-controls">
+          <div class="control-group">
+            <label class="control-label">Signal Frequency <span class="control-value" aria-live="polite" data-value="signal-freq">5</span> Hz</label>
+            <input type="range" data-control="signal-freq" min="1" max="20" value="5" step="0.5">
+          </div>
+          <div class="control-group">
+            <label class="control-label">Sample Rate <span class="control-value" aria-live="polite" data-value="sample-rate">20</span> Hz</label>
+            <input type="range" data-control="sample-rate" min="2" max="60" value="20" step="1">
+          </div>
+          <div class="control-group" style="justify-content:center;">
+            <button class="btn" data-action="play-original">&#9654; Original</button>
+          </div>
+          <div class="control-group" style="justify-content:center;">
+            <button class="btn" data-action="play-aliased">&#9654; Aliased</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="insight-box" style="margin-top:var(--sp-lg);">
+        <div class="insight-box__title">Try this</div>
+        <div class="insight-box__content">
+          <strong>1.</strong> Start with Signal = 5 Hz, Sample Rate = 20 Hz. Status says "OK" &mdash; we have enough samples.<br>
+          <strong>2.</strong> Slowly increase Signal Frequency past 10 Hz (the Nyquist limit). Watch the red aliased signal appear!<br>
+          <strong>3.</strong> At Signal = 15 Hz with Sample Rate = 20 Hz, the aliased frequency is 5 Hz &mdash; completely wrong.<br>
+          <strong>4.</strong> Press "Original" then "Aliased" to HEAR the difference. The computer hears a different pitch!<br>
+          <strong>5.</strong> Now increase Sample Rate to 40+ Hz &mdash; aliasing disappears because Nyquist is satisfied again.
+        </div>
+      </div>
+    </section>
+
+    <!-- === Bridge to AI === -->
+    <section class="chapter-section" id="bridge">
+      <div class="bridge-teaser">
+        <div class="bridge-teaser__label">Looking Ahead</div>
+        <div class="bridge-teaser__content">
+          Now you know what signals are and how computers capture them. In <strong>Chapter 2</strong>, we'll learn about <em>systems</em> that process these signals &mdash; the first step toward understanding how neural networks transform their inputs. Every layer in a neural network is, mathematically, a signal processing system.
+        </div>
+      </div>
+    </section>
+
+    <!-- Further Reading -->
+    <section class="content-section" id="further-reading">
+      <h2 class="section-heading">Further Reading</h2>
+      <ul class="further-reading-list">
+        <li>
+          <a href="https://ocw.mit.edu/courses/6-003-signals-and-systems-fall-2011/" target="_blank" rel="noopener">Signals and Systems (MIT 6.003)</a>
+          <span class="further-reading__authors">Oppenheim &amp; Willsky — MIT OpenCourseWare</span>
+          <span class="further-reading__note">The classic course covering signals, sampling, and the Nyquist theorem</span>
+        </li>
+        <li>
+          <a href="https://ieeexplore.ieee.org/document/6769090" target="_blank" rel="noopener">Communication in the Presence of Noise</a>
+          <span class="further-reading__authors">Shannon, C.E., 1949 — Proceedings of the IRE</span>
+          <span class="further-reading__note">The foundational paper establishing sampling theory and information limits</span>
+        </li>
+        <li>
+          <a href="https://www.dspguide.com/" target="_blank" rel="noopener">The Scientist and Engineer's Guide to DSP</a>
+          <span class="further-reading__authors">Smith, S.W. — Free online textbook</span>
+          <span class="further-reading__note">Excellent intuitive introduction to signals and sampling (Chapters 1-3)</span>
+        </li>
+      </ul>
+    </section>
+
+    <!-- Chapter Navigation -->
+    <nav class="chapter-nav" aria-label="Chapter navigation"></nav>
+
+  </main>
+</div>
+
+<!-- Scripts -->
+<script src="../../js/core/navigation.js"></script>
+<script src="../../js/core/progressive-disclosure.js"></script>
+<script src="../../js/core/chapter-nav.js"></script>
+<script src="../../js/tools/shared/signal-generator.js"></script>
+<script src="../../js/tools/shared/plot-utils.js"></script>
+<script src="../../js/tools/shared/audio-engine.js"></script>
+<script src="../../js/tools/ch01-signal-lab.js"></script>
+<script src="../../js/tools/ch01-aliasing.js"></script>
+<script>
+  // Initialize tools
+  document.addEventListener('DOMContentLoaded', function() {
+    DSPtoAI.SignalLab.init('signalLabTool');
+    DSPtoAI.AliasingDemo.init('aliasingTool');
+  });
+</script>
+
+<script src="../../js/core/search-index.js"></script>
+<script src="../../js/core/search.js"></script>
+</body>
+</html>

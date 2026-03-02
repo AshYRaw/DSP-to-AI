@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ch 14: Attention &mdash; DSP to AI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Outfit:wght@300;400;500;600;700;800;900&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../style/global.css">
+  <link rel="stylesheet" href="../../style/theme-dark.css">
+  <link rel="stylesheet" href="../../style/theme-light.css">
+  <link rel="stylesheet" href="../../style/components.css">
+  <link rel="stylesheet" href="../../style/chapter.css">
+  <script src="../../js/core/theme-switcher.js"></script>
+</head>
+<body>
+
+<div class="noise"></div>
+
+<!-- Navigation -->
+<nav class="site-nav">
+  <a href="../../index.html" class="site-nav__logo">DSP <span class="arrow">&rarr;</span> AI</a>
+  <ul class="site-nav__links">
+    <li><a href="../../index.html#part1">Part I</a></li>
+    <li><a href="../../index.html#part2" class="active">Part II</a></li>
+    <li><a href="../../index.html#part3">Part III</a></li>
+    <li><a href="../../index.html#part4">Part IV</a></li>
+    <li><a href="../../gallery/index.html">Gallery</a></li>
+    <li><a href="../../reference/glossary.html">Reference</a></li>
+  </ul>
+  <button class="search-toggle" aria-label="Search site (press /)">🔍</button>
+  <button class="theme-toggle" aria-label="Toggle theme"></button>
+  <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false">&#9776;</button>
+</nav>
+<div class="progress-bar"></div>
+
+<!-- Page Layout -->
+<div class="chapter-page" data-chapter-id="ch14">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar__part-label">Part II: AI Foundations</div>
+    <ul class="sidebar__chapters">
+      <li><a class="sidebar__chapter-link" href="ch09-neuron.html"><span class="sidebar__chapter-num">09</span> The Neuron</a></li>
+      <li><a class="sidebar__chapter-link" href="ch10-backprop.html"><span class="sidebar__chapter-num">10</span> Networks &amp; Backprop</a></li>
+      <li><a class="sidebar__chapter-link" href="ch11-training.html"><span class="sidebar__chapter-num">11</span> Training &amp; Optimization</a></li>
+      <li><a class="sidebar__chapter-link" href="ch12-sequences.html"><span class="sidebar__chapter-num">12</span> RNNs &amp; LSTMs</a></li>
+      <li><a class="sidebar__chapter-link" href="ch13-embeddings.html"><span class="sidebar__chapter-num">13</span> Embeddings</a></li>
+      <li><a class="sidebar__chapter-link active" href="ch14-attention.html"><span class="sidebar__chapter-num">14</span> Attention</a>
+        <ul class="sidebar__sections">
+          <li><a class="sidebar__section-link" href="#bottleneck">The Bottleneck Problem</a></li>
+          <li><a class="sidebar__section-link" href="#qkv">Queries, Keys, Values</a></li>
+          <li><a class="sidebar__section-link" href="#scaled-dot">Scaled Dot-Product</a></li>
+          <li><a class="sidebar__section-link" href="#multihead">Multi-Head Attention</a></li>
+          <li><a class="sidebar__section-link" href="#self-cross">Self vs Cross Attention</a></li>
+          <li><a class="sidebar__section-link" href="#bridge">Bridge: Cross-Correlation</a></li>
+          <li><a class="sidebar__section-link" href="#tool-attn-viz">Attention Visualizer</a></li>
+          <li><a class="sidebar__section-link" href="#tool-matched">Matched Filter Demo</a></li>
+        </ul>
+      </li>
+      <li><a class="sidebar__chapter-link" href="ch15-transformer.html"><span class="sidebar__chapter-num">15</span> The Transformer</a></li>
+    </ul>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="chapter-content">
+
+    <nav class="breadcrumb" aria-label="Breadcrumb"></nav>
+
+    <header class="chapter-header">
+      <div class="chapter-header__part">Part II &mdash; AI Foundations</div>
+      <div class="chapter-header__number">Chapter 14</div>
+      <h1 class="chapter-header__title">The Attention Mechanism</h1>
+      <p class="chapter-header__subtitle">
+        If there is one idea that defines modern AI, it is <strong>attention</strong>. Instead of
+        compressing an entire sequence into a single hidden state (the RNN bottleneck), attention
+        lets the model <em>look back at every position</em> and decide which ones matter right now.
+        The math behind it? <strong>Cross-correlation</strong> &mdash; the same operation DSP engineers
+        have used for decades to find a known signal buried in noise.
+      </p>
+    </header>
+
+    <!-- ============================================================
+         14.1 — The Bottleneck Problem
+         ============================================================ -->
+    <section class="content-section" id="bottleneck">
+      <h2 class="section-heading"><span class="section-number">14.1</span> The Bottleneck Problem</h2>
+
+      <p>
+        Sequence-to-sequence models (machine translation, summarization) use an <strong>encoder</strong>
+        to read the input and a <strong>decoder</strong> to generate the output. In the original
+        design (Sutskever et al., 2014), the encoder compresses the entire input into a
+        single fixed-size vector &mdash; the final hidden state.
+      </p>
+
+      <div class="math-block">
+        <code>
+          Encoder: x&sub1;, x&sub2;, &hellip;, x_T &rarr; h_T (single vector!)<br>
+          Decoder: h_T &rarr; y&sub1;, y&sub2;, &hellip;, y_S
+        </code>
+      </div>
+
+      <p>
+        This is like trying to remember a 500-page book by writing a one-sentence summary.
+        For short sequences it works. For long sequences, information is lost &mdash; especially
+        from the beginning.
+      </p>
+
+      <p>
+        The solution (Bahdanau et al., 2014): instead of one vector, <strong>keep all hidden
+        states</strong> and let the decoder <em>attend</em> to whichever ones are relevant
+        for each output step.
+      </p>
+    </section>
+
+    <!-- ============================================================
+         14.2 — Queries, Keys, Values
+         ============================================================ -->
+    <section class="content-section" id="qkv">
+      <h2 class="section-heading"><span class="section-number">14.2</span> Queries, Keys, and Values</h2>
+
+      <p>
+        Think of attention as a <strong>soft database lookup</strong>:
+      </p>
+
+      <div class="card-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+        <div class="concept-card">
+          <h3 class="concept-card__title">Query (Q)</h3>
+          <p class="concept-card__body">
+            &ldquo;What am I looking for?&rdquo;<br><br>
+            The current position&rsquo;s representation, projected to ask a question about
+            the sequence.
+          </p>
+        </div>
+        <div class="concept-card">
+          <h3 class="concept-card__title">Key (K)</h3>
+          <p class="concept-card__body">
+            &ldquo;What do I contain?&rdquo;<br><br>
+            Each position advertises its content. The query compares against all keys
+            to find matches.
+          </p>
+        </div>
+        <div class="concept-card">
+          <h3 class="concept-card__title">Value (V)</h3>
+          <p class="concept-card__body">
+            &ldquo;Here is my actual content.&rdquo;<br><br>
+            Once the best matches are found, their values are retrieved and blended
+            together.
+          </p>
+        </div>
+      </div>
+
+      <p>
+        Each is created by multiplying the input embeddings by learned weight matrices:
+      </p>
+
+      <div class="math-block">
+        <code>
+          Q = X &middot; W_Q &nbsp;&nbsp; (T&times;d &middot; d&times;d_k = T&times;d_k)<br>
+          K = X &middot; W_K &nbsp;&nbsp; (T&times;d &middot; d&times;d_k = T&times;d_k)<br>
+          V = X &middot; W_V &nbsp;&nbsp; (T&times;d &middot; d&times;d_v = T&times;d_v)
+        </code>
+      </div>
+
+      <p>
+        The projection matrices <em>W_Q</em>, <em>W_K</em>, <em>W_V</em> are learned during
+        training. They transform the raw embeddings into a space where the dot product
+        between Q and K measures <strong>relevance</strong>.
+      </p>
+    </section>
+
+    <!-- ============================================================
+         14.3 — Scaled Dot-Product Attention
+         ============================================================ -->
+    <section class="content-section" id="scaled-dot">
+      <h2 class="section-heading"><span class="section-number">14.3</span> Scaled Dot-Product Attention</h2>
+
+      <p>
+        The core formula, from &ldquo;Attention Is All You Need&rdquo; (Vaswani et al., 2017):
+      </p>
+
+      <div class="math-block" style="font-size: 1.1em; text-align: center;">
+        <code>
+          Attention(Q, K, V) = softmax(Q K&sup1; / &radic;d_k) &middot; V
+        </code>
+      </div>
+
+      <p>Step by step:</p>
+
+      <ol style="line-height: 1.8;">
+        <li><strong>Dot products</strong> &mdash; <code>Q K&sup1;</code> gives a T&times;T matrix where entry (i,j) measures how much query <em>i</em> matches key <em>j</em>.</li>
+        <li><strong>Scale</strong> &mdash; divide by &radic;d_k to prevent dot products from growing too large (which would push softmax into saturation).</li>
+        <li><strong>Softmax</strong> &mdash; normalize each row to a probability distribution. Now entry (i,j) is the <em>attention weight</em>: how much position <em>i</em> attends to position <em>j</em>.</li>
+        <li><strong>Weighted sum</strong> &mdash; multiply by V. Each output is a weighted combination of all value vectors, weighted by attention.</li>
+      </ol>
+
+      <div class="progressive-section">
+        <button class="progressive-toggle" aria-expanded="false">Show the Math</button>
+        <div class="progressive-content">
+          <p><strong>Why scale by &radic;d_k?</strong></p>
+          <p>
+            If Q and K have entries drawn from N(0,1), then each dot product q&middot;k is a sum
+            of d_k products of unit-variance terms. By the CLT, the variance of the sum is d_k:
+          </p>
+          <div class="math-block">
+            <code>
+              Var(q &middot; k) = d_k &middot; Var(q_i) &middot; Var(k_i) = d_k
+            </code>
+          </div>
+          <p>
+            So std(q&middot;k) = &radic;d_k. Dividing restores unit variance, keeping softmax in
+            its sensitive region where gradients flow well.
+          </p>
+          <p><strong>Softmax as soft argmax:</strong></p>
+          <div class="math-block">
+            <code>
+              softmax(z_i) = exp(z_i) / &Sigma;_j exp(z_j)<br><br>
+              As temperature &rarr; 0: softmax &rarr; one-hot (hard attention)<br>
+              As temperature &rarr; &infin;: softmax &rarr; uniform (no preference)
+            </code>
+          </div>
+          <p>
+            Learned attention typically operates between these extremes &mdash; focusing on a few
+            positions while maintaining some probability mass on the rest.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         14.4 — Multi-Head Attention
+         ============================================================ -->
+    <section class="content-section" id="multihead">
+      <h2 class="section-heading"><span class="section-number">14.4</span> Multi-Head Attention</h2>
+
+      <p>
+        A single attention head captures one type of relationship. But words relate in many ways:
+        syntactic (subject-verb), semantic (synonym), positional (adjacent). The solution:
+        <strong>run multiple attention heads in parallel</strong>, each with its own
+        W_Q, W_K, W_V projections.
+      </p>
+
+      <div class="math-block">
+        <code>
+          head_i = Attention(X W_Q^i, X W_K^i, X W_V^i)<br><br>
+          MultiHead(Q, K, V) = Concat(head_1, &hellip;, head_h) &middot; W_O
+        </code>
+      </div>
+
+      <p>
+        With h=8 heads and d_model=512, each head works in d_k = 512/8 = 64 dimensions.
+        Concatenating gives back 512 dimensions, and a final projection W_O mixes them.
+      </p>
+
+      <div class="card-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+        <div class="concept-card">
+          <h3 class="concept-card__title">Head 1 might learn</h3>
+          <p class="concept-card__body">Syntactic: &ldquo;which verb goes with this subject?&rdquo;</p>
+        </div>
+        <div class="concept-card">
+          <h3 class="concept-card__title">Head 2 might learn</h3>
+          <p class="concept-card__body">Positional: &ldquo;what&rsquo;s the nearest noun?&rdquo;</p>
+        </div>
+        <div class="concept-card">
+          <h3 class="concept-card__title">Head 3 might learn</h3>
+          <p class="concept-card__body">Semantic: &ldquo;what&rsquo;s conceptually related?&rdquo;</p>
+        </div>
+      </div>
+
+      <div class="progressive-section">
+        <button class="progressive-toggle" aria-expanded="false">Show the Math</button>
+        <div class="progressive-content">
+          <p><strong>Computational cost of multi-head attention:</strong></p>
+          <div class="math-block">
+            <code>
+              Single head (d_model dims): O(T&sup2; &middot; d_model)<br>
+              h heads (d_k = d_model/h each): h &middot; O(T&sup2; &middot; d_k) = O(T&sup2; &middot; d_model)
+            </code>
+          </div>
+          <p>
+            Same total cost! By splitting the dimensions across heads, we get h different
+            attention patterns for free (relative to a single large head).
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         14.5 — Self-Attention vs Cross-Attention
+         ============================================================ -->
+    <section class="content-section" id="self-cross">
+      <h2 class="section-heading"><span class="section-number">14.5</span> Self-Attention vs Cross-Attention</h2>
+
+      <div class="card-grid" style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));">
+        <div class="concept-card">
+          <h3 class="concept-card__title">Self-Attention</h3>
+          <p class="concept-card__body">
+            Q, K, V all come from the <strong>same</strong> sequence. Each token attends to
+            every other token in its own sequence. Used in both encoder and decoder.
+            This is how a sentence &ldquo;looks at itself&rdquo; to build contextual representations.
+          </p>
+        </div>
+        <div class="concept-card">
+          <h3 class="concept-card__title">Cross-Attention</h3>
+          <p class="concept-card__body">
+            Q comes from one sequence (decoder), K and V come from <strong>another</strong>
+            (encoder). The decoder attends to the encoder output to gather relevant
+            information. Used in encoder-decoder models for translation.
+          </p>
+        </div>
+      </div>
+
+      <p>
+        In decoder-only models like GPT, only self-attention is used, but with a
+        <strong>causal mask</strong>: each position can only attend to previous positions
+        (no peeking at the future). This is analogous to a <em>causal filter</em> in DSP.
+      </p>
+    </section>
+
+    <!-- ============================================================
+         14.6 — Bridge: Attention IS Cross-Correlation
+         ============================================================ -->
+    <section class="content-section bridge-teaser" id="bridge">
+      <h2 class="section-heading"><span class="section-number">14.6</span> Bridge &mdash; Attention IS Cross-Correlation</h2>
+
+      <p>
+        This is the most important bridge in the entire book. Let&rsquo;s make it explicit:
+      </p>
+
+      <table class="comparison-table">
+        <thead>
+          <tr>
+            <th>DSP (Matched Filter)</th>
+            <th>AI (Attention)</th>
+            <th>Both Compute</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Template h[n]</td>
+            <td>Query vector q</td>
+            <td>The pattern we&rsquo;re searching for</td>
+          </tr>
+          <tr>
+            <td>Signal x[n]</td>
+            <td>Key vectors {k_n}</td>
+            <td>The sequence we&rsquo;re searching in</td>
+          </tr>
+          <tr>
+            <td>Cross-correlation R_{xh}[n]</td>
+            <td>QK&sup1; scores</td>
+            <td>Similarity at every position</td>
+          </tr>
+          <tr>
+            <td>Peak detection</td>
+            <td>Softmax normalization</td>
+            <td>Find the best match(es)</td>
+          </tr>
+          <tr>
+            <td>Fixed template</td>
+            <td>Learned projection W_Q, W_K</td>
+            <td>What to search for / what to advertise</td>
+          </tr>
+          <tr>
+            <td>Single matched filter</td>
+            <td>Single attention head</td>
+            <td>One pattern matcher</td>
+          </tr>
+          <tr>
+            <td>Filter bank (multiple filters)</td>
+            <td>Multi-head attention</td>
+            <td>Parallel pattern matchers for different features</td>
+          </tr>
+          <tr>
+            <td>Causal filter (uses past only)</td>
+            <td>Causal mask (no future tokens)</td>
+            <td>Only use information from the past</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <p>
+        The difference is that DSP matched filters use <em>fixed</em> templates designed by
+        engineers, while attention <em>learns</em> its templates (W_Q, W_K) from data. And
+        attention uses <em>soft</em> matching (softmax) instead of hard peak detection, so
+        gradients can flow and the system can be trained end-to-end.
+      </p>
+
+      <p>
+        In Part III, Chapter 17 traces the full four-stage evolution: fixed matched filter &rarr;
+        adaptive filter bank &rarr; learned Q/K projections &rarr; full multi-head self-attention.
+      </p>
+    </section>
+
+    <!-- ============================================================
+         TOOL 14.1 — Attention Mechanism Visualizer
+         ============================================================ -->
+    <section class="content-section" id="tool-attn-viz">
+      <h2 class="section-heading"><span class="section-number">Tool 14.1</span> Attention Mechanism Visualizer</h2>
+
+      <p>
+        See scaled dot-product attention in action. The heatmap shows how much each token
+        (query) attends to every other token (key). Click a token to inspect its raw scores
+        and softmax weights.
+      </p>
+
+      <div class="tool-container" id="tool-attention-viz">
+        <div class="tool-header">
+          <span class="tool-header__label">Tool 14.1</span>
+          <span class="tool-header__title">Attention Mechanism Visualizer</span>
+        </div>
+        <div class="tool-body">
+          <div class="tool-controls">
+            <div class="control-group">
+              <label class="control-label">Sentence</label>
+              <select class="tool-select" data-control="attn-sentence">
+                <option value="0">The cat sat on the mat</option>
+                <option value="1">I love signals and systems</option>
+                <option value="2">The bank by the river was steep</option>
+                <option value="3">Attention is all you need</option>
+              </select>
+            </div>
+            <div class="control-group">
+              <label class="control-label">Heads</label>
+              <input type="range" min="1" max="4" value="1" step="1" data-control="attn-heads">
+              <span class="control-value" aria-live="polite" data-value="attn-heads">1</span>
+            </div>
+            <div class="control-group">
+              <label class="control-label">Head #</label>
+              <input type="range" min="0" max="3" value="0" step="1" data-control="attn-head-idx">
+              <span class="control-value" aria-live="polite" data-value="attn-head-idx">0</span>
+            </div>
+            <div class="control-group">
+              <label class="control-label">Temperature</label>
+              <input type="range" min="0.1" max="3.0" value="1.0" step="0.1" data-control="attn-temp">
+              <span class="control-value" aria-live="polite" data-value="attn-temp">1.0</span>
+            </div>
+          </div>
+          <div class="tool-canvas-wrapper"></div>
+        </div>
+      </div>
+
+      <div class="insight-box">
+        <h3 class="insight-box__title">Try This</h3>
+        <ul>
+          <li><strong>Click a token</strong> in the heatmap to see its Q&middot;K dot products (raw scores) and softmax weights.</li>
+          <li>Set <strong>Temperature = 0.1</strong> &mdash; attention becomes sharp (one-hot). Set it to 3.0 &mdash; attention becomes uniform. This is the &ldquo;soft argmax&rdquo; behavior.</li>
+          <li>Increase <strong>Heads to 4</strong> and switch between them with Head # &mdash; notice each head develops different attention patterns.</li>
+          <li>Try the sentence &ldquo;The bank by the river was steep&rdquo; &mdash; which tokens does &ldquo;bank&rdquo; attend to?</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         TOOL 14.2 — Attention as Matched Filtering
+         ============================================================ -->
+    <section class="content-section" id="tool-matched">
+      <h2 class="section-heading"><span class="section-number">Tool 14.2</span> Attention as Matched Filtering</h2>
+
+      <p>
+        The bridge in action: the left panel shows a DSP matched filter detecting a template
+        in a noisy signal via cross-correlation. The right panel shows the same computation
+        described as attention. Same math, different vocabulary.
+      </p>
+
+      <div class="tool-container" id="tool-matched-filter">
+        <div class="tool-header">
+          <span class="tool-header__label">Tool 14.2</span>
+          <span class="tool-header__title">Attention as Matched Filtering</span>
+        </div>
+        <div class="tool-body">
+          <div class="tool-controls">
+            <div class="control-group">
+              <label class="control-label">Template Shape</label>
+              <select class="tool-select" data-control="mf-template">
+                <option value="pulse">Gaussian Pulse</option>
+                <option value="chirp">Chirp</option>
+                <option value="step">Step Function</option>
+              </select>
+            </div>
+            <div class="control-group">
+              <label class="control-label">Noise Level</label>
+              <input type="range" min="0" max="1.5" value="0.3" step="0.05" data-control="mf-noise">
+              <span class="control-value" aria-live="polite" data-value="mf-noise">0.3</span>
+            </div>
+            <div class="control-group">
+              <label class="control-label">Template Position</label>
+              <input type="range" min="5" max="50" value="20" step="1" data-control="mf-pos">
+              <span class="control-value" aria-live="polite" data-value="mf-pos">20</span>
+            </div>
+          </div>
+          <div class="tool-canvas-wrapper"></div>
+        </div>
+      </div>
+
+      <div class="insight-box">
+        <h3 class="insight-box__title">Try This</h3>
+        <ul>
+          <li>Crank <strong>Noise to 1.5</strong> &mdash; the template is invisible in the signal, but cross-correlation (= attention scores) still finds it. This is the power of matched filtering.</li>
+          <li>Move the <strong>Template Position</strong> slider &mdash; the correlation peak tracks perfectly. In attention, this is how the query finds its matching key regardless of position.</li>
+          <li>Switch templates &mdash; each shape produces a different correlation pattern. In attention, different W_Q projections create different &ldquo;template shapes.&rdquo;</li>
+          <li>Notice: the softmax (right, bottom) produces a sharp peak at the same position as the cross-correlation maximum. Attention = soft peak detection on correlation.</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- Further Reading -->
+    <section class="content-section" id="further-reading">
+      <h2 class="section-heading">Further Reading</h2>
+      <ul class="further-reading-list">
+        <li>
+          <a href="https://arxiv.org/abs/1409.0473" target="_blank" rel="noopener">Neural Machine Translation by Jointly Learning to Align and Translate</a>
+          <span class="further-reading__authors">Bahdanau, Cho &amp; Bengio, 2015 — ICLR</span>
+          <span class="further-reading__note">The paper that introduced attention for sequence-to-sequence models</span>
+        </li>
+        <li>
+          <a href="https://arxiv.org/abs/1508.04025" target="_blank" rel="noopener">Effective Approaches to Attention-based Neural Machine Translation</a>
+          <span class="further-reading__authors">Luong, Pham &amp; Manning, 2015 — EMNLP</span>
+          <span class="further-reading__note">Global vs local attention, and the dot-product attention mechanism</span>
+        </li>
+        <li>
+          <a href="https://lilianweng.github.io/posts/2018-06-24-attention/" target="_blank" rel="noopener">Attention? Attention!</a>
+          <span class="further-reading__authors">Weng, L., 2018</span>
+          <span class="further-reading__note">Comprehensive survey of attention mechanism variants and their evolution</span>
+        </li>
+      </ul>
+    </section>
+
+    <!-- Chapter Navigation -->
+    <nav class="chapter-nav">
+      <a class="chapter-nav__prev" href="ch13-embeddings.html">
+        <span class="chapter-nav__dir">&larr; Previous</span>
+        <span class="chapter-nav__label">Ch 13: Embeddings</span>
+      </a>
+      <a class="chapter-nav__next" href="ch15-transformer.html">
+        <span class="chapter-nav__dir">Next &rarr;</span>
+        <span class="chapter-nav__label">Ch 15: The Transformer</span>
+      </a>
+    </nav>
+
+  </main>
+</div>
+
+<!-- Scripts -->
+<script src="../../js/core/navigation.js"></script>
+<script src="../../js/core/progressive-disclosure.js"></script>
+<script src="../../js/core/chapter-nav.js"></script>
+<script src="../../js/tools/shared/plot-utils.js"></script>
+<script src="../../js/tools/ch14-attention-viz.js"></script>
+<script src="../../js/tools/ch14-matched-filter.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    if (window.DSPtoAI && window.DSPtoAI.AttentionViz) {
+      window.DSPtoAI.AttentionViz.init('tool-attention-viz');
+    }
+    if (window.DSPtoAI && window.DSPtoAI.MatchedFilter) {
+      window.DSPtoAI.MatchedFilter.init('tool-matched-filter');
+    }
+  });
+</script>
+
+<script src="../../js/core/search-index.js"></script>
+<script src="../../js/core/search.js"></script>
+</body>
+</html>

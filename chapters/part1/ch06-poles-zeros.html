@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ch 6: Poles, Zeros &amp; Filter Character &mdash; DSP to AI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Outfit:wght@300;400;500;600;700;800;900&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../style/global.css">
+  <link rel="stylesheet" href="../../style/theme-dark.css">
+  <link rel="stylesheet" href="../../style/theme-light.css">
+  <link rel="stylesheet" href="../../style/components.css">
+  <link rel="stylesheet" href="../../style/chapter.css">
+  <script src="../../js/core/theme-switcher.js"></script>
+</head>
+<body>
+
+<div class="noise"></div>
+
+<!-- Navigation -->
+<nav class="site-nav">
+  <a href="../../index.html" class="site-nav__logo">DSP <span class="arrow">&rarr;</span> AI</a>
+  <ul class="site-nav__links">
+    <li><a href="../../index.html#part1" class="active">Part I</a></li>
+    <li><a href="../../index.html#part2">Part II</a></li>
+    <li><a href="../../index.html#part3">Part III</a></li>
+    <li><a href="../../index.html#part4">Part IV</a></li>
+    <li><a href="../../gallery/index.html">Gallery</a></li>
+    <li><a href="../../reference/glossary.html">Reference</a></li>
+  </ul>
+  <button class="search-toggle" aria-label="Search site (press /)">🔍</button>
+  <button class="theme-toggle" aria-label="Toggle theme"></button>
+  <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false">&#9776;</button>
+</nav>
+<div class="progress-bar"></div>
+
+<!-- Page Layout -->
+<div class="chapter-page" data-chapter-id="ch06">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar__part-label">Part I: DSP Foundations</div>
+    <ul class="sidebar__chapters">
+      <li><a class="sidebar__chapter-link" href="ch01-signals.html"><span class="sidebar__chapter-num">01</span> What Is a Signal?</a></li>
+      <li><a class="sidebar__chapter-link" href="ch02-systems.html"><span class="sidebar__chapter-num">02</span> Systems That Process Signals</a></li>
+      <li><a class="sidebar__chapter-link" href="ch03-convolution.html"><span class="sidebar__chapter-num">03</span> Convolution</a></li>
+      <li><a class="sidebar__chapter-link" href="ch04-fourier.html"><span class="sidebar__chapter-num">04</span> The Fourier Transform</a></li>
+      <li><a class="sidebar__chapter-link" href="ch05-z-transform.html"><span class="sidebar__chapter-num">05</span> The Z-Transform</a></li>
+      <li><a class="sidebar__chapter-link active" href="ch06-poles-zeros.html"><span class="sidebar__chapter-num">06</span> Poles &amp; Zeros</a>
+        <ul class="sidebar__sections">
+          <li><a class="sidebar__section-link" href="#what-are-pz">What Are They?</a></li>
+          <li><a class="sidebar__section-link" href="#pz-plot">The Pole-Zero Plot</a></li>
+          <li><a class="sidebar__section-link" href="#freq-from-pz">Frequency Response</a></li>
+          <li><a class="sidebar__section-link" href="#stability-revisited">Stability Revisited</a></li>
+          <li><a class="sidebar__section-link" href="#filter-character">Filter Character</a></li>
+          <li><a class="sidebar__section-link" href="#bridge">Bridge to AI</a></li>
+          <li><a class="sidebar__section-link" href="#tool-pz">Pole-Zero Designer</a></li>
+        </ul>
+      </li>
+      <li><a class="sidebar__chapter-link" href="ch07-filter-design.html"><span class="sidebar__chapter-num">07</span> FIR &amp; IIR Filters</a></li>
+      <li><a class="sidebar__chapter-link" href="ch08-advanced-dsp.html"><span class="sidebar__chapter-num">08</span> Adaptive Filters</a></li>
+    </ul>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="chapter-content">
+
+    <nav class="breadcrumb" aria-label="Breadcrumb"></nav>
+
+    <header class="chapter-header">
+      <div class="chapter-header__part">Part I &mdash; DSP Foundations</div>
+      <div class="chapter-header__number">Chapter 06</div>
+      <h1 class="chapter-header__title">Poles, Zeros, and Filter Character</h1>
+      <p class="chapter-header__subtitle">
+        Two dots on the complex plane tell you everything about a filter: what it passes,
+        what it blocks, whether it's stable, and how it sounds. Poles and zeros are the DNA
+        of digital systems &mdash; and in AI, they become the eigenvalues that control memory and stability
+        in state-space models.
+      </p>
+    </header>
+
+    <!-- === Section 1: What Are Poles and Zeros? === -->
+    <section class="chapter-section" id="what-are-pz">
+      <h2 class="chapter-section__title">6.1 &mdash; What Are Poles and Zeros?</h2>
+
+      <div class="motivation-box">
+        <div class="motivation-box__title">Why should I care?</div>
+        <p>Poles and zeros are the most compact description of a system. A filter with 1000 coefficients might have just 10 poles and 10 zeros &mdash; and those 20 complex numbers tell you everything. In state-space models like Mamba, the <strong>eigenvalues of the A matrix are exactly the poles</strong>. Understanding pole-zero placement is understanding how memory, stability, and frequency selectivity work &mdash; in both classical DSP and modern AI.</p>
+      </div>
+
+      <p>Recall from Chapter 5 that a transfer function is a ratio of polynomials:</p>
+
+      <div class="math-block">
+        H(z) = G &middot; (z &minus; z<sub>1</sub>)(z &minus; z<sub>2</sub>)&hellip; / (z &minus; p<sub>1</sub>)(z &minus; p<sub>2</sub>)&hellip;
+      </div>
+
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap: var(--sp-md); margin: var(--sp-md) 0 var(--sp-lg);">
+        <div class="card card--math">
+          <h5>Zeros (z<sub>k</sub>)</h5>
+          <p style="font-size:13px; color:var(--text-dim); margin-top:var(--sp-xs);">Values of z where <strong>H(z) = 0</strong>. Roots of the numerator. At these complex frequencies, the system output is zero &mdash; these frequencies are <em>blocked</em>.</p>
+          <p style="font-size:12px; color:var(--color-math); margin-top:var(--sp-xs);">Symbol: <strong>&cir;</strong> (open circle on z-plane)</p>
+        </div>
+        <div class="card card--ai">
+          <h5>Poles (p<sub>k</sub>)</h5>
+          <p style="font-size:13px; color:var(--text-dim); margin-top:var(--sp-xs);">Values of z where <strong>H(z) &rarr; &infin;</strong>. Roots of the denominator. Near these complex frequencies, the system amplifies enormously &mdash; these frequencies are <em>boosted</em>.</p>
+          <p style="font-size:12px; color:var(--color-ai); margin-top:var(--sp-xs);">Symbol: <strong>&times;</strong> (cross on z-plane)</p>
+        </div>
+      </div>
+
+      <p>Think of poles as <strong>mountains</strong> and zeros as <strong>valleys</strong> on a landscape defined over the complex plane. The frequency response is a path along the unit circle through this landscape &mdash; it goes up near poles (resonance) and down near zeros (cancellation).</p>
+    </section>
+
+    <!-- === Section 2: The Pole-Zero Plot === -->
+    <section class="chapter-section" id="pz-plot">
+      <h2 class="chapter-section__title">6.2 &mdash; The Pole-Zero Plot</h2>
+
+      <p>The <strong>pole-zero plot</strong> places all poles (&times;) and zeros (&cir;) on the complex z-plane, with the unit circle drawn as a reference. This single diagram reveals:</p>
+
+      <ul style="margin: var(--sp-sm) 0 var(--sp-lg); padding-left: var(--sp-lg); line-height: 2;">
+        <li><strong>Filter type</strong> &mdash; lowpass, highpass, bandpass, notch, all-pass</li>
+        <li><strong>Stability</strong> &mdash; all poles inside unit circle = stable</li>
+        <li><strong>FIR vs IIR</strong> &mdash; poles only at origin = FIR; poles elsewhere = IIR</li>
+        <li><strong>Resonances</strong> &mdash; poles near unit circle = sharp peaks</li>
+        <li><strong>Nulls</strong> &mdash; zeros on unit circle = perfect frequency cancellation</li>
+      </ul>
+
+      <p>For systems with real coefficients (all practical filters), poles and zeros come in <strong>conjugate pairs</strong>: if <span class="math-inline">p = a + jb</span> is a pole, then <span class="math-inline">p* = a &minus; jb</span> is also a pole. This symmetry about the real axis is enforced in Tool 6.1 below.</p>
+    </section>
+
+    <!-- === Section 3: Frequency Response from Poles and Zeros === -->
+    <section class="chapter-section" id="freq-from-pz">
+      <h2 class="chapter-section__title">6.3 &mdash; Reading Frequency Response from the Pole-Zero Plot</h2>
+
+      <p>There's a beautiful geometric interpretation. At any frequency <span class="math-inline">&omega;</span>, the magnitude of the frequency response is:</p>
+
+      <div class="math-block">
+        |H(e<sup>j&omega;</sup>)| = |G| &middot; (product of distances from e<sup>j&omega;</sup> to zeros) / (product of distances from e<sup>j&omega;</sup> to poles)
+      </div>
+
+      <p>As you walk around the unit circle:</p>
+      <ul style="margin: var(--sp-sm) 0 var(--sp-lg); padding-left: var(--sp-lg); line-height: 2;">
+        <li>When you <strong>approach a pole</strong>, the denominator distance shrinks, so |H| <strong>increases</strong> (resonance peak)</li>
+        <li>When you <strong>approach a zero</strong>, the numerator distance shrinks, so |H| <strong>decreases</strong> (notch/null)</li>
+        <li>A zero <strong>exactly on the unit circle</strong> gives |H| = 0 at that frequency &mdash; perfect cancellation</li>
+        <li>A pole <strong>close to the unit circle</strong> gives a sharp, tall peak &mdash; the closer, the sharper</li>
+      </ul>
+
+      <!-- Show the Math -->
+      <div class="progressive-section">
+        <button class="progressive-toggle" aria-expanded="false">
+          <span class="arrow">&#9654;</span> Show the Math &mdash; Geometric Magnitude Formula
+        </button>
+        <div class="progressive-content">
+          <div class="progressive-content__inner">
+            <p>Start with the factored transfer function evaluated on the unit circle (<span class="math-inline">z = e<sup>j&omega;</sup></span>):</p>
+            <div class="math-block">
+              H(e<sup>j&omega;</sup>) = G &middot; &prod;<sub>k</sub> (e<sup>j&omega;</sup> &minus; z<sub>k</sub>) / &prod;<sub>k</sub> (e<sup>j&omega;</sup> &minus; p<sub>k</sub>)
+            </div>
+            <p>Taking absolute values:</p>
+            <div class="math-block">
+              |H(e<sup>j&omega;</sup>)| = |G| &middot; &prod;<sub>k</sub> |e<sup>j&omega;</sup> &minus; z<sub>k</sub>| / &prod;<sub>k</sub> |e<sup>j&omega;</sup> &minus; p<sub>k</sub>|
+            </div>
+            <p>Each term <span class="math-inline">|e<sup>j&omega;</sup> &minus; z<sub>k</sub>|</span> is literally the <strong>Euclidean distance</strong> in the complex plane from the point <span class="math-inline">e<sup>j&omega;</sup></span> (on the unit circle) to the zero <span class="math-inline">z<sub>k</sub></span>.</p>
+            <p>The phase response follows similarly:</p>
+            <div class="math-block">
+              &angle;H(e<sup>j&omega;</sup>) = &sum;<sub>k</sub> &angle;(e<sup>j&omega;</sup> &minus; z<sub>k</sub>) &minus; &sum;<sub>k</sub> &angle;(e<sup>j&omega;</sup> &minus; p<sub>k</sub>)
+            </div>
+            <p>Each angle term is the angle of the vector from the pole/zero to the point on the unit circle.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="insight-box">
+        <div class="insight-box__title">The Designer's Intuition</div>
+        <div class="insight-box__content">
+          To <strong>boost</strong> a frequency: place a pole near the unit circle at that angle.<br>
+          To <strong>block</strong> a frequency: place a zero on (or near) the unit circle at that angle.<br>
+          To make a <strong>lowpass</strong>: pole near z=1 (DC), zero near z=&minus;1 (Nyquist).<br>
+          To make a <strong>highpass</strong>: pole near z=&minus;1, zero near z=1.<br>
+          To make a <strong>bandpass</strong>: complex pole pair near unit circle at desired angle, zeros at z=1 and z=&minus;1.<br>
+          To make a <strong>notch</strong>: complex zero pair ON unit circle at target frequency, with poles inside for passband recovery.
+        </div>
+      </div>
+    </section>
+
+    <!-- === Section 4: Stability Revisited === -->
+    <section class="chapter-section" id="stability-revisited">
+      <h2 class="chapter-section__title">6.4 &mdash; Stability: The Unit Circle Rule</h2>
+
+      <p>We saw this in Chapter 5, but it's worth repeating with the pole-zero perspective because it's the single most important design constraint:</p>
+
+      <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: var(--sp-md); margin: var(--sp-md) 0 var(--sp-lg);">
+        <div class="card card--math">
+          <h5>|p| &lt; 0.9</h5>
+          <p style="font-size:13px; color:var(--text-dim); margin-top:var(--sp-xs);">Well inside unit circle. h[n] decays quickly. Short memory. Wide, gentle frequency peaks.</p>
+        </div>
+        <div class="card card--dsp">
+          <h5>|p| &asymp; 0.95&ndash;0.99</h5>
+          <p style="font-size:13px; color:var(--text-dim); margin-top:var(--sp-xs);">Near unit circle. h[n] rings for many samples. Long memory. Sharp, tall frequency peaks. Useful but sensitive.</p>
+        </div>
+        <div class="card card--ai" style="border-color:#facc15;">
+          <h5>|p| = 1.0</h5>
+          <p style="font-size:13px; color:var(--text-dim); margin-top:var(--sp-xs);">ON the unit circle. h[n] oscillates forever. Infinite memory. The system is a pure oscillator (marginally stable). An integrator.</p>
+        </div>
+        <div class="card card--ai" style="border-color:#f87171;">
+          <h5>|p| &gt; 1.0</h5>
+          <p style="font-size:13px; color:var(--text-dim); margin-top:var(--sp-xs);">OUTSIDE unit circle. h[n] grows exponentially. UNSTABLE. Output explodes. Must never happen in deployed systems.</p>
+        </div>
+      </div>
+
+      <p>The <strong>angle</strong> of a pole determines <em>which frequency</em> is affected. The <strong>magnitude</strong> determines <em>how strongly</em> &mdash; and whether the system is stable. This is a direct analog to the eigenvalue spectrum of recurrent systems in AI.</p>
+
+      <!-- Show the Math -->
+      <div class="progressive-section">
+        <button class="progressive-toggle" aria-expanded="false">
+          <span class="arrow">&#9654;</span> Show the Math &mdash; Pole Magnitude and Impulse Response Decay
+        </button>
+        <div class="progressive-content">
+          <div class="progressive-content__inner">
+            <p>A single real pole at <span class="math-inline">z = a</span> gives the impulse response:</p>
+            <div class="math-block">
+              h[n] = a<sup>n</sup> u[n]
+            </div>
+            <p>where <span class="math-inline">u[n]</span> is the unit step. The behavior depends entirely on <span class="math-inline">|a|</span>:</p>
+            <ul style="margin:var(--sp-sm) 0; padding-left:var(--sp-lg); line-height:1.8;">
+              <li><span class="math-inline">|a| &lt; 1</span>: exponential decay &mdash; <span class="math-inline">0.9<sup>100</sup> &asymp; 0.000027</span>. Memory fades.</li>
+              <li><span class="math-inline">|a| = 1</span>: constant &mdash; <span class="math-inline">1<sup>n</sup> = 1</span> forever. Perfect memory.</li>
+              <li><span class="math-inline">|a| &gt; 1</span>: exponential growth &mdash; <span class="math-inline">1.1<sup>100</sup> &asymp; 13,781</span>. Explosion.</li>
+            </ul>
+            <p>A complex pole pair at <span class="math-inline">z = re<sup>&plusmn;j&theta;</sup></span> gives:</p>
+            <div class="math-block">
+              h[n] = r<sup>n</sup> cos(n&theta;) u[n]
+            </div>
+            <p>This is a <strong>damped sinusoid</strong> at frequency &theta; with decay rate r. When r = 0.95 and &theta; = &pi;/4, the system rings at &pi;/4 rad/sample with amplitude halving every ~14 samples.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- === Section 5: Filter Character from Placement === -->
+    <section class="chapter-section" id="filter-character">
+      <h2 class="chapter-section__title">6.5 &mdash; Filter Character from Pole-Zero Placement</h2>
+
+      <p>With the geometric understanding, we can design filters by <em>placing</em> poles and zeros where we want them. Here are the classic patterns:</p>
+
+      <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: var(--sp-md); margin: var(--sp-md) 0 var(--sp-lg);">
+        <div class="card card--dsp">
+          <h5>Lowpass</h5>
+          <p style="font-size:13px; color:var(--text-dim); margin-top:var(--sp-xs);">Pole near <span class="math-inline">z = 1</span> (boosts DC). Zero near <span class="math-inline">z = &minus;1</span> (blocks Nyquist). Result: passes low frequencies, attenuates high.</p>
+        </div>
+        <div class="card card--dsp">
+          <h5>Highpass</h5>
+          <p style="font-size:13px; color:var(--text-dim); margin-top:var(--sp-xs);">Pole near <span class="math-inline">z = &minus;1</span>. Zero near <span class="math-inline">z = 1</span> (blocks DC). Result: passes high frequencies, removes slow trends.</p>
+        </div>
+        <div class="card card--dsp">
+          <h5>Bandpass</h5>
+          <p style="font-size:13px; color:var(--text-dim); margin-top:var(--sp-xs);">Complex pole pair at target angle. Zeros at z = 1 and z = &minus;1 (block DC and Nyquist). Result: passes narrow band.</p>
+        </div>
+        <div class="card card--dsp">
+          <h5>Notch (Band-reject)</h5>
+          <p style="font-size:13px; color:var(--text-dim); margin-top:var(--sp-xs);">Complex zero pair ON unit circle at target frequency. Poles inside at same angle to keep passband flat. Result: removes one specific frequency.</p>
+        </div>
+        <div class="card card--dsp">
+          <h5>All-Pass</h5>
+          <p style="font-size:13px; color:var(--text-dim); margin-top:var(--sp-xs);">Zeros at 1/p* (reciprocal conjugate of each pole). |H| = 1 everywhere. Only phase changes. Used in phase equalization.</p>
+        </div>
+        <div class="card card--dsp">
+          <h5>Comb Filter</h5>
+          <p style="font-size:13px; color:var(--text-dim); margin-top:var(--sp-xs);">Evenly spaced poles around the origin. Creates periodic peaks in frequency response. Used in reverb, pitch effects.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- === Section 6: Bridge to AI === -->
+    <section class="chapter-section" id="bridge">
+      <h2 class="chapter-section__title">6.6 &mdash; Poles and Zeros in AI: Eigenvalues Are Poles</h2>
+
+      <p>This is one of the deepest connections between DSP and AI. In a <strong>state-space model</strong> (the mathematical foundation of S4, S5, and Mamba), the system is defined by:</p>
+
+      <div class="math-block">
+        h[n+1] = A &middot; h[n] + B &middot; x[n] &nbsp;&nbsp;&nbsp;&nbsp; y[n] = C &middot; h[n]
+      </div>
+
+      <p>The eigenvalues of the <strong>A matrix</strong> (state transition matrix) are <em>exactly the poles</em> of the system's transfer function. Everything you've learned about poles applies directly:</p>
+
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap: var(--sp-md); margin: var(--sp-md) 0 var(--sp-lg);">
+        <div class="card card--dsp">
+          <h5>DSP Filter Poles</h5>
+          <ul style="font-size:13px; color:var(--text-dim); margin-top:var(--sp-xs); padding-left:var(--sp-md); line-height:1.8;">
+            <li>|pole| controls decay rate</li>
+            <li>Pole angle controls frequency</li>
+            <li>Close to unit circle = long memory</li>
+            <li>Outside unit circle = unstable</li>
+            <li>Designed by engineer</li>
+          </ul>
+        </div>
+        <div class="card card--ai">
+          <h5>SSM Eigenvalues</h5>
+          <ul style="font-size:13px; color:var(--text-dim); margin-top:var(--sp-xs); padding-left:var(--sp-md); line-height:1.8;">
+            <li>|&lambda;| controls memory decay rate</li>
+            <li>&lambda; angle controls oscillation frequency</li>
+            <li>Near unit circle = long-range memory</li>
+            <li>Outside unit circle = exploding gradients</li>
+            <li>Learned via backpropagation (or initialized via HiPPO)</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="bridge-teaser">
+        <div class="bridge-teaser__label">Key Insight</div>
+        <div class="bridge-teaser__content">
+          The <strong>HiPPO</strong> initialization for state-space models places eigenvalues at specific locations in the complex plane to maximize memory of past inputs &mdash; it's pole placement for neural networks. Mamba's selective mechanism then <em>adjusts</em> these eigenvalues dynamically based on input content, making it a <strong>time-varying pole-placement system</strong>. This is the essence of the DSP-to-AI bridge.
+        </div>
+      </div>
+
+      <div class="bridge-teaser" style="margin-top:var(--sp-md);">
+        <div class="bridge-teaser__label">Looking Ahead</div>
+        <div class="bridge-teaser__content">
+          In <strong>Chapter 7</strong>, we'll design complete FIR and IIR filters using formal design methods, compare their properties side-by-side, and hear the difference. You'll see how FIR (all-zero = finite memory = attention-like) differs from IIR (poles = infinite memory = Mamba-like) &mdash; a distinction that runs all the way through Part III.
+        </div>
+      </div>
+    </section>
+
+    <!-- === TOOL 6.1: Pole-Zero Drag-and-Drop Designer === -->
+    <section class="chapter-section" id="tool-pz">
+      <h2 class="chapter-section__title">Interactive Tool</h2>
+
+      <div class="tool-container" id="poleZeroTool">
+        <div class="tool-header">
+          <span class="tool-header__icon">&#9733;</span>
+          <span class="tool-header__title">Tool 6.1 &mdash; Pole-Zero Designer</span>
+          <span class="tool-header__badge">Flagship</span>
+        </div>
+
+        <div class="tool-body">
+          <p style="font-size:14px; color:var(--text-dim); margin-bottom:var(--sp-md);">
+            Design filters by placing poles and zeros directly on the z-plane. <strong>Left panel:</strong> Click to place, drag to move, double-click to delete.
+            <strong>Right panels:</strong> Magnitude response, phase response, and impulse response update in real-time as you move poles and zeros.
+            Conjugate pairs are enforced automatically for real coefficients. Listen to white noise filtered through your design.
+          </p>
+          <div class="tool-canvas-wrapper"></div>
+        </div>
+
+        <div class="tool-controls">
+          <div class="control-group">
+            <label class="control-label">Mode</label>
+            <select class="control-select" data-control="pz-mode">
+              <option value="pole" selected>Place Pole &times;</option>
+              <option value="zero">Place Zero &cir;</option>
+              <option value="move">Move / Drag</option>
+              <option value="delete">Delete</option>
+            </select>
+          </div>
+          <div class="control-group">
+            <label class="control-label">Preset</label>
+            <select class="control-select" data-control="pz-preset">
+              <option value="lowpass1" selected>Lowpass (1st order)</option>
+              <option value="highpass1">Highpass (1st order)</option>
+              <option value="bandpass">Bandpass (resonator)</option>
+              <option value="notch">Notch (band-reject)</option>
+              <option value="allpass">All-Pass</option>
+              <option value="comb">Comb Filter</option>
+              <option value="empty">Empty (start fresh)</option>
+            </select>
+          </div>
+          <div class="control-group">
+            <label class="control-label">Gain <span class="control-value" aria-live="polite" data-value="pz-gain">1</span></label>
+            <input type="range" data-control="pz-gain" min="0.1" max="5" value="1" step="0.1">
+          </div>
+          <div class="control-group" style="justify-content:center;">
+            <label style="display:flex; align-items:center; gap:var(--sp-sm); font-size:12px; color:var(--text-dim); cursor:pointer;">
+              <input type="checkbox" data-control="conjugate" checked>
+              Enforce conjugate pairs
+            </label>
+          </div>
+          <div class="control-group" style="display:flex; gap:var(--sp-sm); justify-content:center;">
+            <button class="btn" data-action="play-filter">&#9654; Hear Filter</button>
+            <button class="btn" data-action="stop-filter">&#9632; Stop</button>
+            <button class="btn" data-action="clear-pz">&#8634; Clear All</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="insight-box" style="margin-top:var(--sp-lg);">
+        <div class="insight-box__title">Try this</div>
+        <div class="insight-box__content">
+          <strong>1.</strong> Start with the "Lowpass" preset. See the pole (&times;) near z=1 and zero (&cir;) near z=&minus;1. The magnitude response shows high gain at low frequencies, rolling off toward Nyquist. Press "Hear Filter" to hear white noise with only low frequencies passing through &mdash; a muffled sound.<br>
+          <strong>2.</strong> Switch mode to "Move / Drag." Grab the pole and drag it closer to the unit circle (toward |z|&asymp;0.98). Watch the frequency response peak get sharper and taller. The impulse response rings longer. The closer to the unit circle, the longer the system "remembers."<br>
+          <strong>3.</strong> Drag the pole OUTSIDE the unit circle. The impulse response explodes! The status bar turns red: "UNSTABLE." This is what happens when a pole escapes &mdash; in both DSP and neural networks (exploding gradients).<br>
+          <strong>4.</strong> Load "Bandpass." Two complex poles (conjugate pair) near the unit circle create a sharp resonance. Listen &mdash; you hear a tonal quality in the noise, like a tuning fork.<br>
+          <strong>5.</strong> Load "Notch." Zeros ON the unit circle create a perfect null. Poles inside at the same angle recover the passband. This surgically removes one frequency.<br>
+          <strong>6.</strong> Select "Empty" and switch to "Place Pole" mode. Click on the z-plane to create your own filter. Place a pole near angle &pi;/4 inside the unit circle. Notice the conjugate pair appears automatically. Place zeros at z=1 and z=&minus;1. You've just built a bandpass filter from scratch!<br>
+          <strong>7.</strong> Experiment: can you design a filter that passes only high frequencies? (Hint: pole near z=&minus;1, zero at z=1.)
+        </div>
+      </div>
+    </section>
+
+    <!-- Further Reading -->
+    <section class="content-section" id="further-reading">
+      <h2 class="section-heading">Further Reading</h2>
+      <ul class="further-reading-list">
+        <li>
+          <a href="https://ccrma.stanford.edu/~jos/filters/Pole_Zero_Analysis.html" target="_blank" rel="noopener">Pole-Zero Analysis of Digital Filters</a>
+          <span class="further-reading__authors">Smith, J.O. — Stanford CCRMA</span>
+          <span class="further-reading__note">Detailed treatment of how poles and zeros shape frequency response and stability</span>
+        </li>
+        <li>
+          <a href="https://www.dspguide.com/ch33.htm" target="_blank" rel="noopener">DSP Guide — Chapter 33: Poles and Zeros</a>
+          <span class="further-reading__authors">Smith, S.W. — Free online</span>
+          <span class="further-reading__note">Visual intuition for pole-zero placement and filter character</span>
+        </li>
+      </ul>
+    </section>
+
+    <!-- Chapter Navigation -->
+    <nav class="chapter-nav" aria-label="Chapter navigation"></nav>
+
+  </main>
+</div>
+
+<!-- Scripts -->
+<script src="../../js/core/navigation.js"></script>
+<script src="../../js/core/progressive-disclosure.js"></script>
+<script src="../../js/core/chapter-nav.js"></script>
+<script src="../../js/tools/shared/plot-utils.js"></script>
+<script src="../../js/tools/shared/audio-engine.js"></script>
+<script src="../../js/tools/ch06-pole-zero.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    DSPtoAI.PoleZeroDesigner.init('poleZeroTool');
+  });
+</script>
+
+<script src="../../js/core/search-index.js"></script>
+<script src="../../js/core/search.js"></script>
+</body>
+</html>

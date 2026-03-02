@@ -1,0 +1,53 @@
+/* ============================================================
+   DSP to AI — Dark Theme
+   Extracted from infographics 1, 3, 5
+   ============================================================ */
+
+[data-theme="dark"] {
+  --bg: #0a0e1a;
+  --bg-alt: #0f172a;
+  --surface: #111827;
+  --surface2: #1e293b;
+  --surface3: #334155;
+
+  --text: #e2e8f0;
+  --text-dim: #94a3b8;
+  --text-muted: #64748b;
+
+  --border: #1e293b;
+  --border-light: #334155;
+
+  --nav-bg: rgba(10, 14, 26, 0.85);
+
+  /* Card backgrounds with accent tints */
+  --card-bg: #111827;
+  --card-dsp-bg: rgba(34, 211, 238, 0.04);
+  --card-ai-bg: rgba(251, 146, 60, 0.04);
+  --card-bridge-bg: rgba(167, 139, 250, 0.06);
+  --card-math-bg: rgba(74, 222, 128, 0.06);
+
+  /* Math blocks */
+  --math-bg: rgba(74, 222, 128, 0.08);
+  --math-border: rgba(74, 222, 128, 0.2);
+
+  /* Insight boxes */
+  --insight-bg: linear-gradient(135deg, rgba(34,211,238,0.08), rgba(167,139,250,0.08));
+  --insight-border: rgba(34, 211, 238, 0.3);
+
+  /* Tool containers */
+  --tool-bg: #0f172a;
+  --tool-border: #1e293b;
+  --tool-header-bg: rgba(34, 211, 238, 0.06);
+
+  /* Interactive controls */
+  --slider-track: #334155;
+  --slider-thumb: var(--color-dsp);
+  --button-bg: rgba(34, 211, 238, 0.12);
+  --button-border: rgba(34, 211, 238, 0.3);
+  --button-hover-bg: rgba(34, 211, 238, 0.2);
+  --button-text: var(--color-dsp);
+
+  /* Code blocks */
+  --code-bg: #0f172a;
+  --code-border: #1e293b;
+}

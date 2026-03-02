@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The DSP ↔ AI Rosetta Stone</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Outfit:wght@300;400;600;700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0e1a;
+    --card-bg: #111827;
+    --accent-cyan: #22d3ee;
+    --accent-orange: #fb923c;
+    --accent-violet: #a78bfa;
+    --accent-green: #4ade80;
+    --accent-rose: #fb7185;
+    --text: #e2e8f0;
+    --text-dim: #94a3b8;
+    --border: #1e293b;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Outfit', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+  .noise {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+    pointer-events: none; z-index: 0;
+  }
+  .container {
+    max-width: 1200px; margin: 0 auto; padding: 40px 24px;
+    position: relative; z-index: 1;
+  }
+
+  /* Header */
+  .header {
+    text-align: center; margin-bottom: 48px;
+    animation: fadeIn 0.8s ease-out;
+  }
+  .header .badge {
+    display: inline-block;
+    background: linear-gradient(135deg, rgba(34,211,238,0.15), rgba(167,139,250,0.15));
+    border: 1px solid rgba(34,211,238,0.3);
+    border-radius: 24px; padding: 6px 20px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px; color: var(--accent-cyan);
+    letter-spacing: 2px; text-transform: uppercase;
+    margin-bottom: 20px;
+  }
+  .header h1 {
+    font-size: clamp(36px, 5vw, 56px);
+    font-weight: 900;
+    background: linear-gradient(135deg, var(--accent-cyan), var(--accent-violet), var(--accent-orange));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    line-height: 1.1; margin-bottom: 16px;
+  }
+  .header .subtitle {
+    font-size: 18px; color: var(--text-dim);
+    max-width: 700px; margin: 0 auto;
+    font-weight: 300;
+  }
+
+  /* Mapping Grid */
+  .mapping-grid {
+    display: grid; gap: 2px;
+    margin-bottom: 40px;
+  }
+
+  /* Section Headers */
+  .section-label {
+    display: flex; align-items: center; gap: 12px;
+    margin: 32px 0 16px;
+    font-size: 13px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 3px;
+    color: var(--accent-cyan);
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .section-label::after {
+    content: ''; flex: 1; height: 1px;
+    background: linear-gradient(90deg, var(--accent-cyan), transparent);
+  }
+
+  /* Row */
+  .map-row {
+    display: grid;
+    grid-template-columns: 1fr 60px 1fr;
+    align-items: stretch;
+    min-height: 80px;
+    animation: slideUp 0.6s ease-out both;
+  }
+  .map-row:nth-child(1) { animation-delay: 0.1s; }
+  .map-row:nth-child(2) { animation-delay: 0.15s; }
+  .map-row:nth-child(3) { animation-delay: 0.2s; }
+  .map-row:nth-child(4) { animation-delay: 0.25s; }
+  .map-row:nth-child(5) { animation-delay: 0.3s; }
+  .map-row:nth-child(6) { animation-delay: 0.35s; }
+  .map-row:nth-child(7) { animation-delay: 0.4s; }
+  .map-row:nth-child(8) { animation-delay: 0.45s; }
+  .map-row:nth-child(9) { animation-delay: 0.5s; }
+  .map-row:nth-child(10) { animation-delay: 0.55s; }
+
+  .dsp-side, .ai-side {
+    padding: 16px 20px;
+    display: flex; flex-direction: column;
+    justify-content: center;
+  }
+  .dsp-side {
+    background: rgba(34,211,238,0.04);
+    border-left: 3px solid var(--accent-cyan);
+    border-radius: 8px 0 0 8px;
+  }
+  .ai-side {
+    background: rgba(251,146,60,0.04);
+    border-right: 3px solid var(--accent-orange);
+    border-radius: 0 8px 8px 0;
+    text-align: right;
+  }
+  .connector {
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px; color: var(--accent-violet);
+    position: relative;
+  }
+  .connector::before {
+    content: '';
+    position: absolute;
+    width: 100%; height: 2px;
+    background: linear-gradient(90deg, var(--accent-cyan), var(--accent-violet), var(--accent-orange));
+    opacity: 0.4;
+  }
+  .connector span {
+    background: var(--bg);
+    padding: 0 6px;
+    position: relative; z-index: 1;
+    font-size: 16px;
+  }
+
+  .concept-title {
+    font-weight: 700; font-size: 15px;
+    margin-bottom: 4px;
+  }
+  .dsp-side .concept-title { color: var(--accent-cyan); }
+  .ai-side .concept-title { color: var(--accent-orange); }
+
+  .concept-detail {
+    font-size: 12.5px; color: var(--text-dim);
+    line-height: 1.5;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  /* Math block */
+  .math {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    background: rgba(255,255,255,0.05);
+    padding: 3px 8px; border-radius: 4px;
+    display: inline-block; margin-top: 4px;
+    color: var(--accent-green);
+    border: 1px solid rgba(74,222,128,0.15);
+  }
+
+  /* Column headers */
+  .col-headers {
+    display: grid;
+    grid-template-columns: 1fr 60px 1fr;
+    margin-bottom: 8px;
+  }
+  .col-header {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 10px 20px;
+    font-weight: 600;
+    border-radius: 8px;
+  }
+  .col-header.dsp { color: var(--accent-cyan); background: rgba(34,211,238,0.08); text-align: left; }
+  .col-header.ai { color: var(--accent-orange); background: rgba(251,146,60,0.08); text-align: right; }
+
+  /* Key Insight Box */
+  .insight-box {
+    background: linear-gradient(135deg, rgba(167,139,250,0.08), rgba(34,211,238,0.08));
+    border: 1px solid rgba(167,139,250,0.25);
+    border-radius: 12px;
+    padding: 24px 28px;
+    margin: 32px 0;
+    position: relative;
+    overflow: hidden;
+  }
+  .insight-box::before {
+    content: '💡';
+    position: absolute; top: -10px; right: 20px;
+    font-size: 40px; opacity: 0.15;
+  }
+  .insight-box h3 {
+    color: var(--accent-violet);
+    font-size: 14px;
+    font-family: 'JetBrains Mono', monospace;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin-bottom: 10px;
+  }
+  .insight-box p {
+    color: var(--text); font-size: 15px; line-height: 1.7;
+    font-weight: 300;
+  }
+  .insight-box strong { color: var(--accent-cyan); font-weight: 600; }
+
+  /* Footer legend */
+  .footer-legend {
+    display: flex; gap: 32px; justify-content: center;
+    margin-top: 40px; padding-top: 24px;
+    border-top: 1px solid var(--border);
+    flex-wrap: wrap;
+  }
+  .legend-item {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 12px; color: var(--text-dim);
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .legend-dot {
+    width: 10px; height: 10px; border-radius: 50%;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @media (max-width: 700px) {
+    .map-row { grid-template-columns: 1fr; gap: 0; }
+    .ai-side { text-align: left; border-left: 3px solid var(--accent-orange); border-right: none; border-radius: 0 0 8px 8px; }
+    .dsp-side { border-radius: 8px 8px 0 0; }
+    .connector { padding: 8px 0; }
+    .connector::before { width: 2px; height: 100%; }
+    .col-headers { grid-template-columns: 1fr; gap: 4px; }
+    .col-header.ai { text-align: left; }
+  }
+</style>
+</head>
+<body>
+<!-- Gallery Nav -->
+<div style="position:fixed;top:0;left:0;right:0;z-index:999;background:rgba(10,14,26,0.9);backdrop-filter:blur(8px);padding:10px 24px;display:flex;align-items:center;gap:16px;border-bottom:1px solid #1e293b;font-family:'JetBrains Mono',monospace;font-size:13px;">
+  <a href="../index.html" style="color:#94a3b8;text-decoration:none;">DSP &rarr; AI</a>
+  <span style="color:#334155;">/</span>
+  <a href="index.html" style="color:#a78bfa;text-decoration:none;">Gallery</a>
+  <span style="color:#334155;">/</span>
+  <span style="color:#e2e8f0;">01 &mdash; Rosetta Stone</span>
+  <a href="matched-to-attention.html" style="margin-left:auto;color:#22d3ee;text-decoration:none;font-size:12px;">Next &rarr;</a>
+</div>
+<div style="height:44px;"></div>
+<div class="noise"></div>
+<div class="container">
+  <div class="header">
+    <div class="badge">Infographic 01 / 05</div>
+    <h1>The DSP ↔ AI<br>Rosetta Stone</h1>
+    <p class="subtitle">Every concept in Mamba and Self-Attention has an exact mathematical counterpart in classical Digital Signal Processing</p>
+  </div>
+
+  <!-- Column headers -->
+  <div class="col-headers">
+    <div class="col-header dsp">⚡ Classical DSP</div>
+    <div></div>
+    <div class="col-header ai">🧠 AI / Deep Learning</div>
+  </div>
+
+  <div class="section-label">Core Structures</div>
+
+  <div class="mapping-grid">
+    <div class="map-row">
+      <div class="dsp-side">
+        <div class="concept-title">IIR Filter (State-Space Form)</div>
+        <div class="concept-detail">Recursive filter with infinite impulse response using internal delay states</div>
+        <div class="math">h[k] = Āh[k−1] + B̄u[k]</div>
+      </div>
+      <div class="connector"><span>≡</span></div>
+      <div class="ai-side">
+        <div class="concept-title">Mamba / SSM Recurrence</div>
+        <div class="concept-detail">State-space model with hidden state updated at each timestep</div>
+        <div class="math">x_t = Ā_t·x_{t−1} + B̄_t·u_t</div>
+      </div>
+    </div>
+
+    <div class="map-row">
+      <div class="dsp-side">
+        <div class="concept-title">Cross-Correlation</div>
+        <div class="concept-detail">Measure of similarity between template and signal at each lag</div>
+        <div class="math">R(τ) = ∫ r(t)·s*(t−τ) dt</div>
+      </div>
+      <div class="connector"><span>≡</span></div>
+      <div class="ai-side">
+        <div class="concept-title">QKᵀ Attention Scores</div>
+        <div class="concept-detail">Pairwise dot-product similarity between query and key vectors</div>
+        <div class="math">A_ij = q_i · k_j / √d_k</div>
+      </div>
+    </div>
+
+    <div class="map-row">
+      <div class="dsp-side">
+        <div class="concept-title">Matched Filter</div>
+        <div class="concept-detail">Optimal SNR detector: convolve signal with time-reversed template</div>
+        <div class="math">h_mf(t) = s*(T − t)</div>
+      </div>
+      <div class="connector"><span>≡</span></div>
+      <div class="ai-side">
+        <div class="concept-title">Self-Attention (Single Head)</div>
+        <div class="concept-detail">Content-adaptive matched filter — templates are learned from data</div>
+        <div class="math">softmax(QKᵀ/√d_k)·V</div>
+      </div>
+    </div>
+
+    <div class="map-row">
+      <div class="dsp-side">
+        <div class="concept-title">Rational Transfer Function</div>
+        <div class="concept-detail">Ratio of polynomials in z — defines all LTI filter behavior</div>
+        <div class="math">H(z) = B(z)/A(z)</div>
+      </div>
+      <div class="connector"><span>≡</span></div>
+      <div class="ai-side">
+        <div class="concept-title">SSM Transfer Function</div>
+        <div class="concept-detail">State-space produces the same rational function</div>
+        <div class="math">H(z) = C(zI − Ā)⁻¹B̄ + D</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-label">Stability &amp; Memory</div>
+
+  <div class="mapping-grid">
+    <div class="map-row">
+      <div class="dsp-side">
+        <div class="concept-title">Pole Locations in z-Plane</div>
+        <div class="concept-detail">Roots of denominator A(z) — determine resonance, decay, stability</div>
+        <div class="math">|pole_i| &lt; 1 → stable</div>
+      </div>
+      <div class="connector"><span>≡</span></div>
+      <div class="ai-side">
+        <div class="concept-title">Eigenvalues of Ā Matrix</div>
+        <div class="concept-detail">Diagonal entries of Ā — each is a pole of the SSM's transfer function</div>
+        <div class="math">|λ_i| &lt; 1 → BIBO stable</div>
+      </div>
+    </div>
+
+    <div class="map-row">
+      <div class="dsp-side">
+        <div class="concept-title">Parallel First-Order Sections</div>
+        <div class="concept-detail">Partial fraction expansion for numerical stability in high-order filters</div>
+        <div class="math">H(z) = Σ rᵢ/(z − pᵢ)</div>
+      </div>
+      <div class="connector"><span>≡</span></div>
+      <div class="ai-side">
+        <div class="concept-title">Diagonal State Matrix (S4D)</div>
+        <div class="concept-detail">Each dimension is an independent 1st-order system</div>
+        <div class="math">Ā = diag(λ₁,…,λ_N)</div>
+      </div>
+    </div>
+
+    <div class="map-row">
+      <div class="dsp-side">
+        <div class="concept-title">BIBO Stability</div>
+        <div class="concept-detail">Bounded Input → Bounded Output. All poles inside unit circle.</div>
+      </div>
+      <div class="connector"><span>≡</span></div>
+      <div class="ai-side">
+        <div class="concept-title">SSM Stability Constraint</div>
+        <div class="concept-detail">Parameterize A with negative real parts, discretize: |exp(Δλ)| &lt; 1</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-label">Design &amp; Adaptation</div>
+
+  <div class="mapping-grid">
+    <div class="map-row">
+      <div class="dsp-side">
+        <div class="concept-title">Butterworth / Chebyshev Design</div>
+        <div class="concept-detail">Systematic pole placement for desired frequency response shape</div>
+      </div>
+      <div class="connector"><span>≡</span></div>
+      <div class="ai-side">
+        <div class="concept-title">HiPPO Initialization</div>
+        <div class="concept-detail">Systematic pole placement for optimal signal history compression</div>
+      </div>
+    </div>
+
+    <div class="map-row">
+      <div class="dsp-side">
+        <div class="concept-title">Adaptive Filter (LMS / RLS)</div>
+        <div class="concept-detail">Time-varying coefficients adapting to track changing signal statistics</div>
+      </div>
+      <div class="connector"><span>≡</span></div>
+      <div class="ai-side">
+        <div class="concept-title">Mamba's Selective Scan (S6)</div>
+        <div class="concept-detail">Input-dependent B, C, Δ — filter adapts at every timestep via backprop</div>
+      </div>
+    </div>
+
+    <div class="map-row">
+      <div class="dsp-side">
+        <div class="concept-title">Mel / Wavelet Filter Bank</div>
+        <div class="concept-detail">Parallel band-pass filters decomposing signal into frequency bands</div>
+      </div>
+      <div class="connector"><span>≡</span></div>
+      <div class="ai-side">
+        <div class="concept-title">Multi-Head Attention / D SSM Channels</div>
+        <div class="concept-detail">Parallel learned projections, each capturing different patterns</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-label">Computation Modes</div>
+
+  <div class="mapping-grid">
+    <div class="map-row">
+      <div class="dsp-side">
+        <div class="concept-title">FIR Convolution (via FFT)</div>
+        <div class="concept-detail">Finite impulse response — trivially parallelizable, no stability issues</div>
+        <div class="math">y = h * x → Y = H·X (freq domain)</div>
+      </div>
+      <div class="connector"><span>≡</span></div>
+      <div class="ai-side">
+        <div class="concept-title">S4 Training Mode (Convolution)</div>
+        <div class="concept-detail">Unrolled kernel K̄ convolved with input via FFT — parallel training</div>
+        <div class="math">y = K̄ * u, K̄ = (CB̄, CĀB̄, …)</div>
+      </div>
+    </div>
+
+    <div class="map-row">
+      <div class="dsp-side">
+        <div class="concept-title">IIR Recurrence (Sequential)</div>
+        <div class="concept-detail">O(1) per sample, must process sequentially, efficient for streaming</div>
+        <div class="math">y[n] = Σ b_k·x[n−k] − Σ a_k·y[n−k]</div>
+      </div>
+      <div class="connector"><span>≡</span></div>
+      <div class="ai-side">
+        <div class="concept-title">Mamba Inference Mode (Recurrence)</div>
+        <div class="concept-detail">O(1) per step, fixed memory, natural streaming — same IIR structure</div>
+        <div class="math">x_t = Ā_t·x_{t-1} + B̄_t·u_t</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Key Insight -->
+  <div class="insight-box">
+    <h3>⚡ The Deepest Insight</h3>
+    <p>
+      Attention is a <strong>data-dependent FIR filter</strong> — it computes explicit weights for every lag (O(n²) parameters for n frames). 
+      Mamba is a <strong>data-dependent IIR filter</strong> — it uses recursive state to implicitly represent all lags (O(N) state for any n). 
+      This is exactly why attention scales quadratically and Mamba scales linearly. It's the FIR vs IIR tradeoff, wearing a neural network hat.
+    </p>
+  </div>
+
+  <div class="footer-legend">
+    <div class="legend-item">
+      <div class="legend-dot" style="background: var(--accent-cyan);"></div>
+      Classical DSP
+    </div>
+    <div class="legend-item">
+      <div class="legend-dot" style="background: var(--accent-orange);"></div>
+      AI / Deep Learning
+    </div>
+    <div class="legend-item">
+      <div class="legend-dot" style="background: var(--accent-violet);"></div>
+      Mathematical Equivalence
+    </div>
+    <div class="legend-item">
+      <div class="legend-dot" style="background: var(--accent-green);"></div>
+      Equations
+    </div>
+  </div>
+</div>
+</body>
+</html>

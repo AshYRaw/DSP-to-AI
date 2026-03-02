@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ch 22: Hybrid Architectures &mdash; DSP to AI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Outfit:wght@300;400;500;600;700;800;900&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../style/global.css">
+  <link rel="stylesheet" href="../../style/theme-dark.css">
+  <link rel="stylesheet" href="../../style/theme-light.css">
+  <link rel="stylesheet" href="../../style/components.css">
+  <link rel="stylesheet" href="../../style/chapter.css">
+  <script src="../../js/core/theme-switcher.js"></script>
+</head>
+<body>
+
+<div class="noise"></div>
+
+<!-- Navigation -->
+<nav class="site-nav">
+  <a href="../../index.html" class="site-nav__logo">DSP <span class="arrow">&rarr;</span> AI</a>
+  <ul class="site-nav__links">
+    <li><a href="../../index.html#part1">Part I</a></li>
+    <li><a href="../../index.html#part2">Part II</a></li>
+    <li><a href="../../index.html#part3">Part III</a></li>
+    <li><a href="../../index.html#part4" class="active">Part IV</a></li>
+    <li><a href="../../gallery/index.html">Gallery</a></li>
+    <li><a href="../../reference/glossary.html">Reference</a></li>
+  </ul>
+  <button class="search-toggle" aria-label="Search site (press /)">🔍</button>
+  <button class="theme-toggle" aria-label="Toggle theme"></button>
+  <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false">&#9776;</button>
+</nav>
+<div class="progress-bar"></div>
+
+<!-- Page Layout -->
+<div class="chapter-page" data-chapter-id="ch22">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar__part-label">Part IV: The Frontier</div>
+    <ul class="sidebar__chapters">
+      <li><a class="sidebar__chapter-link" href="ch21-ssm-evolution.html"><span class="sidebar__chapter-num">21</span> SSM Evolution Timeline</a></li>
+      <li><a class="sidebar__chapter-link active" href="ch22-hybrid-architectures.html"><span class="sidebar__chapter-num">22</span> Hybrid Architectures</a>
+        <ul class="sidebar__sections">
+          <li><a class="sidebar__section-link" href="#why-hybrid">Why Hybrid?</a></li>
+          <li><a class="sidebar__section-link" href="#design-space">The Design Space</a></li>
+          <li><a class="sidebar__section-link" href="#models">Models in the Wild</a></li>
+          <li><a class="sidebar__section-link" href="#moe">Mixture of Experts</a></li>
+          <li><a class="sidebar__section-link" href="#dsp-principle">The DSP Principle</a></li>
+          <li><a class="sidebar__section-link" href="#edge">Edge Deployment</a></li>
+          <li><a class="sidebar__section-link" href="#tool-designer">Hybrid Designer</a></li>
+        </ul>
+      </li>
+      <li><a class="sidebar__chapter-link" href="ch23-capstone.html"><span class="sidebar__chapter-num">23</span> Capstone Project</a></li>
+    </ul>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="chapter-content">
+
+    <nav class="breadcrumb" aria-label="Breadcrumb"></nav>
+
+    <header class="chapter-header">
+      <div class="chapter-header__part">Part IV &mdash; The Frontier</div>
+      <div class="chapter-header__number">Chapter 22</div>
+      <h1 class="chapter-header__title">Hybrid Architectures &mdash; The Best of Both Worlds</h1>
+      <p class="chapter-header__subtitle">
+        No production DSP system uses only FIR or only IIR filters. Audio codecs combine them.
+        Equalizers cascade them. The same wisdom now applies to deep learning: the strongest
+        architectures <strong>interleave attention and SSM layers</strong>, using each where
+        it&rsquo;s strongest. This chapter explores the design space, the real-world models,
+        and the engineering principles that guide hybrid construction.
+      </p>
+    </header>
+
+    <!-- ============================================================
+         22.1 — Why Hybrid?
+         ============================================================ -->
+    <section class="content-section" id="why-hybrid">
+      <h2 class="section-heading"><span class="section-number">22.1</span> Why Go Hybrid?</h2>
+
+      <p>
+        Neither pure attention nor pure SSM is optimal for all tasks:
+      </p>
+
+      <table class="comparison-table">
+        <thead>
+          <tr>
+            <th>Capability</th>
+            <th>Pure Attention</th>
+            <th>Pure SSM</th>
+            <th>Hybrid</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>In-context retrieval</td>
+            <td>Excellent</td>
+            <td>Weak (lossy compression)</td>
+            <td>Excellent (attention layers handle it)</td>
+          </tr>
+          <tr>
+            <td>Long-range efficiency</td>
+            <td>O(T&sup2;) wall</td>
+            <td>O(T) always</td>
+            <td>Near-O(T) (few attention layers)</td>
+          </tr>
+          <tr>
+            <td>Inference memory</td>
+            <td>KV-cache grows &prop; T</td>
+            <td>Fixed state</td>
+            <td>Small KV-cache (only attention layers)</td>
+          </tr>
+          <tr>
+            <td>Throughput at 256K</td>
+            <td>Very slow</td>
+            <td>Fast</td>
+            <td>Fast (SSM dominates)</td>
+          </tr>
+          <tr>
+            <td>Reasoning quality</td>
+            <td>Best</td>
+            <td>Good but not best</td>
+            <td>Near-best (attention at key positions)</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <p>
+        The hybrid approach captures <strong>90%+ of attention&rsquo;s quality</strong> at a
+        fraction of the cost by placing attention layers strategically where retrieval and
+        reasoning are most needed.
+      </p>
+    </section>
+
+    <!-- ============================================================
+         22.2 — The Design Space
+         ============================================================ -->
+    <section class="content-section" id="design-space">
+      <h2 class="section-heading"><span class="section-number">22.2</span> The Hybrid Design Space</h2>
+
+      <p>
+        Building a hybrid model requires answering four questions:
+      </p>
+
+      <div class="card-grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));">
+        <div class="concept-card">
+          <h3 class="concept-card__title">1. Attention Ratio</h3>
+          <p class="concept-card__body">
+            What fraction of layers use attention? Jamba uses 1:7 (12.5%). Griffin combines
+            gated recurrence with local attention within each layer. Higher ratio = better
+            retrieval but more KV-cache and compute.
+          </p>
+        </div>
+        <div class="concept-card">
+          <h3 class="concept-card__title">2. Attention Placement</h3>
+          <p class="concept-card__body">
+            <strong>Where</strong> in the network? Empirically: attention in the middle and late
+            layers works best. Early layers benefit more from SSM&rsquo;s efficient local
+            feature extraction. &ldquo;Never put attention at the front.&rdquo;
+          </p>
+        </div>
+        <div class="concept-card">
+          <h3 class="concept-card__title">3. Attention Type</h3>
+          <p class="concept-card__body">
+            Full causal attention? Sliding-window (local) attention? Grouped-query attention?
+            Sliding-window limits KV-cache growth while still providing local precision.
+            Global attention at a few layers handles long-range retrieval.
+          </p>
+        </div>
+        <div class="concept-card">
+          <h3 class="concept-card__title">4. SSM Variant</h3>
+          <p class="concept-card__body">
+            Mamba-1 (selective scan)? Mamba-2 (structured state space duality)? Gated linear
+            recurrence (Griffin-style)? Each has different speed/quality tradeoffs on different
+            hardware.
+          </p>
+        </div>
+      </div>
+
+      <div class="progressive-section">
+        <button class="progressive-toggle" aria-expanded="false">Show the Math</button>
+        <div class="progressive-content">
+          <p><strong>Hybrid complexity with sliding-window attention:</strong></p>
+          <p>
+            For L total layers with L_a attention layers (window W) and L_m SSM layers:
+          </p>
+          <div class="math-block">
+            <code>
+              FLOPs/token: &nbsp; L_m &middot; c_m &middot; d &middot; N + L_a &middot; c_a &middot; d &middot; W<br>
+              Memory: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; L_m &middot; d &middot; N + L_a &middot; 2 &middot; W &middot; d<br><br>
+              Example (Jamba-like, L=32, L_a=4, L_m=28, W=4096, d=4096, N=16):<br>
+              &nbsp; SSM memory: &nbsp; 28 &times; 4096 &times; 16 = 1.8M params (state)<br>
+              &nbsp; Attn memory: &nbsp; 4 &times; 2 &times; 4096 &times; 4096 = 134M params (KV-cache)<br>
+              &nbsp; Total: ~136M &nbsp; vs &nbsp; pure attention: 32 &times; 2 &times; 4096 &times; T = grows with T
+            </code>
+          </div>
+          <p>
+            At T=256K, pure attention KV-cache = ~67 GB. Hybrid with sliding-window = ~536 MB.
+            That&rsquo;s a 125&times; reduction.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         22.3 — Models in the Wild
+         ============================================================ -->
+    <section class="content-section" id="models">
+      <h2 class="section-heading"><span class="section-number">22.3</span> Real Hybrid Models</h2>
+
+      <table class="comparison-table">
+        <thead>
+          <tr>
+            <th>Model</th>
+            <th>Architecture</th>
+            <th>Attn Ratio</th>
+            <th>Key Innovation</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Jamba (AI21, 52B)</td>
+            <td>Mamba + Attention + MoE</td>
+            <td>1:7 (12.5%)</td>
+            <td>Established the hybrid recipe at scale. KV-cache 8&times; smaller.</td>
+          </tr>
+          <tr>
+            <td>Jamba 1.5 (398B)</td>
+            <td>Same pattern, MoE scaling</td>
+            <td>~1:7</td>
+            <td>94B active params. Production-grade hybrid.</td>
+          </tr>
+          <tr>
+            <td>Griffin (DeepMind)</td>
+            <td>Gated LR + Local Attention</td>
+            <td>Combined per-layer</td>
+            <td>Matches Llama-1 at comparable scale. Each layer fuses recurrence + local attention.</td>
+          </tr>
+          <tr>
+            <td>Bamba (IBM, 9B)</td>
+            <td>Mamba-2 + 3 Attention</td>
+            <td>3/32 (~9%)</td>
+            <td>Minimal attention layers with Mamba-2 backbone.</td>
+          </tr>
+          <tr>
+            <td>Zamba (Zyphra, 7B)</td>
+            <td>Mamba + Shared Attention</td>
+            <td>Shared layers</td>
+            <td>Shares attention weights across positions to reduce parameters.</td>
+          </tr>
+          <tr>
+            <td>Falcon Mamba (7B)</td>
+            <td>Pure Mamba</td>
+            <td>0%</td>
+            <td>Proves pure SSM viable at 7B with 5.5T tokens. No attention needed for some tasks.</td>
+          </tr>
+          <tr>
+            <td>Phi-4-mini-flash</td>
+            <td>Mamba + SW-Attn + GatedMU</td>
+            <td>Sparse</td>
+            <td>10&times; reasoning throughput. Distilled from larger Transformer.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- ============================================================
+         22.4 — Mixture of Experts
+         ============================================================ -->
+    <section class="content-section" id="moe">
+      <h2 class="section-heading"><span class="section-number">22.4</span> Mixture of Experts &mdash; The Fifth Design Dimension</h2>
+
+      <p>
+        Beyond choosing <em>which layers</em> are SSM vs attention, production hybrids add a
+        fifth dimension: <strong>Mixture of Experts (MoE)</strong>. Instead of activating all
+        parameters for every token, MoE routes each token to a subset of specialized
+        &ldquo;expert&rdquo; sub-networks, dramatically increasing total capacity while keeping
+        per-token compute constant.
+      </p>
+
+      <div class="card-grid" style="grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));">
+        <div class="concept-card">
+          <h3 class="concept-card__title">How MoE Works</h3>
+          <p class="concept-card__body">
+            A <strong>router</strong> (small linear layer + softmax) scores each token against
+            N experts and activates the top-K (typically K=2). Each expert is a standard
+            feed-forward block. The router learns which expert specializes in which patterns
+            &mdash; much like a DSP <strong>filter bank</strong> routes frequency bands to
+            specialized processing chains.
+          </p>
+        </div>
+        <div class="concept-card">
+          <h3 class="concept-card__title">Why MoE + Hybrid</h3>
+          <p class="concept-card__body">
+            Jamba showed the power of combining all three: <strong>SSM layers</strong> for
+            efficient sequence processing, <strong>attention layers</strong> for retrieval, and
+            <strong>MoE</strong> for capacity scaling. Jamba 1.5 has 398B total parameters but
+            only 94B active per token &mdash; a 4&times; capacity multiplier at the same
+            inference cost.
+          </p>
+        </div>
+        <div class="concept-card">
+          <h3 class="concept-card__title">The DSP Analogy</h3>
+          <p class="concept-card__body">
+            MoE is the AI equivalent of a <strong>polyphase filter bank</strong>: split the
+            signal into parallel sub-bands, process each with a specialized filter, then
+            recombine. Just as polyphase structures achieve high-order filtering at low compute
+            by distributing work across parallel paths, MoE achieves high model capacity at low
+            per-token cost.
+          </p>
+        </div>
+      </div>
+
+      <div class="progressive-section">
+        <button class="progressive-toggle" aria-expanded="false">Show the Math</button>
+        <div class="progressive-content">
+          <p><strong>MoE forward pass for token x:</strong></p>
+          <div class="math-block">
+            <code>
+              Router scores: &nbsp; g = softmax(W_r &middot; x) &nbsp; &isin; &Ropf;<sup>N</sup><br>
+              Top-K selection: S = top-K(g) &nbsp; (e.g., K=2 of N=16 experts)<br>
+              Output: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; y = &sum;<sub>i &isin; S</sub> g_i &middot; Expert_i(x)<br><br>
+              Total params:  N &times; Expert_size &nbsp; (e.g., 16 &times; 25B = 400B)<br>
+              Active params: K &times; Expert_size &nbsp; (e.g.,  2 &times; 25B =  50B)<br>
+              Capacity ratio: N / K = 8&times;
+            </code>
+          </div>
+          <p>
+            With <strong>load-balancing loss</strong>, the router distributes tokens roughly
+            evenly across experts, preventing collapse to a single expert:
+          </p>
+          <div class="math-block">
+            <code>
+              L_balance = &alpha; &middot; N &middot; &sum;<sub>i=1</sub><sup>N</sup> f_i &middot; p_i
+            </code>
+          </div>
+          <p>
+            where f_i is the fraction of tokens routed to expert i, and p_i is the average
+            router probability for expert i. This encourages uniform utilization &mdash;
+            analogous to ensuring all filter bank channels carry similar signal energy.
+          </p>
+        </div>
+      </div>
+
+      <table class="comparison-table">
+        <thead>
+          <tr>
+            <th>Model</th>
+            <th>Total Params</th>
+            <th>Active Params</th>
+            <th>Experts</th>
+            <th>Architecture</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Jamba (AI21)</td>
+            <td>52B</td>
+            <td>12B</td>
+            <td>16 experts, top-2</td>
+            <td>Mamba + Attention + MoE</td>
+          </tr>
+          <tr>
+            <td>Jamba 1.5</td>
+            <td>398B</td>
+            <td>94B</td>
+            <td>16 experts, top-2</td>
+            <td>Same hybrid, scaled up</td>
+          </tr>
+          <tr>
+            <td>Mixtral (8&times;7B)</td>
+            <td>46.7B</td>
+            <td>12.9B</td>
+            <td>8 experts, top-2</td>
+            <td>Pure attention + MoE</td>
+          </tr>
+          <tr>
+            <td>DeepSeek-V3</td>
+            <td>671B</td>
+            <td>37B</td>
+            <td>256 experts, top-8</td>
+            <td>Attention + MoE (fine-grained)</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <p>
+        The trend is clear: MoE is becoming the default scaling strategy for both
+        pure-attention and hybrid models. When combined with SSM layers, MoE creates
+        architectures that are efficient in <em>both</em> compute (SSM for sequence) and
+        capacity (MoE for parameters).
+      </p>
+    </section>
+
+    <!-- ============================================================
+         22.5 — The DSP Principle
+         ============================================================ -->
+    <section class="content-section bridge-teaser" id="dsp-principle">
+      <h2 class="section-heading"><span class="section-number">22.5</span> The DSP Principle &mdash; Cascading Filters</h2>
+
+      <p>
+        In DSP, complex frequency responses are achieved by <strong>cascading</strong>
+        simpler filter stages. A graphic equalizer doesn&rsquo;t use one massive filter &mdash;
+        it chains multiple band-pass filters, each handling a different frequency range.
+      </p>
+
+      <p>
+        Hybrid architectures follow the exact same principle:
+      </p>
+
+      <div class="card-grid" style="grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));">
+        <div class="concept-card">
+          <h3 class="concept-card__title">SSM Layers = IIR Stages</h3>
+          <p class="concept-card__body">
+            Efficient, continuous processing. Compress and propagate information.
+            Handle the bulk of sequence processing at O(T) cost. Like IIR filters in a
+            cascade: each stage refines the representation with minimal compute.
+          </p>
+        </div>
+        <div class="concept-card">
+          <h3 class="concept-card__title">Attention Layers = FIR Stages</h3>
+          <p class="concept-card__body">
+            Precise, content-addressed retrieval. &ldquo;Checkpoints&rdquo; where the model
+            can look back at specific tokens. Like FIR filters in a cascade: each provides
+            exact phase control (exact recall) at higher compute cost.
+          </p>
+        </div>
+        <div class="concept-card">
+          <h3 class="concept-card__title">Conv1D = Short FIR</h3>
+          <p class="concept-card__body">
+            The 1D convolution in Mamba blocks (kernel size 4) is literally a short FIR filter.
+            It provides local context before the SSM processes globally. The DSP cascade:
+            FIR (local) &rarr; IIR (global) &rarr; repeat.
+          </p>
+        </div>
+      </div>
+
+      <p>
+        The architectural insight maps perfectly: <strong>interleave efficient IIR stages
+        with precise FIR stages</strong>, placing the expensive FIR stages only where
+        precision matters. This is how audio engineers have designed processing chains for
+        50 years. Deep learning has arrived at the same answer.
+      </p>
+    </section>
+
+    <!-- ============================================================
+         22.6 — Edge Deployment
+         ============================================================ -->
+    <section class="content-section" id="edge">
+      <h2 class="section-heading"><span class="section-number">22.6</span> Edge Deployment &mdash; SSMs on Hardware</h2>
+
+      <p>
+        SSMs are uniquely suited for edge deployment because of their fixed-size state:
+      </p>
+
+      <div class="card-grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));">
+        <div class="concept-card">
+          <h3 class="concept-card__title">Predictable Memory</h3>
+          <p class="concept-card__body">
+            No KV-cache growth means memory usage is known at compile time. NPUs and FPGAs
+            can allocate buffers statically. DSP processors have operated this way since the
+            1970s &mdash; fixed filter state, constant memory.
+          </p>
+        </div>
+        <div class="concept-card">
+          <h3 class="concept-card__title">No Softmax</h3>
+          <p class="concept-card__body">
+            Attention&rsquo;s softmax requires expensive exponentiation. SSM recurrence is
+            multiply-accumulate (MAC) only &mdash; the native operation of every DSP chip ever
+            built. Ideal for NPUs, FPGAs, and fixed-point hardware.
+          </p>
+        </div>
+        <div class="concept-card">
+          <h3 class="concept-card__title">Constant Latency</h3>
+          <p class="concept-card__body">
+            Processing token 1 takes the same time as processing token 100,000. No growing
+            KV-cache lookup, no quadratic attention. Predictable latency is essential for
+            real-time applications (voice, robotics, sensors).
+          </p>
+        </div>
+        <div class="concept-card">
+          <h3 class="concept-card__title">Quantization-Friendly</h3>
+          <p class="concept-card__body">
+            SSM operations (matrix-vector multiply, element-wise ops) quantize cleanly to
+            INT8/INT4. XAMBA shows SiLU can be replaced with piecewise-linear activations
+            (like DSP&rsquo;s piecewise polynomial approximations) without quality loss.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         TOOL 22.1 — Hybrid Designer
+         ============================================================ -->
+    <section class="content-section" id="tool-designer">
+      <h2 class="section-heading"><span class="section-number">Tool 22.1</span> Hybrid Architecture Designer</h2>
+
+      <p>
+        Design your own hybrid architecture. Choose the total number of layers, the
+        attention ratio, attention placement strategy, and window size. See the resulting
+        compute cost, memory footprint, and capability profile in real time.
+      </p>
+
+      <div class="tool-container" id="tool-hybrid-designer">
+        <div class="tool-header">
+          <span class="tool-header__label">Tool 22.1</span>
+          <span class="tool-header__title">Hybrid Architecture Designer</span>
+        </div>
+        <div class="tool-body">
+          <div class="tool-controls">
+            <div class="control-group">
+              <label class="control-label">Total Layers</label>
+              <select class="tool-select" data-control="hd-layers">
+                <option value="16">16</option>
+                <option value="24">24</option>
+                <option value="32" selected>32</option>
+                <option value="48">48</option>
+              </select>
+            </div>
+            <div class="control-group">
+              <label class="control-label">Attention Ratio</label>
+              <input type="range" min="0" max="100" value="12" step="1" data-control="hd-ratio">
+              <span class="control-value" aria-live="polite" data-value="hd-ratio">12</span>%
+            </div>
+          </div>
+          <div class="tool-controls" style="padding-top: 0;">
+            <div class="control-group">
+              <label class="control-label">Placement</label>
+              <select class="tool-select" data-control="hd-placement">
+                <option value="even">Evenly Spaced</option>
+                <option value="late">Late Layers</option>
+                <option value="middle">Middle Layers</option>
+                <option value="custom">Jamba-style (skip front)</option>
+              </select>
+            </div>
+            <div class="control-group">
+              <label class="control-label">Context Length</label>
+              <select class="tool-select" data-control="hd-context">
+                <option value="4096">4K</option>
+                <option value="16384">16K</option>
+                <option value="65536">64K</option>
+                <option value="262144" selected>256K</option>
+              </select>
+            </div>
+          </div>
+          <div class="tool-canvas-wrapper"></div>
+        </div>
+      </div>
+
+      <div class="insight-box">
+        <h3 class="insight-box__title">Try This</h3>
+        <ul>
+          <li>Start with <strong>12% attention, 32 layers</strong> (Jamba-like). See the compute/memory savings vs pure attention.</li>
+          <li>Drag <strong>Attention Ratio</strong> from 0% to 100%. Watch how memory and compute scale. The retrieval score drops sharply below ~10%.</li>
+          <li>Compare <strong>placement strategies</strong>: &ldquo;Late Layers&rdquo; maximizes quality for retrieval tasks. &ldquo;Evenly Spaced&rdquo; is more balanced.</li>
+          <li>Set context to <strong>256K</strong> and compare 0% attention (pure SSM) vs 12% vs 100% (pure Transformer). The memory difference is dramatic.</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- Further Reading -->
+    <section class="content-section" id="further-reading">
+      <h2 class="section-heading">Further Reading</h2>
+      <ul class="further-reading-list">
+        <li>
+          <a href="https://arxiv.org/abs/2403.19887" target="_blank" rel="noopener">Jamba: A Hybrid Transformer-Mamba Language Model</a>
+          <span class="further-reading__authors">Lieber et al., 2024 — AI21 Labs</span>
+          <span class="further-reading__note">The first large-scale hybrid: Mamba + Attention + MoE at 52B parameters</span>
+        </li>
+        <li>
+          <a href="https://arxiv.org/abs/2402.19427" target="_blank" rel="noopener">Griffin: Mixing Gated Linear Recurrences with Local Attention for Efficient Language Models</a>
+          <span class="further-reading__authors">De et al., 2024 — DeepMind</span>
+          <span class="further-reading__note">Per-layer fusion of gated recurrence with local sliding-window attention</span>
+        </li>
+        <li>
+          <a href="https://arxiv.org/abs/2408.02496" target="_blank" rel="noopener">Bamba: A Mamba-based Foundation Model</a>
+          <span class="further-reading__authors">IBM Research, 2024</span>
+          <span class="further-reading__note">Mamba-2 backbone with minimal attention layers — 9B parameter hybrid</span>
+        </li>
+        <li>
+          <a href="https://arxiv.org/abs/2405.04517" target="_blank" rel="noopener">An Empirical Study of Mamba-based Language Models</a>
+          <span class="further-reading__authors">Waleffe et al., 2024 — NVIDIA</span>
+          <span class="further-reading__note">Systematic study of hybrid architectures and optimal attention-to-SSM ratios</span>
+        </li>
+      </ul>
+    </section>
+
+    <!-- Chapter Navigation -->
+    <nav class="chapter-nav">
+      <a class="chapter-nav__prev" href="ch21-ssm-evolution.html">
+        <span class="chapter-nav__dir">&larr; Previous</span>
+        <span class="chapter-nav__label">Ch 21: SSM Evolution Timeline</span>
+      </a>
+      <a class="chapter-nav__next" href="ch23-capstone.html">
+        <span class="chapter-nav__dir">Next &rarr;</span>
+        <span class="chapter-nav__label">Ch 23: Capstone Project</span>
+      </a>
+    </nav>
+
+  </main>
+</div>
+
+<!-- Scripts -->
+<script src="../../js/core/navigation.js"></script>
+<script src="../../js/core/progressive-disclosure.js"></script>
+<script src="../../js/core/chapter-nav.js"></script>
+<script src="../../js/tools/shared/plot-utils.js"></script>
+<script src="../../js/tools/ch22-hybrid-designer.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    if (window.DSPtoAI && window.DSPtoAI.HybridDesigner) {
+      window.DSPtoAI.HybridDesigner.init('tool-hybrid-designer');
+    }
+  });
+</script>
+
+<script src="../../js/core/search-index.js"></script>
+<script src="../../js/core/search.js"></script>
+</body>
+</html>

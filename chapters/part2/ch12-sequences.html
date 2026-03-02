@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ch 12: RNNs &amp; LSTMs &mdash; DSP to AI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Outfit:wght@300;400;500;600;700;800;900&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../style/global.css">
+  <link rel="stylesheet" href="../../style/theme-dark.css">
+  <link rel="stylesheet" href="../../style/theme-light.css">
+  <link rel="stylesheet" href="../../style/components.css">
+  <link rel="stylesheet" href="../../style/chapter.css">
+  <script src="../../js/core/theme-switcher.js"></script>
+</head>
+<body>
+
+<div class="noise"></div>
+
+<!-- Navigation -->
+<nav class="site-nav">
+  <a href="../../index.html" class="site-nav__logo">DSP <span class="arrow">&rarr;</span> AI</a>
+  <ul class="site-nav__links">
+    <li><a href="../../index.html#part1">Part I</a></li>
+    <li><a href="../../index.html#part2" class="active">Part II</a></li>
+    <li><a href="../../index.html#part3">Part III</a></li>
+    <li><a href="../../index.html#part4">Part IV</a></li>
+    <li><a href="../../gallery/index.html">Gallery</a></li>
+    <li><a href="../../reference/glossary.html">Reference</a></li>
+  </ul>
+  <button class="search-toggle" aria-label="Search site (press /)">🔍</button>
+  <button class="theme-toggle" aria-label="Toggle theme"></button>
+  <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false">&#9776;</button>
+</nav>
+<div class="progress-bar"></div>
+
+<!-- Page Layout -->
+<div class="chapter-page" data-chapter-id="ch12">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar__part-label">Part II: AI Foundations</div>
+    <ul class="sidebar__chapters">
+      <li><a class="sidebar__chapter-link" href="ch09-neuron.html"><span class="sidebar__chapter-num">09</span> The Neuron</a></li>
+      <li><a class="sidebar__chapter-link" href="ch10-backprop.html"><span class="sidebar__chapter-num">10</span> Networks &amp; Backprop</a></li>
+      <li><a class="sidebar__chapter-link" href="ch11-training.html"><span class="sidebar__chapter-num">11</span> Training &amp; Optimization</a></li>
+      <li><a class="sidebar__chapter-link active" href="ch12-sequences.html"><span class="sidebar__chapter-num">12</span> RNNs &amp; LSTMs</a>
+        <ul class="sidebar__sections">
+          <li><a class="sidebar__section-link" href="#sequences">Sequence Data</a></li>
+          <li><a class="sidebar__section-link" href="#vanilla-rnn">The Vanilla RNN</a></li>
+          <li><a class="sidebar__section-link" href="#vanishing">The Vanishing Gradient</a></li>
+          <li><a class="sidebar__section-link" href="#lstm">LSTM</a></li>
+          <li><a class="sidebar__section-link" href="#gru">GRU</a></li>
+          <li><a class="sidebar__section-link" href="#bridge">Bridge: RNN = IIR Filter</a></li>
+          <li><a class="sidebar__section-link" href="#tool-unroller">RNN Unroller</a></li>
+          <li><a class="sidebar__section-link" href="#tool-vanishing">Vanishing Gradient Demo</a></li>
+        </ul>
+      </li>
+      <li><a class="sidebar__chapter-link" href="ch13-embeddings.html"><span class="sidebar__chapter-num">13</span> Embeddings</a></li>
+      <li><a class="sidebar__chapter-link" href="ch14-attention.html"><span class="sidebar__chapter-num">14</span> Attention</a></li>
+      <li><a class="sidebar__chapter-link" href="ch15-transformer.html"><span class="sidebar__chapter-num">15</span> The Transformer</a></li>
+    </ul>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="chapter-content">
+
+    <nav class="breadcrumb" aria-label="Breadcrumb"></nav>
+
+    <header class="chapter-header">
+      <div class="chapter-header__part">Part II &mdash; AI Foundations</div>
+      <div class="chapter-header__number">Chapter 12</div>
+      <h1 class="chapter-header__title">Sequences &mdash; RNNs and LSTMs</h1>
+      <p class="chapter-header__subtitle">
+        Language, audio, stock prices, DNA &mdash; the world is full of sequences. Standard neural
+        networks treat each input independently, but sequences have <em>temporal structure</em>:
+        what came before matters. Recurrent Neural Networks introduce <strong>memory</strong> by
+        feeding their output back as input. If that sounds like an IIR filter with feedback,
+        you&rsquo;re seeing the deepest connection yet.
+      </p>
+    </header>
+
+    <!-- ============================================================
+         12.1 — Sequence Data
+         ============================================================ -->
+    <section class="content-section" id="sequences">
+      <h2 class="section-heading"><span class="section-number">12.1</span> Sequence Data</h2>
+
+      <p>
+        Feedforward networks from Chapters 9&ndash;11 process fixed-size inputs: an image of
+        28&times;28 pixels, a feature vector of 10 numbers. But many real-world problems have
+        <strong>variable-length, ordered</strong> inputs:
+      </p>
+
+      <div class="card-grid" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));">
+        <div class="concept-card">
+          <h3 class="concept-card__title">Text</h3>
+          <p class="concept-card__body">Sentences are sequences of words. &ldquo;The cat sat on the mat&rdquo; has structure that a bag-of-words model misses.</p>
+        </div>
+        <div class="concept-card">
+          <h3 class="concept-card__title">Audio</h3>
+          <p class="concept-card__body">Speech is a sequence of samples. The current phoneme depends on the preceding ones.</p>
+        </div>
+        <div class="concept-card">
+          <h3 class="concept-card__title">Time Series</h3>
+          <p class="concept-card__body">Stock prices, sensor data, weather &mdash; the current value depends on history.</p>
+        </div>
+        <div class="concept-card">
+          <h3 class="concept-card__title">Music</h3>
+          <p class="concept-card__body">Melodies have temporal dependencies. The next note depends on the harmonic context.</p>
+        </div>
+      </div>
+
+      <p>
+        The core challenge: how do you build a neural network that can process inputs of
+        <em>any length</em> while remembering relevant context from earlier in the sequence?
+      </p>
+    </section>
+
+    <!-- ============================================================
+         12.2 — The Vanilla RNN
+         ============================================================ -->
+    <section class="content-section" id="vanilla-rnn">
+      <h2 class="section-heading"><span class="section-number">12.2</span> The Vanilla RNN</h2>
+
+      <p>
+        The <strong>Recurrent Neural Network</strong> (Elman, 1990) solves this elegantly:
+        at each timestep, the network receives the current input <em>and</em> its own hidden
+        state from the previous timestep. This creates a loop &mdash; the network has memory.
+      </p>
+
+      <div class="math-block">
+        <div class="math-block__label">RNN Equations</div>
+        <p class="math-block__content">
+          <strong>h</strong><sub>t</sub> = tanh(<strong>W</strong><sub>h</sub><strong>h</strong><sub>t-1</sub> + <strong>W</strong><sub>x</sub><strong>x</strong><sub>t</sub> + <strong>b</strong>)<br><br>
+          <strong>y</strong><sub>t</sub> = <strong>W</strong><sub>y</sub><strong>h</strong><sub>t</sub> + <strong>b</strong><sub>y</sub>
+        </p>
+      </div>
+
+      <p>
+        The same weights <strong>W</strong><sub>h</sub>, <strong>W</strong><sub>x</sub> are reused
+        at every timestep &mdash; this is <strong>weight sharing</strong> across time, analogous
+        to how a convolutional filter shares weights across space.
+      </p>
+
+      <div class="progressive-section">
+        <button class="progressive-section__toggle" aria-expanded="false">Show the Math &mdash; Unrolling Through Time</button>
+        <div class="progressive-section__content" hidden>
+          <p>
+            To train an RNN, we &ldquo;unroll&rdquo; it through time, creating a copy of the network
+            for each timestep. This converts the recurrence into a very deep feedforward network:
+          </p>
+          <div class="math-block">
+            <p class="math-block__content">
+              h<sub>0</sub> = 0<br>
+              h<sub>1</sub> = tanh(W<sub>h</sub>h<sub>0</sub> + W<sub>x</sub>x<sub>1</sub> + b)<br>
+              h<sub>2</sub> = tanh(W<sub>h</sub>h<sub>1</sub> + W<sub>x</sub>x<sub>2</sub> + b)<br>
+              &hellip;<br>
+              h<sub>T</sub> = tanh(W<sub>h</sub>h<sub>T-1</sub> + W<sub>x</sub>x<sub>T</sub> + b)
+            </p>
+          </div>
+          <p>
+            Training uses <strong>Backpropagation Through Time (BPTT)</strong>: standard backprop
+            on the unrolled graph. The gradient at timestep t must flow through all subsequent
+            timesteps, which means multiplying by W<sub>h</sub> repeatedly.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         12.3 — The Vanishing Gradient Problem
+         ============================================================ -->
+    <section class="content-section" id="vanishing">
+      <h2 class="section-heading"><span class="section-number">12.3</span> The Vanishing Gradient Problem</h2>
+
+      <p>
+        The gradient at timestep t with respect to the hidden state at timestep k involves
+        a product of Jacobians:
+      </p>
+
+      <div class="math-block">
+        <div class="math-block__label">Gradient Chain</div>
+        <p class="math-block__content">
+          &part;h<sub>t</sub>/&part;h<sub>k</sub> = &prod;<sub>i=k+1</sub><sup>t</sup> diag(tanh'(z<sub>i</sub>)) &middot; W<sub>h</sub>
+        </p>
+      </div>
+
+      <p>
+        Since |tanh'(z)| &le; 1 and typically &lt; 1, this product <strong>shrinks exponentially</strong>
+        with the distance t&minus;k. After 20&ndash;30 steps, the gradient is effectively zero.
+        The network can&rsquo;t learn long-range dependencies.
+      </p>
+
+      <div class="card-grid" style="grid-template-columns: repeat(2, 1fr);">
+        <div class="concept-card" style="border-color: var(--color-danger);">
+          <h3 class="concept-card__title">Vanishing Gradients</h3>
+          <p class="concept-card__body">
+            When &#x2016;W<sub>h</sub>&#x2016; &middot; max|&sigma;'| &lt; 1, gradients decay exponentially.
+            Early timesteps receive near-zero gradient &mdash; they can&rsquo;t learn.
+            <strong>Analogous to a pole with |p| &lt; 1 in an IIR filter.</strong>
+          </p>
+        </div>
+        <div class="concept-card" style="border-color: var(--color-ai);">
+          <h3 class="concept-card__title">Exploding Gradients</h3>
+          <p class="concept-card__body">
+            When &#x2016;W<sub>h</sub>&#x2016; &middot; max|&sigma;'| &gt; 1, gradients grow exponentially.
+            Weights blow up. Fix: gradient clipping (cap the norm).
+            <strong>Analogous to a pole with |p| &gt; 1 &mdash; instability.</strong>
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         12.4 — LSTM
+         ============================================================ -->
+    <section class="content-section" id="lstm">
+      <h2 class="section-heading"><span class="section-number">12.4</span> Long Short-Term Memory (LSTM)</h2>
+
+      <p>
+        The <strong>LSTM</strong> (Hochreiter &amp; Schmidhuber, 1997) solves the vanishing gradient
+        problem with a brilliant architectural trick: a <strong>cell state</strong> that flows
+        through time with <em>additive</em> updates instead of multiplicative ones.
+      </p>
+
+      <p>
+        Three <strong>gates</strong> control information flow:
+      </p>
+
+      <div class="card-grid" style="grid-template-columns: repeat(3, 1fr);">
+        <div class="concept-card" style="border-color: #fb7185;">
+          <h3 class="concept-card__title">Forget Gate f<sub>t</sub></h3>
+          <p class="concept-card__body">
+            &ldquo;What should I forget?&rdquo;
+            Sigmoid output in [0,1] that multiplies the old cell state.
+            f<sub>t</sub> = &sigma;(W<sub>f</sub>[h<sub>t-1</sub>, x<sub>t</sub>] + b<sub>f</sub>)
+          </p>
+        </div>
+        <div class="concept-card" style="border-color: #4ade80;">
+          <h3 class="concept-card__title">Input Gate i<sub>t</sub></h3>
+          <p class="concept-card__body">
+            &ldquo;What new info should I store?&rdquo;
+            Controls how much of the candidate state to add.
+            i<sub>t</sub> = &sigma;(W<sub>i</sub>[h<sub>t-1</sub>, x<sub>t</sub>] + b<sub>i</sub>)
+          </p>
+        </div>
+        <div class="concept-card" style="border-color: #fbbf24;">
+          <h3 class="concept-card__title">Output Gate o<sub>t</sub></h3>
+          <p class="concept-card__body">
+            &ldquo;What should I reveal?&rdquo;
+            Controls which parts of the cell state become the hidden state.
+            o<sub>t</sub> = &sigma;(W<sub>o</sub>[h<sub>t-1</sub>, x<sub>t</sub>] + b<sub>o</sub>)
+          </p>
+        </div>
+      </div>
+
+      <div class="progressive-section">
+        <button class="progressive-section__toggle" aria-expanded="false">Show the Math &mdash; Full LSTM Equations</button>
+        <div class="progressive-section__content" hidden>
+          <div class="math-block">
+            <div class="math-block__label">LSTM Update</div>
+            <p class="math-block__content">
+              f<sub>t</sub> = &sigma;(W<sub>f</sub>[h<sub>t-1</sub>, x<sub>t</sub>] + b<sub>f</sub>) &ensp;&ensp; <em>(forget gate)</em><br><br>
+              i<sub>t</sub> = &sigma;(W<sub>i</sub>[h<sub>t-1</sub>, x<sub>t</sub>] + b<sub>i</sub>) &ensp;&ensp; <em>(input gate)</em><br><br>
+              c&#771;<sub>t</sub> = tanh(W<sub>c</sub>[h<sub>t-1</sub>, x<sub>t</sub>] + b<sub>c</sub>) &ensp;&ensp; <em>(candidate)</em><br><br>
+              c<sub>t</sub> = f<sub>t</sub> &odot; c<sub>t-1</sub> + i<sub>t</sub> &odot; c&#771;<sub>t</sub> &ensp;&ensp; <em>(cell state update)</em><br><br>
+              o<sub>t</sub> = &sigma;(W<sub>o</sub>[h<sub>t-1</sub>, x<sub>t</sub>] + b<sub>o</sub>) &ensp;&ensp; <em>(output gate)</em><br><br>
+              h<sub>t</sub> = o<sub>t</sub> &odot; tanh(c<sub>t</sub>) &ensp;&ensp; <em>(hidden state)</em>
+            </p>
+          </div>
+          <p>
+            <strong>Why this fixes vanishing gradients:</strong> The cell state update
+            c<sub>t</sub> = f<sub>t</sub> &odot; c<sub>t-1</sub> + i<sub>t</sub> &odot; c&#771;<sub>t</sub>
+            is an <em>additive</em> update. The gradient through the cell state is:
+          </p>
+          <div class="math-block">
+            <p class="math-block__content">
+              &part;c<sub>t</sub>/&part;c<sub>t-1</sub> = f<sub>t</sub>
+            </p>
+          </div>
+          <p>
+            When f<sub>t</sub> &asymp; 1 (which happens with proper initialization), the gradient flows
+            through time with almost no decay. The forget gate acts as a <strong>learnable pole</strong>
+            that the network can set close to 1 when it needs long-range memory.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         12.5 — GRU
+         ============================================================ -->
+    <section class="content-section" id="gru">
+      <h2 class="section-heading"><span class="section-number">12.5</span> The Gated Recurrent Unit (GRU)</h2>
+
+      <p>
+        The <strong>GRU</strong> (Cho et al., 2014) simplifies the LSTM by merging the forget
+        and input gates into a single <strong>update gate</strong>, and combining the cell and
+        hidden states:
+      </p>
+
+      <div class="math-block">
+        <div class="math-block__label">GRU Update</div>
+        <p class="math-block__content">
+          z<sub>t</sub> = &sigma;(W<sub>z</sub>[h<sub>t-1</sub>, x<sub>t</sub>]) &ensp;&ensp; <em>(update gate)</em><br><br>
+          r<sub>t</sub> = &sigma;(W<sub>r</sub>[h<sub>t-1</sub>, x<sub>t</sub>]) &ensp;&ensp; <em>(reset gate)</em><br><br>
+          h<sub>t</sub> = (1 &minus; z<sub>t</sub>) &odot; h<sub>t-1</sub> + z<sub>t</sub> &odot; tanh(W[r<sub>t</sub> &odot; h<sub>t-1</sub>, x<sub>t</sub>])
+        </p>
+      </div>
+
+      <p>
+        The GRU has fewer parameters than the LSTM (2 gates vs 3) and often achieves similar
+        performance. The update gate z<sub>t</sub> is a linear interpolation between keeping the
+        old state and adopting the new candidate &mdash; exactly a first-order IIR filter with
+        time-varying coefficient.
+      </p>
+    </section>
+
+    <!-- ============================================================
+         12.6 — Bridge: RNN = IIR Filter
+         ============================================================ -->
+    <section class="content-section" id="bridge">
+      <h2 class="section-heading"><span class="section-number">12.6</span> Bridge: RNN State = IIR Filter State</h2>
+
+      <div class="bridge-teaser">
+        <div class="bridge-teaser__label">DSP &rarr; AI Connection</div>
+        <p>
+          A recurrent neural network is a <strong>nonlinear IIR filter</strong>. The hidden state
+          h<sub>t</sub> is the filter state, the recurrence y[n] = f(y[n-1], x[n]) is the
+          feedback path, and the vanishing gradient is literally the exponential decay of a pole
+          inside the unit circle.
+        </p>
+      </div>
+
+      <table class="comparison-table" style="width:100%; border-collapse: collapse; margin: 1.5rem 0;">
+        <thead>
+          <tr>
+            <th style="padding: 0.75rem; text-align: left; border-bottom: 2px solid var(--border); color: var(--color-dsp);">DSP: IIR Filter</th>
+            <th style="padding: 0.75rem; text-align: left; border-bottom: 2px solid var(--border); color: var(--color-ai);">AI: RNN</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style="padding: 0.6rem; border-bottom: 1px solid var(--border);">y[n] = a&middot;y[n-1] + b&middot;x[n]</td>
+            <td style="padding: 0.6rem; border-bottom: 1px solid var(--border);">h<sub>t</sub> = tanh(W<sub>h</sub>h<sub>t-1</sub> + W<sub>x</sub>x<sub>t</sub>)</td>
+          </tr>
+          <tr>
+            <td style="padding: 0.6rem; border-bottom: 1px solid var(--border);">Feedback coefficient a</td>
+            <td style="padding: 0.6rem; border-bottom: 1px solid var(--border);">Recurrent weight matrix W<sub>h</sub></td>
+          </tr>
+          <tr>
+            <td style="padding: 0.6rem; border-bottom: 1px solid var(--border);">Pole at z = a</td>
+            <td style="padding: 0.6rem; border-bottom: 1px solid var(--border);">Eigenvalues of W<sub>h</sub></td>
+          </tr>
+          <tr>
+            <td style="padding: 0.6rem; border-bottom: 1px solid var(--border);">|a| &lt; 1: stable, exponential decay</td>
+            <td style="padding: 0.6rem; border-bottom: 1px solid var(--border);">|&lambda;| &lt; 1: vanishing gradient</td>
+          </tr>
+          <tr>
+            <td style="padding: 0.6rem; border-bottom: 1px solid var(--border);">|a| &gt; 1: unstable, exponential growth</td>
+            <td style="padding: 0.6rem; border-bottom: 1px solid var(--border);">|&lambda;| &gt; 1: exploding gradient</td>
+          </tr>
+          <tr>
+            <td style="padding: 0.6rem; border-bottom: 1px solid var(--border);">IIR filter memory: infinite but decaying</td>
+            <td style="padding: 0.6rem; border-bottom: 1px solid var(--border);">RNN memory: theoretically infinite but vanishes</td>
+          </tr>
+          <tr>
+            <td style="padding: 0.6rem; border-bottom: 1px solid var(--border);">Pole at |a|=1: perfect memory (integrator)</td>
+            <td style="padding: 0.6rem; border-bottom: 1px solid var(--border);">LSTM forget gate f&asymp;1: perfect cell state memory</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="insight-box">
+        <div class="insight-box__label">Looking Ahead</div>
+        <p>
+          This IIR/RNN connection is the foundation for <strong>State-Space Models</strong> (Chapter 18)
+          and <strong>Mamba</strong> (Chapter 19). Mamba is literally a learned IIR filter bank where
+          the poles (eigenvalues of the A matrix) are placed to give the right memory properties.
+          Everything comes full circle.
+        </p>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         Tool 12.1 — RNN Unroller
+         ============================================================ -->
+    <section class="content-section" id="tool-unroller">
+      <h2 class="section-heading"><span class="section-number">12.7</span> Tool: RNN Unroller</h2>
+
+      <p>
+        Watch a character-level RNN or LSTM process text one character at a time.
+        See the hidden state evolve as a heatmap, and for LSTM, inspect the gate values
+        at each step.
+      </p>
+
+      <div class="tool-container" id="rnnUnrollerTool">
+        <div class="tool-header">
+          <span class="tool-header__label">Tool 12.1</span>
+          <span class="tool-header__title">RNN Unroller</span>
+        </div>
+        <div class="tool-body">
+          <div class="tool-controls" style="display: flex; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 0.75rem;">
+            <label class="tool-control">
+              <span class="tool-control__label">Model</span>
+              <select data-control="rnn-mode" class="tool-select">
+                <option value="rnn" selected>Vanilla RNN</option>
+                <option value="lstm">LSTM</option>
+              </select>
+            </label>
+            <label class="tool-control">
+              <span class="tool-control__label">Input Text</span>
+              <select data-control="rnn-text" class="tool-select">
+                <option value="hello world" selected>hello world</option>
+                <option value="abcdefghij">abcdefghij</option>
+                <option value="aaaaabbbbb">aaaaabbbbb</option>
+                <option value="the cat sat">the cat sat</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="tool-canvas-wrapper"></div>
+
+          <div class="tool-actions" style="display: flex; gap: 0.5rem; margin-top: 0.5rem; flex-wrap: wrap;">
+            <button data-action="rnn-prev" class="tool-btn">&larr; Prev</button>
+            <button data-action="rnn-next" class="tool-btn tool-btn--accent">Next Step &rarr;</button>
+            <button data-action="rnn-all" class="tool-btn">Show All</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="insight-box">
+        <div class="insight-box__label">Try This</div>
+        <ul>
+          <li>Step through &ldquo;hello world&rdquo; one character at a time &mdash; watch how the hidden state heatmap changes at each step</li>
+          <li>Switch to <strong>LSTM</strong> and see the gate values appear on the right. The forget gate (red) controls what to remember</li>
+          <li>Try &ldquo;aaaaabbbbb&rdquo; &mdash; notice how the hidden state is similar for repeated characters then shifts</li>
+          <li>Compare the hidden state patterns between RNN and LSTM on the same input</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         Tool 12.2 — Vanishing Gradient Demonstrator
+         ============================================================ -->
+    <section class="content-section" id="tool-vanishing">
+      <h2 class="section-heading"><span class="section-number">12.8</span> Tool: Vanishing Gradient Demonstrator</h2>
+
+      <p>
+        Visualize how gradient magnitude decays as it flows backward through time.
+        In a vanilla RNN, gradients from 30 steps ago are essentially zero.
+        In an LSTM, the forget gate keeps them alive.
+      </p>
+
+      <div class="tool-container" id="vanishingGradTool">
+        <div class="tool-header">
+          <span class="tool-header__label">Tool 12.2</span>
+          <span class="tool-header__title">Vanishing Gradient Demonstrator</span>
+        </div>
+        <div class="tool-body">
+          <div class="tool-controls" style="display: flex; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 0.75rem;">
+            <label class="tool-control">
+              <span class="tool-control__label">Sequence Length</span>
+              <input type="range" data-control="vg-seqlen" min="10" max="60" step="1" value="30" class="tool-slider">
+              <span data-value="vg-seqlen" class="tool-value">30</span>
+            </label>
+            <label class="tool-control">
+              <span class="tool-control__label">RNN |W<sub>h</sub>|</span>
+              <input type="range" data-control="vg-rnn-scale" min="0.3" max="1.2" step="0.01" value="0.7" class="tool-slider">
+              <span data-value="vg-rnn-scale" class="tool-value">0.7</span>
+            </label>
+            <label class="tool-control">
+              <span class="tool-control__label">LSTM Forget Bias</span>
+              <input type="range" data-control="vg-lstm-bias" min="-1" max="3" step="0.1" value="1.5" class="tool-slider">
+              <span data-value="vg-lstm-bias" class="tool-value">1.5</span>
+            </label>
+          </div>
+
+          <div class="tool-canvas-wrapper"></div>
+        </div>
+      </div>
+
+      <div class="insight-box">
+        <div class="insight-box__label">Try This</div>
+        <ul>
+          <li>Set RNN |W<sub>h</sub>| to 0.5 &mdash; gradients vanish completely within 10 steps. At 0.9, they last longer but still fade</li>
+          <li>Set |W<sub>h</sub>| to 1.1 &mdash; now gradients <em>explode</em>! The bars overflow. This is the instability from |p| &gt; 1</li>
+          <li>The LSTM forget bias controls the average forget gate value. At bias=1.5, f&asymp;0.82 &mdash; gradients are well-maintained</li>
+          <li>Set LSTM bias to &minus;1 &mdash; the forget gate closes (f&asymp;0.27) and the LSTM vanishes too! The gate needs positive bias to remember</li>
+          <li>Increase sequence length to 60 &mdash; the RNN gradient is visually zero at the left while the LSTM still has bars</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         Chapter Navigation
+         ============================================================ -->
+    <!-- Further Reading -->
+    <section class="content-section" id="further-reading">
+      <h2 class="section-heading">Further Reading</h2>
+      <ul class="further-reading-list">
+        <li>
+          <a href="https://www.bioinf.jku.at/publications/older/2604.pdf" target="_blank" rel="noopener">Long Short-Term Memory</a>
+          <span class="further-reading__authors">Hochreiter &amp; Schmidhuber, 1997 — Neural Computation</span>
+          <span class="further-reading__note">The original LSTM paper — solving the vanishing gradient problem with gated memory cells</span>
+        </li>
+        <li>
+          <a href="https://arxiv.org/abs/1406.1078" target="_blank" rel="noopener">Learning Phrase Representations using RNN Encoder-Decoder</a>
+          <span class="further-reading__authors">Cho et al., 2014</span>
+          <span class="further-reading__note">Introduces the GRU (Gated Recurrent Unit) — a simplified alternative to LSTM</span>
+        </li>
+        <li>
+          <a href="https://colah.github.io/posts/2015-08-Understanding-LSTMs/" target="_blank" rel="noopener">Understanding LSTM Networks</a>
+          <span class="further-reading__authors">Olah, C., 2015 — colah&rsquo;s blog</span>
+          <span class="further-reading__note">The best visual explanation of LSTM gates and information flow</span>
+        </li>
+      </ul>
+    </section>
+
+    <nav class="chapter-nav" aria-label="Chapter navigation">
+      <a class="chapter-nav__prev" href="ch11-training.html">
+        <span class="chapter-nav__dir">&larr; Previous</span>
+        <span class="chapter-nav__title">Ch 11: Training &amp; Optimization</span>
+      </a>
+      <a class="chapter-nav__next" href="ch13-embeddings.html">
+        <span class="chapter-nav__dir">Next &rarr;</span>
+        <span class="chapter-nav__title">Ch 13: Embeddings</span>
+      </a>
+    </nav>
+
+  </main>
+</div>
+
+<!-- Scripts -->
+<script src="../../js/core/navigation.js"></script>
+<script src="../../js/core/progressive-disclosure.js"></script>
+<script src="../../js/core/chapter-nav.js"></script>
+<script src="../../js/tools/shared/plot-utils.js"></script>
+<script src="../../js/tools/ch12-rnn-unroller.js"></script>
+<script src="../../js/tools/ch12-vanishing-grad.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    DSPtoAI.RNNUnroller.init('rnnUnrollerTool');
+    DSPtoAI.VanishingGrad.init('vanishingGradTool');
+  });
+</script>
+
+<script src="../../js/core/search-index.js"></script>
+<script src="../../js/core/search.js"></script>
+</body>
+</html>

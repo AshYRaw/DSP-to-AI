@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Infographic Gallery &mdash; DSP to AI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Outfit:wght@300;400;500;600;700;800;900&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../style/global.css">
+  <link rel="stylesheet" href="../style/theme-dark.css">
+  <link rel="stylesheet" href="../style/theme-light.css">
+  <link rel="stylesheet" href="../style/components.css">
+  <script src="../js/core/theme-switcher.js"></script>
+  <style>
+    .gallery-page {
+      max-width: var(--container-max);
+      margin: 0 auto;
+      padding: var(--sp-2xl) var(--sp-lg);
+    }
+    .gallery-page__header {
+      text-align: center;
+      margin-bottom: var(--sp-2xl);
+    }
+    .gallery-page__header h1 {
+      font-size: clamp(28px, 4vw, 44px);
+      font-weight: 800;
+      margin-bottom: var(--sp-sm);
+    }
+    .gallery-page__header p {
+      color: var(--text-dim);
+      font-size: 17px;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+    .gallery-list {
+      display: grid;
+      gap: var(--sp-lg);
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    .gallery-item {
+      display: grid;
+      grid-template-columns: 80px 1fr;
+      gap: var(--sp-lg);
+      align-items: center;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: var(--sp-lg);
+      text-decoration: none;
+      color: var(--text);
+      transition: all var(--transition-base);
+    }
+    .gallery-item:hover {
+      border-color: var(--color-bridge);
+      box-shadow: var(--shadow-md);
+      transform: translateY(-2px);
+    }
+    .gallery-item__num {
+      font-family: var(--font-code);
+      font-size: 36px;
+      font-weight: 700;
+      color: var(--color-bridge);
+      text-align: center;
+      opacity: 0.7;
+    }
+    .gallery-item__title {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: var(--sp-xs);
+    }
+    .gallery-item__desc {
+      font-size: 14px;
+      color: var(--text-dim);
+      line-height: 1.5;
+    }
+    @media (max-width: 600px) {
+      .gallery-item { grid-template-columns: 1fr; }
+      .gallery-item__num { text-align: left; font-size: 24px; }
+    }
+  </style>
+</head>
+<body>
+<div class="noise"></div>
+
+<nav class="site-nav">
+  <a href="../index.html" class="site-nav__logo">DSP <span class="arrow">&rarr;</span> AI</a>
+  <ul class="site-nav__links">
+    <li><a href="../index.html#part1">Part I</a></li>
+    <li><a href="../index.html#part2">Part II</a></li>
+    <li><a href="../index.html#part3">Part III</a></li>
+    <li><a href="../index.html#part4">Part IV</a></li>
+    <li><a href="index.html" class="active">Gallery</a></li>
+    <li><a href="../reference/glossary.html">Reference</a></li>
+  </ul>
+  <button class="search-toggle" aria-label="Search site (press /)">🔍</button>
+  <button class="theme-toggle" aria-label="Toggle theme"></button>
+  <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false">&#9776;</button>
+</nav>
+
+<main class="gallery-page">
+  <div class="gallery-page__header">
+    <h1>Infographic Gallery</h1>
+    <p>The 5 original infographics that map every concept in modern AI back to its classical DSP counterpart</p>
+  </div>
+
+  <div class="gallery-list">
+    <a class="gallery-item" href="rosetta-stone.html">
+      <span class="gallery-item__num">01</span>
+      <div>
+        <div class="gallery-item__title">The DSP &harr; AI Rosetta Stone</div>
+        <div class="gallery-item__desc">12 exact mathematical mappings between classical signal processing and modern AI architectures</div>
+      </div>
+    </a>
+    <a class="gallery-item" href="matched-to-attention.html">
+      <span class="gallery-item__num">02</span>
+      <div>
+        <div class="gallery-item__title">From Matched Filter to Self-Attention</div>
+        <div class="gallery-item__desc">How radar's optimal detector evolved through 80 years into the Transformer's attention mechanism</div>
+      </div>
+    </a>
+    <a class="gallery-item" href="mamba-iir.html">
+      <span class="gallery-item__num">03</span>
+      <div>
+        <div class="gallery-item__title">Mamba: The Learnable IIR Filter Bank</div>
+        <div class="gallery-item__desc">Mamba's architecture decoded as a massively parallel bank of adaptive IIR filters</div>
+      </div>
+    </a>
+    <a class="gallery-item" href="ssm-evolution.html">
+      <span class="gallery-item__num">04</span>
+      <div>
+        <div class="gallery-item__title">The SSM Evolution</div>
+        <div class="gallery-item__desc">From S4 to hybrid dominance: four years of structured state-space breakthroughs</div>
+      </div>
+    </a>
+    <a class="gallery-item" href="attention-vs-mamba.html">
+      <span class="gallery-item__num">05</span>
+      <div>
+        <div class="gallery-item__title">Attention vs Mamba: Head to Head</div>
+        <div class="gallery-item__desc">FIR vs IIR, O(n&sup2;) vs O(n): a detailed comparison through the lens of DSP</div>
+      </div>
+    </a>
+  </div>
+</main>
+
+<script src="../js/core/navigation.js"></script>
+<script src="../js/core/search-index.js"></script>
+<script src="../js/core/search.js"></script>
+</body>
+</html>

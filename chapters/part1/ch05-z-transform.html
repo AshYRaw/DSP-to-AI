@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ch 5: The Z-Transform &mdash; DSP to AI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Outfit:wght@300;400;500;600;700;800;900&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../style/global.css">
+  <link rel="stylesheet" href="../../style/theme-dark.css">
+  <link rel="stylesheet" href="../../style/theme-light.css">
+  <link rel="stylesheet" href="../../style/components.css">
+  <link rel="stylesheet" href="../../style/chapter.css">
+  <script src="../../js/core/theme-switcher.js"></script>
+</head>
+<body>
+
+<div class="noise"></div>
+
+<!-- Navigation -->
+<nav class="site-nav">
+  <a href="../../index.html" class="site-nav__logo">DSP <span class="arrow">&rarr;</span> AI</a>
+  <ul class="site-nav__links">
+    <li><a href="../../index.html#part1" class="active">Part I</a></li>
+    <li><a href="../../index.html#part2">Part II</a></li>
+    <li><a href="../../index.html#part3">Part III</a></li>
+    <li><a href="../../index.html#part4">Part IV</a></li>
+    <li><a href="../../gallery/index.html">Gallery</a></li>
+    <li><a href="../../reference/glossary.html">Reference</a></li>
+  </ul>
+  <button class="search-toggle" aria-label="Search site (press /)">🔍</button>
+  <button class="theme-toggle" aria-label="Toggle theme"></button>
+  <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false">&#9776;</button>
+</nav>
+<div class="progress-bar"></div>
+
+<!-- Page Layout -->
+<div class="chapter-page" data-chapter-id="ch05">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar__part-label">Part I: DSP Foundations</div>
+    <ul class="sidebar__chapters">
+      <li><a class="sidebar__chapter-link" href="ch01-signals.html"><span class="sidebar__chapter-num">01</span> What Is a Signal?</a></li>
+      <li><a class="sidebar__chapter-link" href="ch02-systems.html"><span class="sidebar__chapter-num">02</span> Systems That Process Signals</a></li>
+      <li><a class="sidebar__chapter-link" href="ch03-convolution.html"><span class="sidebar__chapter-num">03</span> Convolution</a></li>
+      <li><a class="sidebar__chapter-link" href="ch04-fourier.html"><span class="sidebar__chapter-num">04</span> The Fourier Transform</a></li>
+      <li><a class="sidebar__chapter-link active" href="ch05-z-transform.html"><span class="sidebar__chapter-num">05</span> The Z-Transform</a>
+        <ul class="sidebar__sections">
+          <li><a class="sidebar__section-link" href="#beyond-fourier">Beyond Fourier</a></li>
+          <li><a class="sidebar__section-link" href="#z-definition">The Z-Transform</a></li>
+          <li><a class="sidebar__section-link" href="#transfer-function">Transfer Functions</a></li>
+          <li><a class="sidebar__section-link" href="#roc">Region of Convergence</a></li>
+          <li><a class="sidebar__section-link" href="#unit-circle">Unit Circle Connection</a></li>
+          <li><a class="sidebar__section-link" href="#bridge">Bridge to AI</a></li>
+          <li><a class="sidebar__section-link" href="#tool-z-viz">Z-Transform Visualizer</a></li>
+        </ul>
+      </li>
+      <li><a class="sidebar__chapter-link" href="ch06-poles-zeros.html"><span class="sidebar__chapter-num">06</span> Poles &amp; Zeros</a></li>
+      <li><a class="sidebar__chapter-link" href="ch07-filter-design.html"><span class="sidebar__chapter-num">07</span> FIR &amp; IIR Filters</a></li>
+      <li><a class="sidebar__chapter-link" href="ch08-advanced-dsp.html"><span class="sidebar__chapter-num">08</span> Adaptive Filters</a></li>
+    </ul>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="chapter-content">
+
+    <nav class="breadcrumb" aria-label="Breadcrumb"></nav>
+
+    <header class="chapter-header">
+      <div class="chapter-header__part">Part I &mdash; DSP Foundations</div>
+      <div class="chapter-header__number">Chapter 05</div>
+      <h1 class="chapter-header__title">The Z-Transform and Transfer Functions</h1>
+      <p class="chapter-header__subtitle">
+        The Fourier Transform shows you the frequency content of a signal. The Z-Transform goes further &mdash;
+        it reveals the complete mathematical structure of a system: its stability, its poles and zeros, and
+        its transfer function. It's the engineer's X-ray machine for filters and systems.
+      </p>
+    </header>
+
+    <!-- === Section 1: Beyond Fourier === -->
+    <section class="chapter-section" id="beyond-fourier">
+      <h2 class="chapter-section__title">5.1 &mdash; Why We Need More Than Fourier</h2>
+
+      <div class="motivation-box">
+        <div class="motivation-box__title">Why should I care?</div>
+        <p>The Z-Transform is the bridge from signals to systems. While the Fourier Transform analyzes signals (what frequencies are present?), the Z-Transform analyzes <em>systems</em> (what does the system do to all possible inputs?). In AI terms: the Z-Transform describes the <strong>complete behavior of a layer</strong>, not just its response to one input. It's the key to understanding why some systems are stable and others explode, why IIR filters are efficient, and how state-space models in Mamba actually work.</p>
+      </div>
+
+      <p>The Fourier Transform has a limitation: it only tells you what happens at frequencies <em>on the unit circle</em> of the complex plane. But system behavior is determined by what happens <em>everywhere</em> in the complex plane &mdash; including where the system blows up (poles) and where it goes to zero (zeros).</p>
+
+      <p>The Z-Transform fills this gap. It maps a discrete-time sequence to a function of a <strong>complex variable z</strong>, giving us a complete picture of the system.</p>
+    </section>
+
+    <!-- === Section 2: The Z-Transform === -->
+    <section class="chapter-section" id="z-definition">
+      <h2 class="chapter-section__title">5.2 &mdash; The Z-Transform: Definition</h2>
+
+      <p>The Z-Transform of a sequence <span class="math-inline">x[n]</span> is:</p>
+
+      <div class="math-block">
+        X(z) = &sum;<sub>n=&minus;&infin;</sub><sup>&infin;</sup> x[n] &middot; z<sup>&minus;n</sup>
+      </div>
+
+      <p>where <span class="math-inline">z</span> is a <strong>complex number</strong>: <span class="math-inline">z = re<sup>j&omega;</sup></span> with magnitude <span class="math-inline">r</span> and angle <span class="math-inline">&omega;</span>.</p>
+
+      <p>Think of <span class="math-inline">z<sup>&minus;1</sup></span> as the <strong>delay operator</strong>: multiplying by <span class="math-inline">z<sup>&minus;1</sup></span> means "delay by one sample." This makes the Z-Transform a natural language for describing systems that involve delays and feedback.</p>
+
+      <div class="insight-box">
+        <div class="insight-box__title">The Key Relationship</div>
+        <div class="insight-box__content">
+          When <span class="math-inline">|z| = 1</span> (on the unit circle), the Z-Transform reduces to the Fourier Transform:<br>
+          <span class="math-inline">z = e<sup>j&omega;</sup></span> &rarr; <span class="math-inline">X(e<sup>j&omega;</sup>) = DTFT of x[n]</span><br><br>
+          The Fourier Transform is a special case of the Z-Transform, evaluated on the unit circle. The Z-Transform gives you the full picture; the Fourier Transform is a slice of it.
+        </div>
+      </div>
+
+      <!-- Show the Math -->
+      <div class="progressive-section">
+        <button class="progressive-toggle" aria-expanded="false">
+          <span class="arrow">&#9654;</span> Show the Math &mdash; Common Z-Transform Pairs
+        </button>
+        <div class="progressive-content">
+          <div class="progressive-content__inner">
+            <p>Some fundamental Z-Transform pairs:</p>
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap: var(--sp-sm); margin: var(--sp-sm) 0;">
+              <div class="math-block" style="font-size:12px;">&delta;[n] &harr; 1</div>
+              <div class="math-block" style="font-size:12px;">Unit impulse maps to constant</div>
+              <div class="math-block" style="font-size:12px;">&delta;[n&minus;k] &harr; z<sup>&minus;k</sup></div>
+              <div class="math-block" style="font-size:12px;">Delayed impulse maps to z<sup>&minus;k</sup></div>
+              <div class="math-block" style="font-size:12px;">a<sup>n</sup>u[n] &harr; z/(z&minus;a)</div>
+              <div class="math-block" style="font-size:12px;">Exponential maps to first-order pole</div>
+              <div class="math-block" style="font-size:12px;">nu[n] &harr; z/(z&minus;1)&sup2;</div>
+              <div class="math-block" style="font-size:12px;">Ramp maps to double pole at z=1</div>
+            </div>
+            <p><strong>Key property</strong>: The <em>time shift property</em> says <span class="math-inline">x[n&minus;k] &harr; z<sup>&minus;k</sup>X(z)</span>. This means delay in time = multiplication by <span class="math-inline">z<sup>&minus;k</sup></span> in the Z-domain. This is why <span class="math-inline">z<sup>&minus;1</sup></span> represents a unit delay.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- === Section 3: Transfer Functions === -->
+    <section class="chapter-section" id="transfer-function">
+      <h2 class="chapter-section__title">5.3 &mdash; Transfer Functions: H(z)</h2>
+
+      <p>For an LTI system with impulse response <span class="math-inline">h[n]</span>, the Z-Transform <span class="math-inline">H(z)</span> is called the <strong>transfer function</strong>:</p>
+
+      <div class="math-block">
+        H(z) = &sum;<sub>n</sub> h[n] &middot; z<sup>&minus;n</sup> = Y(z) / X(z)
+      </div>
+
+      <p>The transfer function is the ratio of output to input in the Z-domain. It encodes everything about what the system does. Most practical systems have transfer functions that are <strong>rational</strong> &mdash; ratios of polynomials in <span class="math-inline">z<sup>&minus;1</sup></span>:</p>
+
+      <div class="math-block">
+        H(z) = (b<sub>0</sub> + b<sub>1</sub>z<sup>&minus;1</sup> + b<sub>2</sub>z<sup>&minus;2</sup> + ...) / (1 + a<sub>1</sub>z<sup>&minus;1</sup> + a<sub>2</sub>z<sup>&minus;2</sup> + ...)
+      </div>
+
+      <p>The <span class="math-inline">b</span> coefficients form the <strong>numerator</strong> (feedforward path) and the <span class="math-inline">a</span> coefficients form the <strong>denominator</strong> (feedback path).</p>
+
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap: var(--sp-md); margin: var(--sp-md) 0 var(--sp-lg);">
+        <div class="card card--dsp">
+          <h5>FIR Systems</h5>
+          <p style="font-size:13px; color:var(--text-dim); margin-top:var(--sp-xs);">Denominator = 1 (no feedback). H(z) is just a polynomial. Only zeros, no poles (except at z=0). Always stable. Finite impulse response.</p>
+          <div class="math-block" style="font-size:12px; margin-top:var(--sp-xs);">H(z) = b<sub>0</sub> + b<sub>1</sub>z<sup>&minus;1</sup> + ... + b<sub>M</sub>z<sup>&minus;M</sup></div>
+        </div>
+        <div class="card card--ai">
+          <h5>IIR Systems</h5>
+          <p style="font-size:13px; color:var(--text-dim); margin-top:var(--sp-xs);">Denominator &ne; 1 (feedback). H(z) has poles from the denominator roots. Can be unstable if poles escape unit circle. Infinite impulse response.</p>
+          <div class="math-block" style="font-size:12px; margin-top:var(--sp-xs);">H(z) = B(z) / A(z)</div>
+        </div>
+      </div>
+
+      <!-- Show the Math -->
+      <div class="progressive-section">
+        <button class="progressive-toggle" aria-expanded="false">
+          <span class="arrow">&#9654;</span> Show the Math &mdash; From Difference Equation to H(z)
+        </button>
+        <div class="progressive-content">
+          <div class="progressive-content__inner">
+            <p>Consider the difference equation:</p>
+            <div class="math-block">
+              y[n] = b<sub>0</sub>x[n] + b<sub>1</sub>x[n&minus;1] &minus; a<sub>1</sub>y[n&minus;1]
+            </div>
+            <p>Take the Z-Transform of both sides, using the shift property <span class="math-inline">x[n&minus;k] &harr; z<sup>&minus;k</sup>X(z)</span>:</p>
+            <div class="math-block">
+              Y(z) = b<sub>0</sub>X(z) + b<sub>1</sub>z<sup>&minus;1</sup>X(z) &minus; a<sub>1</sub>z<sup>&minus;1</sup>Y(z)
+            </div>
+            <p>Collect terms:</p>
+            <div class="math-block">
+              Y(z)(1 + a<sub>1</sub>z<sup>&minus;1</sup>) = X(z)(b<sub>0</sub> + b<sub>1</sub>z<sup>&minus;1</sup>)
+            </div>
+            <div class="math-block">
+              H(z) = Y(z)/X(z) = (b<sub>0</sub> + b<sub>1</sub>z<sup>&minus;1</sup>) / (1 + a<sub>1</sub>z<sup>&minus;1</sup>)
+            </div>
+            <p>Every linear constant-coefficient difference equation maps directly to a rational transfer function. The Z-Transform turns <strong>recursive computation</strong> into <strong>algebraic division</strong>.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- === Section 4: Region of Convergence === -->
+    <section class="chapter-section" id="roc">
+      <h2 class="chapter-section__title">5.4 &mdash; Region of Convergence: Where H(z) Is Valid</h2>
+
+      <p>The Z-Transform doesn't converge everywhere in the z-plane. The <strong>Region of Convergence (ROC)</strong> is the set of z values where the sum converges to a finite value.</p>
+
+      <p>For causal systems (the only kind we build in practice), the ROC is the region <strong>outside the outermost pole</strong>. This leads to a fundamental stability criterion:</p>
+
+      <div class="insight-box">
+        <div class="insight-box__title">The Stability Rule</div>
+        <div class="insight-box__content">
+          A causal LTI system is <strong>stable</strong> if and only if all its poles lie <strong>strictly inside the unit circle</strong> (<span class="math-inline">|z| &lt; 1</span>). If any pole reaches or exceeds the unit circle, the impulse response grows without bound and the system is unstable.
+        </div>
+      </div>
+
+      <p>This is why the z-plane diagram is so important: a single glance at the pole locations tells you whether the system is stable, marginally stable, or unstable.</p>
+
+      <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: var(--sp-md); margin: var(--sp-md) 0 var(--sp-lg);">
+        <div class="card card--math">
+          <h5>|pole| &lt; 1</h5>
+          <p style="font-size:13px; color:var(--text-dim); margin-top:var(--sp-xs);"><strong>Stable.</strong> h[n] decays exponentially. The farther inside the unit circle, the faster the decay.</p>
+        </div>
+        <div class="card card--dsp">
+          <h5>|pole| = 1</h5>
+          <p style="font-size:13px; color:var(--text-dim); margin-top:var(--sp-xs);"><strong>Marginally stable.</strong> h[n] oscillates forever without decaying (like a pure sinusoid). An integrator has a pole at z=1.</p>
+        </div>
+        <div class="card card--ai" style="border-color: var(--color-danger);">
+          <h5>|pole| &gt; 1</h5>
+          <p style="font-size:13px; color:var(--text-dim); margin-top:var(--sp-xs);"><strong>Unstable!</strong> h[n] grows exponentially. The system's output explodes. In AI: exploding gradients.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- === Section 5: Unit Circle Connection === -->
+    <section class="chapter-section" id="unit-circle">
+      <h2 class="chapter-section__title">5.5 &mdash; The Unit Circle: Where Fourier Lives</h2>
+
+      <p>The unit circle <span class="math-inline">|z| = 1</span> has special significance: it's where the Z-Transform becomes the Fourier Transform. Walking around the unit circle from angle 0 to &pi; traces out the <strong>frequency response</strong> from DC to Nyquist.</p>
+
+      <div class="math-block">
+        H(e<sup>j&omega;</sup>) = H(z)|<sub>z=e<sup>j&omega;</sup></sub> = frequency response
+      </div>
+
+      <p>This means:</p>
+
+      <ul style="margin: var(--sp-sm) 0 var(--sp-lg); padding-left: var(--sp-lg); line-height: 2;">
+        <li>A <strong>pole near the unit circle</strong> creates a peak in the frequency response at that angle &mdash; the system resonates at that frequency.</li>
+        <li>A <strong>zero on the unit circle</strong> creates a null &mdash; the system completely blocks that frequency.</li>
+        <li>The <strong>magnitude</strong> of H(z) at any point on the unit circle is the gain at that frequency.</li>
+      </ul>
+
+      <p>This is beautifully visible in Tool 5.1 below: the heatmap shows |H(z)| over the entire z-plane, and the frequency response is a cross-section along the unit circle (dashed white line).</p>
+    </section>
+
+    <!-- === Section 6: Bridge === -->
+    <section class="chapter-section" id="bridge">
+      <h2 class="chapter-section__title">5.6 &mdash; The Z-Transform in AI</h2>
+
+      <p>The Z-Transform might seem like pure classical DSP, but it's directly relevant to modern AI architectures:</p>
+
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap: var(--sp-md); margin: var(--sp-md) 0 var(--sp-lg);">
+        <div class="card card--dsp">
+          <h5>In DSP</h5>
+          <ul style="font-size:13px; color:var(--text-dim); margin-top:var(--sp-xs); padding-left:var(--sp-md); line-height:1.8;">
+            <li>Poles = natural modes of the system</li>
+            <li>|pole| &lt; 1 = stable (decaying memory)</li>
+            <li>Pole angle = resonant frequency</li>
+            <li>Transfer function = system behavior</li>
+            <li>z<sup>&minus;1</sup> = one-sample delay</li>
+          </ul>
+        </div>
+        <div class="card card--ai">
+          <h5>In State-Space Models (Mamba)</h5>
+          <ul style="font-size:13px; color:var(--text-dim); margin-top:var(--sp-xs); padding-left:var(--sp-md); line-height:1.8;">
+            <li>Eigenvalues of A = poles of the system</li>
+            <li>|&lambda;| &lt; 1 = stable (fading memory)</li>
+            <li>&lambda; angle = oscillation frequency</li>
+            <li>State-space form &harr; transfer function</li>
+            <li>A matrix = state transition (delay + mix)</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="bridge-teaser">
+        <div class="bridge-teaser__label">Bridge to AI</div>
+        <div class="bridge-teaser__content">
+          In state-space models like S4 and Mamba, the <strong>eigenvalues of the A matrix</strong> are exactly the <strong>poles</strong> of the corresponding transfer function. Stability, memory length, and oscillatory behavior are all determined by where these eigenvalues sit in the complex plane &mdash; the same z-plane you see in Tool 5.1. The HiPPO initialization places eigenvalues at specific locations to maximize memory of past inputs. Understanding the z-plane is understanding SSM dynamics.
+        </div>
+      </div>
+
+      <div class="bridge-teaser" style="margin-top:var(--sp-md);">
+        <div class="bridge-teaser__label">Looking Ahead</div>
+        <div class="bridge-teaser__content">
+          In <strong>Chapter 6</strong>, we'll make poles and zeros fully interactive &mdash; you'll drag them around the z-plane and watch the frequency response and impulse response change in real-time. This builds the intuition you'll need to understand how SSM eigenvalue placement controls model behavior.
+        </div>
+      </div>
+    </section>
+
+    <!-- === TOOL 5.1: Z-Transform Visual Computer === -->
+    <section class="chapter-section" id="tool-z-viz">
+      <h2 class="chapter-section__title">Interactive Tool</h2>
+
+      <div class="tool-container" id="zTransformTool">
+        <div class="tool-header">
+          <span class="tool-header__icon">&#8450;</span>
+          <span class="tool-header__title">Tool 5.1 &mdash; Z-Transform Visual Computer</span>
+          <span class="tool-header__badge">Interactive</span>
+        </div>
+
+        <div class="tool-body">
+          <p style="font-size:14px; color:var(--text-dim); margin-bottom:var(--sp-md);">
+            Select a filter preset and see three linked visualizations: <strong>Left:</strong> Heatmap of |H(z)| over the z-plane,
+            with poles (&times;) and zeros (&cir;) marked and the unit circle (dashed). <strong>Top right:</strong> Frequency response
+            (cross-section along unit circle). <strong>Bottom right:</strong> Impulse response h[n].
+            Hover on the unit circle to trace the frequency response interactively.
+          </p>
+          <div class="tool-canvas-wrapper"></div>
+        </div>
+
+        <div class="tool-controls">
+          <div class="control-group" style="flex:2;">
+            <label class="control-label">Filter Preset</label>
+            <select class="control-select" data-control="z-preset">
+              <option value="iir-lowpass" selected>IIR Lowpass (1st order)</option>
+              <option value="simple-delay">Simple Delay z&minus;&sup1;</option>
+              <option value="fir-average">FIR Average (3-tap)</option>
+              <option value="fir-diff">FIR Differentiator [1, &minus;1]</option>
+              <option value="iir-resonator">IIR Resonator</option>
+              <option value="iir-notch">Notch Filter</option>
+              <option value="unstable">Unstable System (!)</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="insight-box" style="margin-top:var(--sp-lg);">
+        <div class="insight-box__title">Try this</div>
+        <div class="insight-box__content">
+          <strong>1.</strong> Start with "IIR Lowpass (1st order)." See one pole (red &times;) at z=0.8 on the real axis. The heatmap glows bright near the pole &mdash; |H(z)| is large there. The frequency response rolls off from DC to Nyquist. The impulse response decays exponentially &mdash; classic first-order IIR.<br>
+          <strong>2.</strong> Hover your mouse along the unit circle (dashed line) on the z-plane. A yellow dot traces your position, and the corresponding point on the frequency response lights up. See how the response is high near the pole and low away from it.<br>
+          <strong>3.</strong> Switch to "FIR Differentiator [1, -1]." One zero at z=1 (green circle on the unit circle at angle 0). The frequency response is zero at DC (angle 0) and maximum at Nyquist (&pi;). The impulse response is just two samples &mdash; no feedback, no recursion.<br>
+          <strong>4.</strong> Try "IIR Resonator." Complex pole pair creates a bright hot spot on the heatmap. The frequency response has a sharp peak &mdash; a resonance. The impulse response rings at the resonant frequency and decays. This is how a tuning fork or bell works.<br>
+          <strong>5.</strong> Try "Notch Filter." Zeros on the unit circle completely eliminate a frequency. Poles inside pull the response back up elsewhere &mdash; surgical frequency removal.<br>
+          <strong>6.</strong> Try "Unstable System (!)" The pole is at z=1.1, <em>outside</em> the unit circle. The impulse response grows exponentially &mdash; the system is unstable! The red "UNSTABLE" warning appears. This is the digital equivalent of explosive feedback.
+        </div>
+      </div>
+    </section>
+
+    <!-- Further Reading -->
+    <section class="content-section" id="further-reading">
+      <h2 class="section-heading">Further Reading</h2>
+      <ul class="further-reading-list">
+        <li>
+          <a href="https://ccrma.stanford.edu/~jos/filters/Z_Transform.html" target="_blank" rel="noopener">Introduction to Digital Filters — The Z-Transform</a>
+          <span class="further-reading__authors">Smith, J.O. — Stanford CCRMA</span>
+          <span class="further-reading__note">Clear derivation of z-transform, ROC, and transfer functions for filter analysis</span>
+        </li>
+        <li>
+          <a href="https://www.dspguide.com/ch33.htm" target="_blank" rel="noopener">DSP Guide — Chapter 33: The z-Transform</a>
+          <span class="further-reading__authors">Smith, S.W. — Free online</span>
+          <span class="further-reading__note">Practical approach to z-transform without heavy complex analysis</span>
+        </li>
+      </ul>
+    </section>
+
+    <!-- Chapter Navigation -->
+    <nav class="chapter-nav" aria-label="Chapter navigation"></nav>
+
+  </main>
+</div>
+
+<!-- Scripts -->
+<script src="../../js/core/navigation.js"></script>
+<script src="../../js/core/progressive-disclosure.js"></script>
+<script src="../../js/core/chapter-nav.js"></script>
+<script src="../../js/tools/shared/plot-utils.js"></script>
+<script src="../../js/tools/ch05-z-transform.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    DSPtoAI.ZTransformViz.init('zTransformTool');
+  });
+</script>
+
+<script src="../../js/core/search-index.js"></script>
+<script src="../../js/core/search.js"></script>
+</body>
+</html>

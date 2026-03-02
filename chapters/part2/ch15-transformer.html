@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ch 15: The Transformer &mdash; DSP to AI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Outfit:wght@300;400;500;600;700;800;900&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../style/global.css">
+  <link rel="stylesheet" href="../../style/theme-dark.css">
+  <link rel="stylesheet" href="../../style/theme-light.css">
+  <link rel="stylesheet" href="../../style/components.css">
+  <link rel="stylesheet" href="../../style/chapter.css">
+  <script src="../../js/core/theme-switcher.js"></script>
+</head>
+<body>
+
+<div class="noise"></div>
+
+<!-- Navigation -->
+<nav class="site-nav">
+  <a href="../../index.html" class="site-nav__logo">DSP <span class="arrow">&rarr;</span> AI</a>
+  <ul class="site-nav__links">
+    <li><a href="../../index.html#part1">Part I</a></li>
+    <li><a href="../../index.html#part2" class="active">Part II</a></li>
+    <li><a href="../../index.html#part3">Part III</a></li>
+    <li><a href="../../index.html#part4">Part IV</a></li>
+    <li><a href="../../gallery/index.html">Gallery</a></li>
+    <li><a href="../../reference/glossary.html">Reference</a></li>
+  </ul>
+  <button class="search-toggle" aria-label="Search site (press /)">🔍</button>
+  <button class="theme-toggle" aria-label="Toggle theme"></button>
+  <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false">&#9776;</button>
+</nav>
+<div class="progress-bar"></div>
+
+<!-- Page Layout -->
+<div class="chapter-page" data-chapter-id="ch15">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar__part-label">Part II: AI Foundations</div>
+    <ul class="sidebar__chapters">
+      <li><a class="sidebar__chapter-link" href="ch09-neuron.html"><span class="sidebar__chapter-num">09</span> The Neuron</a></li>
+      <li><a class="sidebar__chapter-link" href="ch10-backprop.html"><span class="sidebar__chapter-num">10</span> Networks &amp; Backprop</a></li>
+      <li><a class="sidebar__chapter-link" href="ch11-training.html"><span class="sidebar__chapter-num">11</span> Training &amp; Optimization</a></li>
+      <li><a class="sidebar__chapter-link" href="ch12-sequences.html"><span class="sidebar__chapter-num">12</span> RNNs &amp; LSTMs</a></li>
+      <li><a class="sidebar__chapter-link" href="ch13-embeddings.html"><span class="sidebar__chapter-num">13</span> Embeddings</a></li>
+      <li><a class="sidebar__chapter-link" href="ch14-attention.html"><span class="sidebar__chapter-num">14</span> Attention</a></li>
+      <li><a class="sidebar__chapter-link active" href="ch15-transformer.html"><span class="sidebar__chapter-num">15</span> The Transformer</a>
+        <ul class="sidebar__sections">
+          <li><a class="sidebar__section-link" href="#architecture">The Architecture</a></li>
+          <li><a class="sidebar__section-link" href="#positional">Positional Encoding</a></li>
+          <li><a class="sidebar__section-link" href="#ffn">Feed-Forward Network</a></li>
+          <li><a class="sidebar__section-link" href="#residual">Residuals &amp; Layer Norm</a></li>
+          <li><a class="sidebar__section-link" href="#decoder">The Decoder</a></li>
+          <li><a class="sidebar__section-link" href="#scaling">Why Transformers Scale</a></li>
+          <li><a class="sidebar__section-link" href="#bridge">Bridge: Signal Processing</a></li>
+          <li><a class="sidebar__section-link" href="#tool-block">Block Explorer</a></li>
+          <li><a class="sidebar__section-link" href="#tool-pe">Positional Encoding</a></li>
+        </ul>
+      </li>
+    </ul>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="chapter-content">
+
+    <nav class="breadcrumb" aria-label="Breadcrumb"></nav>
+
+    <header class="chapter-header">
+      <div class="chapter-header__part">Part II &mdash; AI Foundations</div>
+      <div class="chapter-header__number">Chapter 15</div>
+      <h1 class="chapter-header__title">The Transformer Architecture</h1>
+      <p class="chapter-header__subtitle">
+        In 2017, Vaswani et al. introduced the Transformer &mdash; an architecture built <em>entirely</em>
+        from attention, without any recurrence or convolution. It processes all positions in parallel,
+        scales to massive datasets, and has become the foundation of GPT, BERT, and virtually every
+        modern language model. Every component has a DSP analogue, and together they form a
+        <strong>learned, adaptive signal processing pipeline</strong>.
+      </p>
+    </header>
+
+    <!-- ============================================================
+         15.1 — The Architecture
+         ============================================================ -->
+    <section class="content-section" id="architecture">
+      <h2 class="section-heading"><span class="section-number">15.1</span> The Architecture</h2>
+
+      <p>
+        The original Transformer has two halves:
+      </p>
+
+      <div class="card-grid" style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));">
+        <div class="concept-card">
+          <h3 class="concept-card__title">Encoder</h3>
+          <p class="concept-card__body">
+            Reads the full input sequence in parallel. N identical layers, each with:
+            multi-head self-attention + feed-forward network. Bidirectional &mdash; every
+            position sees every other position.
+          </p>
+        </div>
+        <div class="concept-card">
+          <h3 class="concept-card__title">Decoder</h3>
+          <p class="concept-card__body">
+            Generates the output one token at a time. N identical layers with:
+            masked self-attention + cross-attention to encoder + feed-forward.
+            Causal &mdash; each position only sees previous positions.
+          </p>
+        </div>
+      </div>
+
+      <p>
+        Each encoder/decoder layer contains the same building blocks, repeated and stacked.
+        The original paper used N=6 layers, d_model=512, and h=8 attention heads. Modern
+        models scale these up: GPT-3 uses 96 layers with d_model=12288.
+      </p>
+    </section>
+
+    <!-- ============================================================
+         15.2 — Positional Encoding
+         ============================================================ -->
+    <section class="content-section" id="positional">
+      <h2 class="section-heading"><span class="section-number">15.2</span> Positional Encoding</h2>
+
+      <p>
+        Self-attention is <strong>permutation-invariant</strong>: shuffling the input tokens
+        gives the same attention weights (just reordered). But word order matters!
+        &ldquo;Dog bites man&rdquo; &ne; &ldquo;Man bites dog.&rdquo;
+      </p>
+
+      <p>
+        The solution: <strong>add position information to the embeddings</strong> before
+        feeding them into the Transformer. The original paper uses sinusoidal functions:
+      </p>
+
+      <div class="math-block">
+        <code>
+          PE(pos, 2i) &nbsp;&nbsp; = sin(pos / 10000^(2i/d_model))<br>
+          PE(pos, 2i+1) = cos(pos / 10000^(2i/d_model))
+        </code>
+      </div>
+
+      <p>
+        Each dimension gets a sinusoid of a different frequency. Low dimensions oscillate fast
+        (fine position), high dimensions oscillate slowly (coarse position). Together, they
+        give every position a <strong>unique fingerprint</strong>.
+      </p>
+
+      <div class="progressive-section">
+        <button class="progressive-toggle" aria-expanded="false">Show the Math</button>
+        <div class="progressive-content">
+          <p><strong>Why sinusoids?</strong> Three key properties:</p>
+          <ol>
+            <li><strong>Unique</strong>: every position gets a distinct vector.</li>
+            <li><strong>Relative distances</strong>: <code>PE(pos+k)</code> can be written as a
+              linear function of <code>PE(pos)</code> for any fixed offset <em>k</em>. This lets
+              the model learn to attend to relative positions.</li>
+            <li><strong>Bounded</strong>: values stay in [-1, 1], no matter how long the sequence.</li>
+          </ol>
+          <div class="math-block">
+            <code>
+              PE(pos+k, 2i) = PE(pos, 2i) &middot; cos(k&omega;_i) + PE(pos, 2i+1) &middot; sin(k&omega;_i)<br>
+              where &omega;_i = 1/10000^(2i/d_model)
+            </code>
+          </div>
+          <p>
+            This is exactly a <strong>rotation in 2D</strong> for each (sin, cos) pair &mdash;
+            the same math behind the Fourier shift theorem!
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         15.3 — Feed-Forward Network
+         ============================================================ -->
+    <section class="content-section" id="ffn">
+      <h2 class="section-heading"><span class="section-number">15.3</span> The Feed-Forward Network</h2>
+
+      <p>
+        After attention mixes information across positions, the feed-forward network (FFN)
+        processes each position <strong>independently and identically</strong>:
+      </p>
+
+      <div class="math-block">
+        <code>
+          FFN(x) = ReLU(x W&sub1; + b&sub1;) W&sub2; + b&sub2;<br><br>
+          W&sub1;: [d_model &times; d_ff], &nbsp; W&sub2;: [d_ff &times; d_model]<br>
+          Typically d_ff = 4 &times; d_model
+        </code>
+      </div>
+
+      <p>
+        The FFN expands to a wider hidden dimension (4x), applies a nonlinearity, then
+        compresses back. This acts as a <strong>learned key-value memory</strong>: the first
+        layer&rsquo;s weights are keys, the second layer&rsquo;s weights are values, and
+        the ReLU selects which memories to activate.
+      </p>
+
+      <p>
+        Since it operates position-by-position with no cross-position mixing, it&rsquo;s
+        equivalent to a <strong>1&times;1 convolution</strong> (pointwise filter) in DSP.
+      </p>
+    </section>
+
+    <!-- ============================================================
+         15.4 — Residuals & Layer Norm
+         ============================================================ -->
+    <section class="content-section" id="residual">
+      <h2 class="section-heading"><span class="section-number">15.4</span> Residual Connections &amp; Layer Normalization</h2>
+
+      <p>
+        Every sub-layer (attention, FFN) is wrapped in a residual connection and layer
+        normalization:
+      </p>
+
+      <div class="math-block">
+        <code>
+          output = LayerNorm(x + SubLayer(x))
+        </code>
+      </div>
+
+      <div class="card-grid" style="grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));">
+        <div class="concept-card">
+          <h3 class="concept-card__title">Residual Connection</h3>
+          <p class="concept-card__body">
+            Adds the input directly to the output: <code>y = x + f(x)</code>. Creates a
+            &ldquo;gradient highway&rdquo; &mdash; gradients can flow directly through the
+            addition, bypassing potentially vanishing gradients in <code>f</code>.
+            This is what makes training 96-layer networks possible.
+          </p>
+        </div>
+        <div class="concept-card">
+          <h3 class="concept-card__title">Layer Normalization</h3>
+          <p class="concept-card__body">
+            Normalizes activations across the feature dimension for each token independently:
+            <code>LN(x) = &gamma; &middot; (x - &mu;) / &sigma; + &beta;</code>.
+            Stabilizes training by keeping activations in a well-behaved range.
+            Unlike batch norm, works the same at train and inference time.
+          </p>
+        </div>
+      </div>
+
+      <div class="progressive-section">
+        <button class="progressive-toggle" aria-expanded="false">Show the Math</button>
+        <div class="progressive-content">
+          <p><strong>Layer normalization</strong> for position <em>t</em>:</p>
+          <div class="math-block">
+            <code>
+              &mu;_t = (1/d) &Sigma;_{i=1}^{d} x_{t,i}<br>
+              &sigma;_t&sup2; = (1/d) &Sigma;_{i=1}^{d} (x_{t,i} - &mu;_t)&sup2;<br>
+              LN(x_t) = &gamma; &odot; (x_t - &mu;_t) / &radic;(&sigma;_t&sup2; + &epsilon;) + &beta;
+            </code>
+          </div>
+          <p>
+            &gamma; and &beta; are learned parameters (per-dimension scale and shift).
+            &epsilon; &asymp; 10&supmin;&sup5; prevents division by zero.
+          </p>
+          <p><strong>Pre-norm vs post-norm:</strong> The original paper applies LN after the
+            residual addition (post-norm). Modern practice applies LN <em>before</em> the
+            sub-layer (pre-norm), which is more stable for very deep models.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         15.5 — The Decoder
+         ============================================================ -->
+    <section class="content-section" id="decoder">
+      <h2 class="section-heading"><span class="section-number">15.5</span> The Decoder &amp; Causal Masking</h2>
+
+      <p>
+        The decoder adds two modifications:
+      </p>
+
+      <div class="card-grid" style="grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));">
+        <div class="concept-card">
+          <h3 class="concept-card__title">Causal Mask</h3>
+          <p class="concept-card__body">
+            In the self-attention layer, position <em>t</em> can only attend to positions
+            &le; <em>t</em>. Implemented by setting future positions to &minus;&infin; before
+            softmax, making those weights zero. This is a <strong>causal filter</strong>.
+          </p>
+        </div>
+        <div class="concept-card">
+          <h3 class="concept-card__title">Cross-Attention</h3>
+          <p class="concept-card__body">
+            An additional attention layer where Q comes from the decoder but K, V come from
+            the encoder output. This is how the decoder &ldquo;reads&rdquo; the input.
+            Decoder-only models (GPT) skip this &mdash; they only use causal self-attention.
+          </p>
+        </div>
+      </div>
+
+      <div class="progressive-section">
+        <button class="progressive-toggle" aria-expanded="false">Show the Math</button>
+        <div class="progressive-content">
+          <p><strong>Causal mask implementation:</strong></p>
+          <div class="math-block">
+            <code>
+              M_{ij} = 0 if i &ge; j, else &minus;&infin;<br><br>
+              Attention = softmax((QK&sup1; + M) / &radic;d_k) &middot; V
+            </code>
+          </div>
+          <p>
+            The &minus;&infin; entries become 0 after softmax (e^{-&infin;} = 0). This means
+            each token&rsquo;s output depends only on itself and previous tokens &mdash;
+            enforcing autoregressive generation.
+          </p>
+        </div>
+      </div>
+
+      <p>
+        At inference time, the decoder generates one token at a time: predict token 1,
+        feed it back as input, predict token 2, and so on. This is why autoregressive
+        generation is inherently sequential, even though training is parallel.
+      </p>
+    </section>
+
+    <!-- ============================================================
+         15.6 — Why Transformers Scale
+         ============================================================ -->
+    <section class="content-section" id="scaling">
+      <h2 class="section-heading"><span class="section-number">15.6</span> Why Transformers Scale</h2>
+
+      <p>
+        The Transformer&rsquo;s dominance comes from three properties:
+      </p>
+
+      <div class="card-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+        <div class="concept-card">
+          <h3 class="concept-card__title">Parallelism</h3>
+          <p class="concept-card__body">
+            Unlike RNNs, all positions are processed simultaneously. Self-attention is a
+            <em>matrix multiplication</em> &mdash; GPUs are built for this. Training
+            scales linearly with hardware.
+          </p>
+        </div>
+        <div class="concept-card">
+          <h3 class="concept-card__title">Direct Connections</h3>
+          <p class="concept-card__body">
+            Any token can attend to any other in one step. No information bottleneck.
+            Path length between any two positions is O(1), not O(T) like RNNs.
+          </p>
+        </div>
+        <div class="concept-card">
+          <h3 class="concept-card__title">Modularity</h3>
+          <p class="concept-card__body">
+            Identical blocks stacked. Want more capacity? Add blocks. Want more context?
+            Increase sequence length. Clean scaling laws emerge: performance improves
+            predictably with size.
+          </p>
+        </div>
+      </div>
+
+      <p>
+        The trade-off: attention is O(T&sup2;) in sequence length (every token compares with
+        every other). For very long sequences (100K+ tokens), this becomes the bottleneck.
+        This is exactly where state-space models like Mamba (Part III) offer an alternative.
+      </p>
+    </section>
+
+    <!-- ============================================================
+         15.7 — Bridge: Signal Processing Pipeline
+         ============================================================ -->
+    <section class="content-section bridge-teaser" id="bridge">
+      <h2 class="section-heading"><span class="section-number">15.7</span> Bridge &mdash; The Transformer as a Signal Processing Pipeline</h2>
+
+      <p>
+        Every component of the Transformer maps directly to a classical DSP concept.
+        The full Transformer block is a <strong>learned, adaptive signal processing chain</strong>:
+      </p>
+
+      <table class="comparison-table">
+        <thead>
+          <tr>
+            <th>Transformer Component</th>
+            <th>DSP Analogue</th>
+            <th>What It Does</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Token embeddings</td>
+            <td>Signal sampling &amp; encoding</td>
+            <td>Convert discrete symbols to continuous vectors</td>
+          </tr>
+          <tr>
+            <td>Positional encoding</td>
+            <td>Fourier basis / time stamps</td>
+            <td>Inject position via sinusoids of different frequencies</td>
+          </tr>
+          <tr>
+            <td>Self-attention (QK&sup1;V)</td>
+            <td>Adaptive FIR filter bank</td>
+            <td>Data-dependent, finite-range weighted averaging</td>
+          </tr>
+          <tr>
+            <td>Multi-head attention</td>
+            <td>Parallel filter bank</td>
+            <td>Multiple filters, each looking for different features</td>
+          </tr>
+          <tr>
+            <td>Causal mask</td>
+            <td>Causal filter (uses past only)</td>
+            <td>Enforce causality &mdash; no future information leaks</td>
+          </tr>
+          <tr>
+            <td>Feed-forward network</td>
+            <td>Pointwise (1&times;1) nonlinear filter</td>
+            <td>Per-position processing, no cross-position mixing</td>
+          </tr>
+          <tr>
+            <td>Residual connection</td>
+            <td>Allpass path / identity branch</td>
+            <td>Preserve original signal, add refinements</td>
+          </tr>
+          <tr>
+            <td>Layer normalization</td>
+            <td>Automatic gain control (AGC)</td>
+            <td>Normalize signal energy to stable range</td>
+          </tr>
+          <tr>
+            <td>Stacked layers</td>
+            <td>Cascaded filter stages</td>
+            <td>Each stage extracts progressively higher-level features</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <p>
+        The complete picture: a Transformer is a <strong>cascade of adaptive FIR filter banks</strong>
+        (attention) interleaved with <strong>pointwise nonlinear filters</strong> (FFN), stabilized
+        by <strong>AGC</strong> (layer norm) and <strong>skip connections</strong> (residuals),
+        with <strong>Fourier-encoded position information</strong>.
+      </p>
+
+      <p>
+        With Part II complete, you now have the full AI toolkit. In Part III, we&rsquo;ll use the
+        DSP foundations from Part I to reveal the deep mathematical bridges &mdash; and discover
+        that Mamba is what happens when you replace the FIR filter bank with an <em>IIR</em> one.
+      </p>
+    </section>
+
+    <!-- ============================================================
+         TOOL 15.1 — Transformer Block Explorer
+         ============================================================ -->
+    <section class="content-section" id="tool-block">
+      <h2 class="section-heading"><span class="section-number">Tool 15.1</span> Transformer Block Explorer</h2>
+
+      <p>
+        Walk through a single Transformer block step by step. Click any component in the
+        architecture diagram to see its tensor values, shapes, and DSP analogue.
+      </p>
+
+      <div class="tool-container" id="tool-transformer-block">
+        <div class="tool-header">
+          <span class="tool-header__label">Tool 15.1</span>
+          <span class="tool-header__title">Transformer Block Explorer</span>
+        </div>
+        <div class="tool-body">
+          <div class="tool-canvas-wrapper"></div>
+          <div class="tool-actions">
+            <button class="tool-btn" data-action="tf-prev">&larr; Previous Step</button>
+            <button class="tool-btn" data-action="tf-next">Next Step &rarr;</button>
+            <button class="tool-btn" data-action="tf-reset">Reset</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="insight-box">
+        <h3 class="insight-box__title">Try This</h3>
+        <ul>
+          <li>Step through all 7 stages using the <strong>Next Step</strong> button. Watch the data flow from input embeddings through to block output.</li>
+          <li><strong>Click any block</strong> in the architecture diagram to jump directly to that stage.</li>
+          <li>Notice the <strong>residual connections</strong> (dashed lines) that skip around the attention and FFN layers.</li>
+          <li>Compare the tensor heatmaps: after layer norm (steps 3, 5), values are more uniform. This is AGC in action.</li>
+          <li>Read the <strong>DSP analogue</strong> label on each block to see the complete signal processing pipeline.</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         TOOL 15.2 — Positional Encoding Visualizer
+         ============================================================ -->
+    <section class="content-section" id="tool-pe">
+      <h2 class="section-heading"><span class="section-number">Tool 15.2</span> Positional Encoding Visualizer</h2>
+
+      <p>
+        Sinusoidal positional encodings visualized as a heatmap, with the dot product matrix
+        showing how the encoding captures relative distance between positions.
+      </p>
+
+      <div class="tool-container" id="tool-positional-enc">
+        <div class="tool-header">
+          <span class="tool-header__label">Tool 15.2</span>
+          <span class="tool-header__title">Positional Encoding Visualizer</span>
+        </div>
+        <div class="tool-body">
+          <div class="tool-controls">
+            <div class="control-group">
+              <label class="control-label">Positions</label>
+              <input type="range" min="10" max="100" value="50" step="5" data-control="pe-positions">
+              <span class="control-value" aria-live="polite" data-value="pe-positions">50</span>
+            </div>
+            <div class="control-group">
+              <label class="control-label">Dimensions</label>
+              <input type="range" min="8" max="64" value="32" step="4" data-control="pe-dims">
+              <span class="control-value" aria-live="polite" data-value="pe-dims">32</span>
+            </div>
+          </div>
+          <div class="tool-canvas-wrapper"></div>
+        </div>
+      </div>
+
+      <div class="insight-box">
+        <h3 class="insight-box__title">Try This</h3>
+        <ul>
+          <li><strong>Click a column</strong> in the heatmap to see that dimension&rsquo;s waveform below. Low dimensions oscillate fast, high dimensions oscillate slowly &mdash; just like Fourier harmonics.</li>
+          <li>Look at the <strong>dot product matrix</strong> (right) &mdash; the diagonal is brightest (self-similarity), and brightness decays with distance. The encoding captures relative position.</li>
+          <li>Increase <strong>Dimensions to 64</strong> and see the heatmap develop more frequency bands &mdash; finer position resolution.</li>
+          <li>The cross-section plot shows PE(0)&middot;PE(d) as a function of distance <em>d</em> &mdash; a decaying oscillation, just like an autocorrelation function in DSP.</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- Further Reading -->
+    <section class="content-section" id="further-reading">
+      <h2 class="section-heading">Further Reading</h2>
+      <ul class="further-reading-list">
+        <li>
+          <a href="https://arxiv.org/abs/1706.03762" target="_blank" rel="noopener">Attention Is All You Need</a>
+          <span class="further-reading__authors">Vaswani et al., 2017 — NeurIPS</span>
+          <span class="further-reading__note">The landmark Transformer paper — self-attention, multi-head attention, positional encoding</span>
+        </li>
+        <li>
+          <a href="https://jalammar.github.io/illustrated-transformer/" target="_blank" rel="noopener">The Illustrated Transformer</a>
+          <span class="further-reading__authors">Alammar, J., 2018</span>
+          <span class="further-reading__note">The most popular visual walkthrough of the Transformer architecture</span>
+        </li>
+        <li>
+          <a href="https://nlp.seas.harvard.edu/annotated-transformer/" target="_blank" rel="noopener">The Annotated Transformer</a>
+          <span class="further-reading__authors">Rush, A., 2018 — Harvard NLP</span>
+          <span class="further-reading__note">Line-by-line PyTorch implementation with detailed annotations</span>
+        </li>
+      </ul>
+    </section>
+
+    <!-- Chapter Navigation -->
+    <nav class="chapter-nav">
+      <a class="chapter-nav__prev" href="ch14-attention.html">
+        <span class="chapter-nav__dir">&larr; Previous</span>
+        <span class="chapter-nav__label">Ch 14: Attention</span>
+      </a>
+      <a class="chapter-nav__next" href="../part3/ch16-rosetta.html">
+        <span class="chapter-nav__dir">Next &rarr;</span>
+        <span class="chapter-nav__label">Ch 16: The Rosetta Stone</span>
+      </a>
+    </nav>
+
+  </main>
+</div>
+
+<!-- Scripts -->
+<script src="../../js/core/navigation.js"></script>
+<script src="../../js/core/progressive-disclosure.js"></script>
+<script src="../../js/core/chapter-nav.js"></script>
+<script src="../../js/tools/shared/plot-utils.js"></script>
+<script src="../../js/tools/ch15-transformer-block.js"></script>
+<script src="../../js/tools/ch15-positional-enc.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    if (window.DSPtoAI && window.DSPtoAI.TransformerBlock) {
+      window.DSPtoAI.TransformerBlock.init('tool-transformer-block');
+    }
+    if (window.DSPtoAI && window.DSPtoAI.PositionalEncoding) {
+      window.DSPtoAI.PositionalEncoding.init('tool-positional-enc');
+    }
+  });
+</script>
+
+<script src="../../js/core/search-index.js"></script>
+<script src="../../js/core/search.js"></script>
+</body>
+</html>

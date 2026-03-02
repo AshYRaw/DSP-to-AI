@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ch 16: The Rosetta Stone &mdash; DSP to AI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Outfit:wght@300;400;500;600;700;800;900&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../style/global.css">
+  <link rel="stylesheet" href="../../style/theme-dark.css">
+  <link rel="stylesheet" href="../../style/theme-light.css">
+  <link rel="stylesheet" href="../../style/components.css">
+  <link rel="stylesheet" href="../../style/chapter.css">
+  <script src="../../js/core/theme-switcher.js"></script>
+</head>
+<body>
+
+<div class="noise"></div>
+
+<!-- Navigation -->
+<nav class="site-nav">
+  <a href="../../index.html" class="site-nav__logo">DSP <span class="arrow">&rarr;</span> AI</a>
+  <ul class="site-nav__links">
+    <li><a href="../../index.html#part1">Part I</a></li>
+    <li><a href="../../index.html#part2">Part II</a></li>
+    <li><a href="../../index.html#part3" class="active">Part III</a></li>
+    <li><a href="../../index.html#part4">Part IV</a></li>
+    <li><a href="../../gallery/index.html">Gallery</a></li>
+    <li><a href="../../reference/glossary.html">Reference</a></li>
+  </ul>
+  <button class="search-toggle" aria-label="Search site (press /)">🔍</button>
+  <button class="theme-toggle" aria-label="Toggle theme"></button>
+  <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false">&#9776;</button>
+</nav>
+<div class="progress-bar"></div>
+
+<!-- Page Layout -->
+<div class="chapter-page" data-chapter-id="ch16">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar__part-label">Part III: The Bridge</div>
+    <ul class="sidebar__chapters">
+      <li><a class="sidebar__chapter-link active" href="ch16-rosetta.html"><span class="sidebar__chapter-num">16</span> The Rosetta Stone</a>
+        <ul class="sidebar__sections">
+          <li><a class="sidebar__section-link" href="#big-picture">The Big Picture</a></li>
+          <li><a class="sidebar__section-link" href="#representation">Representation</a></li>
+          <li><a class="sidebar__section-link" href="#processing">Processing</a></li>
+          <li><a class="sidebar__section-link" href="#stability">Stability &amp; Memory</a></li>
+          <li><a class="sidebar__section-link" href="#adaptation">Adaptation</a></li>
+          <li><a class="sidebar__section-link" href="#central-insight">The Central Insight</a></li>
+          <li><a class="sidebar__section-link" href="#tool-dualview">Dual-View Explorer</a></li>
+        </ul>
+      </li>
+      <li><a class="sidebar__chapter-link" href="ch17-matched-to-attn.html"><span class="sidebar__chapter-num">17</span> Matched Filter &rarr; Attention</a></li>
+      <li><a class="sidebar__chapter-link" href="ch18-ssm.html"><span class="sidebar__chapter-num">18</span> State-Space Models</a></li>
+      <li><a class="sidebar__chapter-link" href="ch19-mamba.html"><span class="sidebar__chapter-num">19</span> Mamba</a></li>
+      <li><a class="sidebar__chapter-link" href="ch20-attn-vs-mamba.html"><span class="sidebar__chapter-num">20</span> Attention vs Mamba</a></li>
+    </ul>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="chapter-content">
+
+    <nav class="breadcrumb" aria-label="Breadcrumb"></nav>
+
+    <header class="chapter-header">
+      <div class="chapter-header__part">Part III &mdash; The Bridge</div>
+      <div class="chapter-header__number">Chapter 16</div>
+      <h1 class="chapter-header__title">The Rosetta Stone</h1>
+      <p class="chapter-header__subtitle">
+        You&rsquo;ve now learned DSP (Part I) and AI (Part II) as separate disciplines. This chapter
+        reveals that they are <strong>the same mathematics wearing different clothes</strong>. Convolution
+        is a neural network layer. Poles are eigenvalues. Filter banks are multi-head attention. And the
+        deepest connection of all: <em>FIR filters are Attention, IIR filters are Mamba</em>. Once you see
+        these mappings, you can never unsee them.
+      </p>
+    </header>
+
+    <!-- ============================================================
+         16.1 — The Big Picture
+         ============================================================ -->
+    <section class="content-section" id="big-picture">
+      <h2 class="section-heading"><span class="section-number">16.1</span> The Big Picture</h2>
+
+      <p>
+        DSP and deep learning are two branches of the same tree. Both process sequential data
+        by computing weighted combinations of inputs. Both worry about stability, memory, and
+        adaptation. Both have finite-memory and infinite-memory variants. The difference is
+        mostly <strong>vocabulary</strong>:
+      </p>
+
+      <div class="card-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+        <div class="concept-card">
+          <h3 class="concept-card__title">DSP Engineers say</h3>
+          <p class="concept-card__body">
+            filter, impulse response, frequency response, poles, zeros, transfer function,
+            convolution, filter bank, adaptive filter, stability
+          </p>
+        </div>
+        <div class="concept-card">
+          <h3 class="concept-card__title">AI Researchers say</h3>
+          <p class="concept-card__body">
+            layer, weights, feature selectivity, eigenvalues, attention, learned representation,
+            matmul, multi-head attention, training, gradient flow
+          </p>
+        </div>
+        <div class="concept-card">
+          <h3 class="concept-card__title">The Math says</h3>
+          <p class="concept-card__body">
+            linear map, kernel, spectral analysis, characteristic polynomial, inner product,
+            projection, operator algebra, decomposition, optimization, bounded operator
+          </p>
+        </div>
+      </div>
+
+      <p>
+        We organize the 12 core mappings into four themes:
+        <strong>Representation</strong> (how information is encoded),
+        <strong>Processing</strong> (how information is transformed),
+        <strong>Stability &amp; Memory</strong> (what keeps things well-behaved), and
+        <strong>Adaptation</strong> (how systems learn).
+      </p>
+    </section>
+
+    <!-- ============================================================
+         16.2 — Representation Mappings
+         ============================================================ -->
+    <section class="content-section" id="representation">
+      <h2 class="section-heading"><span class="section-number">16.2</span> Representation &mdash; How Information Is Encoded</h2>
+
+      <table class="comparison-table">
+        <thead>
+          <tr>
+            <th>DSP</th>
+            <th>AI</th>
+            <th>The Connection</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Impulse response h[n]</td>
+            <td>Network weights W</td>
+            <td>Both fully characterize what the system has learned</td>
+          </tr>
+          <tr>
+            <td>Frequency response H(&omega;)</td>
+            <td>Feature selectivity</td>
+            <td>Both describe what the system responds to and ignores</td>
+          </tr>
+          <tr>
+            <td>Fourier basis functions</td>
+            <td>Embedding dimensions</td>
+            <td>Both are coordinate systems for representing information</td>
+          </tr>
+          <tr>
+            <td>Transfer function H(z)</td>
+            <td>Learned representation f(&theta;)</td>
+            <td>Both encapsulate the complete input-output transformation</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <p>
+        The Fourier transform says: <em>any signal can be decomposed into sinusoids</em>.
+        Embedding learning says: <em>any word can be decomposed into learned basis vectors</em>.
+        Same idea, different basis.
+      </p>
+    </section>
+
+    <!-- ============================================================
+         16.3 — Processing Mappings
+         ============================================================ -->
+    <section class="content-section" id="processing">
+      <h2 class="section-heading"><span class="section-number">16.3</span> Processing &mdash; How Information Is Transformed</h2>
+
+      <table class="comparison-table">
+        <thead>
+          <tr>
+            <th>DSP</th>
+            <th>AI</th>
+            <th>The Connection</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Convolution y = h * x</td>
+            <td>Neural network layer y = Wx + b</td>
+            <td>Both compute weighted sums of inputs</td>
+          </tr>
+          <tr>
+            <td>FIR filter (finite memory)</td>
+            <td>Attention (finite context window)</td>
+            <td>Look at a fixed window of inputs, always stable, O(T&sup2;)</td>
+          </tr>
+          <tr>
+            <td>IIR filter (infinite memory)</td>
+            <td>Mamba / SSM (compressed state)</td>
+            <td>Feedback gives theoretically infinite memory, O(T), may be unstable</td>
+          </tr>
+          <tr>
+            <td>Filter bank (parallel filters)</td>
+            <td>Multi-head attention</td>
+            <td>Multiple pattern matchers running in parallel on the same input</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="progressive-section">
+        <button class="progressive-toggle" aria-expanded="false">Show the Math</button>
+        <div class="progressive-content">
+          <p><strong>Convolution = matrix multiplication:</strong></p>
+          <div class="math-block">
+            <code>
+              y[n] = &Sigma;_{k=0}^{M} h[k] x[n-k]
+            </code>
+          </div>
+          <p>Written in matrix form, this is a <strong>Toeplitz matrix</strong> multiply:</p>
+          <div class="math-block">
+            <code>
+              y = H &middot; x &nbsp; where H is Toeplitz with h[k] on diagonals
+            </code>
+          </div>
+          <p>
+            A neural network layer computes <code>y = Wx + b</code>. If W is Toeplitz
+            (weight-sharing across positions), it&rsquo;s literally convolution. CNN layers
+            enforce this structure; attention layers learn a more general (data-dependent) W.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         16.4 — Stability & Memory Mappings
+         ============================================================ -->
+    <section class="content-section" id="stability">
+      <h2 class="section-heading"><span class="section-number">16.4</span> Stability &amp; Memory &mdash; What Keeps Things Well-Behaved</h2>
+
+      <table class="comparison-table">
+        <thead>
+          <tr>
+            <th>DSP</th>
+            <th>AI</th>
+            <th>The Connection</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Poles &amp; zeros</td>
+            <td>Eigenvalues of A matrix</td>
+            <td>Both determine memory duration, resonance, and stability</td>
+          </tr>
+          <tr>
+            <td>BIBO stability (|poles| &lt; 1)</td>
+            <td>Gradient flow (|&lambda;| &le; 1)</td>
+            <td>Same constraint: spectral radius inside unit circle</td>
+          </tr>
+          <tr>
+            <td>Causal filter (h[n]=0 for n&lt;0)</td>
+            <td>Autoregressive (no future tokens)</td>
+            <td>Both enforce the arrow of time &mdash; use only past information</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <p>
+        This is where the bridge becomes most striking. The <strong>vanishing gradient problem</strong>
+        (Chapter 12) is <em>exactly</em> the statement that the system&rsquo;s poles have
+        magnitude less than 1. Information decays exponentially &mdash; whether we call it
+        &ldquo;impulse response decay&rdquo; or &ldquo;gradient vanishing.&rdquo;
+      </p>
+
+      <div class="progressive-section">
+        <button class="progressive-toggle" aria-expanded="false">Show the Math</button>
+        <div class="progressive-content">
+          <p><strong>The stability/gradient equivalence:</strong></p>
+          <div class="math-block">
+            <code>
+              IIR: h[n] = p^n &middot; u[n] &nbsp; &rArr; &nbsp; |p| &lt; 1 &hArr; stable (response decays)<br><br>
+              RNN: &part;h_T/&part;h_t = &Pi;_{k=t}^{T-1} W_h &middot; diag(&sigma;')<br>
+              &nbsp;&nbsp;&nbsp;&nbsp; &rArr; |&lambda;_max(W_h)| &lt; 1 &hArr; vanishing gradient
+            </code>
+          </div>
+          <p>
+            The product of recurrence matrices is the <em>same math</em> as the product of
+            system transfer function poles. Gradient magnitude = impulse response magnitude.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         16.5 — Adaptation Mappings
+         ============================================================ -->
+    <section class="content-section" id="adaptation">
+      <h2 class="section-heading"><span class="section-number">16.5</span> Adaptation &mdash; How Systems Learn</h2>
+
+      <table class="comparison-table">
+        <thead>
+          <tr>
+            <th>DSP</th>
+            <th>AI</th>
+            <th>The Connection</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>LMS: w &larr; w + &mu;&middot;e&middot;x</td>
+            <td>SGD: &theta; &larr; &theta; - &eta;&nabla;L</td>
+            <td>Both update parameters proportional to error &times; step size</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <p>
+        The LMS adaptive filter (Chapter 8) and stochastic gradient descent (Chapter 11)
+        are <strong>the same algorithm</strong>. The step size &mu; is the learning rate &eta;.
+        The error signal e[n] is the loss gradient. The input x[n] is the feature vector.
+        Both converge to the Wiener/optimal solution under the right conditions.
+      </p>
+
+      <div class="progressive-section">
+        <button class="progressive-toggle" aria-expanded="false">Show the Math</button>
+        <div class="progressive-content">
+          <p><strong>LMS as a special case of SGD:</strong></p>
+          <div class="math-block">
+            <code>
+              LMS loss: L = &frac12; |d[n] - w&sup1;x[n]|&sup2;<br>
+              &nabla;_w L = -(d[n] - w&sup1;x[n]) &middot; x[n] = -e[n] &middot; x[n]<br><br>
+              SGD update: w &larr; w - &eta; &nabla;L = w + &eta; &middot; e[n] &middot; x[n]<br>
+              LMS update: w &larr; w + &mu; &middot; e[n] &middot; x[n] &nbsp; &square;
+            </code>
+          </div>
+          <p>
+            The extensions match too: NLMS = per-parameter learning rate (like Adam&rsquo;s
+            denominator), RLS = second-order methods (like K-FAC), Kalman filter = Bayesian
+            online learning.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         16.6 — The Central Insight
+         ============================================================ -->
+    <section class="content-section bridge-teaser" id="central-insight">
+      <h2 class="section-heading"><span class="section-number">16.6</span> The Central Insight &mdash; FIR vs IIR = Attention vs Mamba</h2>
+
+      <p>
+        Of all 12 mappings, one stands above the rest:
+      </p>
+
+      <div class="math-block" style="font-size: 1.15em; text-align: center; padding: 1em;">
+        <code>
+          FIR Filter &harr; Attention &nbsp;&nbsp;|&nbsp;&nbsp; IIR Filter &harr; Mamba
+        </code>
+      </div>
+
+      <p>
+        This single correspondence explains <em>everything</em> about the Attention vs Mamba
+        debate:
+      </p>
+
+      <table class="comparison-table">
+        <thead>
+          <tr>
+            <th>Property</th>
+            <th>FIR / Attention</th>
+            <th>IIR / Mamba</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Memory</td>
+            <td>Finite (context window)</td>
+            <td>Theoretically infinite (compressed state)</td>
+          </tr>
+          <tr>
+            <td>Stability</td>
+            <td>Always stable (no feedback)</td>
+            <td>Can be unstable (poles must be controlled)</td>
+          </tr>
+          <tr>
+            <td>Computation (training)</td>
+            <td>O(T&sup2;) &mdash; all-pairs comparison</td>
+            <td>O(T) &mdash; sequential scan (parallelizable)</td>
+          </tr>
+          <tr>
+            <td>Computation (inference)</td>
+            <td>O(T) per new token (KV cache)</td>
+            <td>O(1) per new token (fixed state)</td>
+          </tr>
+          <tr>
+            <td>Exact recall</td>
+            <td>Perfect (within context)</td>
+            <td>Lossy (state is compressed)</td>
+          </tr>
+          <tr>
+            <td>Implementation</td>
+            <td>Matrix multiply (GPU-friendly)</td>
+            <td>Sequential scan (needs parallel scan trick)</td>
+          </tr>
+          <tr>
+            <td>Design philosophy</td>
+            <td>Look at everything, let softmax decide</td>
+            <td>Compress into fixed state, update incrementally</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <p>
+        Every trade-off in the Attention vs Mamba debate was already known to DSP engineers
+        comparing FIR and IIR filters. The optimal choice depends on the application &mdash;
+        which is why modern architectures are <strong>hybrids</strong>, combining both.
+      </p>
+
+      <p>
+        The remaining chapters of Part III trace this correspondence in detail:
+        Chapter 17 shows how matched filters evolve into attention, Chapter 18 introduces
+        state-space models as the mathematical bridge, Chapter 19 reveals Mamba as a
+        learnable IIR filter bank, and Chapter 20 puts them head to head.
+      </p>
+    </section>
+
+    <!-- ============================================================
+         TOOL 16.1 — Dual-View Concept Explorer
+         ============================================================ -->
+    <section class="content-section" id="tool-dualview">
+      <h2 class="section-heading"><span class="section-number">Tool 16.1</span> Dual-View Concept Explorer</h2>
+
+      <p>
+        All 12 DSP &harr; AI mappings in one interactive view. Click any mapping card to expand
+        its equations, mini-visualizations, and explanation. Color-coded by theme.
+      </p>
+
+      <div class="tool-container" id="tool-dual-view">
+        <div class="tool-header">
+          <span class="tool-header__label">Tool 16.1</span>
+          <span class="tool-header__title">Dual-View Concept Explorer</span>
+        </div>
+        <div class="tool-body">
+          <div class="tool-controls">
+            <div class="control-group" style="display: flex; gap: 0.5em; flex-wrap: wrap;">
+              <button class="tool-btn" data-filter="all">All</button>
+              <button class="tool-btn" data-filter="representation" style="border-color: #a78bfa;">Representation</button>
+              <button class="tool-btn" data-filter="processing" style="border-color: #38bdf8;">Processing</button>
+              <button class="tool-btn" data-filter="stability" style="border-color: #fb7185;">Stability</button>
+              <button class="tool-btn" data-filter="adaptation" style="border-color: #4ade80;">Adaptation</button>
+            </div>
+          </div>
+          <div class="tool-canvas-wrapper"></div>
+        </div>
+      </div>
+
+      <div class="insight-box">
+        <h3 class="insight-box__title">Try This</h3>
+        <ul>
+          <li><strong>Click mapping #5</strong> (FIR &harr; Attention) and <strong>#6</strong> (IIR &harr; Mamba) back to back. Notice the mini-visualizations: finite vs infinite impulse response, mirroring the finite vs compressed-state memory.</li>
+          <li>Click <strong>#8</strong> (Adaptive Filter &harr; Training) and compare the learning curves &mdash; they look identical because the algorithm is identical.</li>
+          <li>Click <strong>#4</strong> (Poles &harr; Eigenvalues) to see the z-plane. All poles inside the unit circle = stable system = healthy gradient flow.</li>
+          <li>Use the <strong>category filter buttons</strong> to focus on one theme at a time.</li>
+          <li>Try to find the mapping that surprised you most &mdash; it&rsquo;s usually #9 (Stability &harr; Gradient Flow), because DSP engineers have known about the vanishing gradient problem since the 1960s.</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- Further Reading -->
+    <section class="content-section" id="further-reading">
+      <h2 class="section-heading">Further Reading</h2>
+      <ul class="further-reading-list">
+        <li>
+          <a href="https://arxiv.org/abs/2312.00752" target="_blank" rel="noopener">Mamba: Linear-Time Sequence Modeling with Selective State Spaces</a>
+          <span class="further-reading__authors">Gu &amp; Dao, 2024</span>
+          <span class="further-reading__note">Section 3 discusses the relationship between SSMs and signal processing concepts</span>
+        </li>
+        <li>
+          <a href="https://hazyresearch.stanford.edu/blog/2022-01-14-s4-3" target="_blank" rel="noopener">The Annotated S4</a>
+          <span class="further-reading__authors">Rush &amp; Karamcheti, 2022 — Hazy Research</span>
+          <span class="further-reading__note">Detailed walkthrough of S4 showing the DSP-to-AI connection through state spaces</span>
+        </li>
+      </ul>
+    </section>
+
+    <!-- Chapter Navigation -->
+    <nav class="chapter-nav">
+      <a class="chapter-nav__prev" href="../part2/ch15-transformer.html">
+        <span class="chapter-nav__dir">&larr; Previous</span>
+        <span class="chapter-nav__label">Ch 15: The Transformer</span>
+      </a>
+      <a class="chapter-nav__next" href="ch17-matched-to-attn.html">
+        <span class="chapter-nav__dir">Next &rarr;</span>
+        <span class="chapter-nav__label">Ch 17: Matched Filter &rarr; Attention</span>
+      </a>
+    </nav>
+
+  </main>
+</div>
+
+<!-- Scripts -->
+<script src="../../js/core/navigation.js"></script>
+<script src="../../js/core/progressive-disclosure.js"></script>
+<script src="../../js/core/chapter-nav.js"></script>
+<script src="../../js/tools/shared/plot-utils.js"></script>
+<script src="../../js/tools/ch16-dual-view.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    if (window.DSPtoAI && window.DSPtoAI.DualView) {
+      window.DSPtoAI.DualView.init('tool-dual-view');
+    }
+  });
+</script>
+
+<script src="../../js/core/search-index.js"></script>
+<script src="../../js/core/search.js"></script>
+</body>
+</html>

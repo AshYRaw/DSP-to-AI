@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ch 10: Neural Networks &amp; Backpropagation &mdash; DSP to AI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Outfit:wght@300;400;500;600;700;800;900&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../style/global.css">
+  <link rel="stylesheet" href="../../style/theme-dark.css">
+  <link rel="stylesheet" href="../../style/theme-light.css">
+  <link rel="stylesheet" href="../../style/components.css">
+  <link rel="stylesheet" href="../../style/chapter.css">
+  <script src="../../js/core/theme-switcher.js"></script>
+</head>
+<body>
+
+<div class="noise"></div>
+
+<!-- Navigation -->
+<nav class="site-nav">
+  <a href="../../index.html" class="site-nav__logo">DSP <span class="arrow">&rarr;</span> AI</a>
+  <ul class="site-nav__links">
+    <li><a href="../../index.html#part1">Part I</a></li>
+    <li><a href="../../index.html#part2" class="active">Part II</a></li>
+    <li><a href="../../index.html#part3">Part III</a></li>
+    <li><a href="../../index.html#part4">Part IV</a></li>
+    <li><a href="../../gallery/index.html">Gallery</a></li>
+    <li><a href="../../reference/glossary.html">Reference</a></li>
+  </ul>
+  <button class="search-toggle" aria-label="Search site (press /)">🔍</button>
+  <button class="theme-toggle" aria-label="Toggle theme"></button>
+  <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false">&#9776;</button>
+</nav>
+<div class="progress-bar"></div>
+
+<!-- Page Layout -->
+<div class="chapter-page" data-chapter-id="ch10">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar__part-label">Part II: AI Foundations</div>
+    <ul class="sidebar__chapters">
+      <li><a class="sidebar__chapter-link" href="ch09-neuron.html"><span class="sidebar__chapter-num">09</span> The Neuron</a></li>
+      <li><a class="sidebar__chapter-link active" href="ch10-backprop.html"><span class="sidebar__chapter-num">10</span> Networks &amp; Backprop</a>
+        <ul class="sidebar__sections">
+          <li><a class="sidebar__section-link" href="#mlp">Multi-Layer Perceptrons</a></li>
+          <li><a class="sidebar__section-link" href="#forward-pass">The Forward Pass</a></li>
+          <li><a class="sidebar__section-link" href="#loss">Loss Functions</a></li>
+          <li><a class="sidebar__section-link" href="#chain-rule">The Chain Rule</a></li>
+          <li><a class="sidebar__section-link" href="#backprop">Backpropagation</a></li>
+          <li><a class="sidebar__section-link" href="#bridge">Bridge: Cascade Systems</a></li>
+          <li><a class="sidebar__section-link" href="#tool-builder">Neural Network Builder</a></li>
+          <li><a class="sidebar__section-link" href="#tool-backprop">Backprop Step-Through</a></li>
+        </ul>
+      </li>
+      <li><a class="sidebar__chapter-link" href="ch11-training.html"><span class="sidebar__chapter-num">11</span> Training &amp; Optimization</a></li>
+      <li><a class="sidebar__chapter-link" href="ch12-sequences.html"><span class="sidebar__chapter-num">12</span> RNNs &amp; LSTMs</a></li>
+      <li><a class="sidebar__chapter-link" href="ch13-embeddings.html"><span class="sidebar__chapter-num">13</span> Embeddings</a></li>
+      <li><a class="sidebar__chapter-link" href="ch14-attention.html"><span class="sidebar__chapter-num">14</span> Attention</a></li>
+      <li><a class="sidebar__chapter-link" href="ch15-transformer.html"><span class="sidebar__chapter-num">15</span> The Transformer</a></li>
+    </ul>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="chapter-content">
+
+    <nav class="breadcrumb" aria-label="Breadcrumb"></nav>
+
+    <header class="chapter-header">
+      <div class="chapter-header__part">Part II &mdash; AI Foundations</div>
+      <div class="chapter-header__number">Chapter 10</div>
+      <h1 class="chapter-header__title">Neural Networks and Backpropagation</h1>
+      <p class="chapter-header__subtitle">
+        A single neuron draws a line. Stack neurons in layers and you can draw <em>anything</em>.
+        The challenge is training them &mdash; finding the millions of weights that make the
+        network useful. Backpropagation solves this by propagating the error backward through
+        the network, one layer at a time, using the chain rule of calculus.
+      </p>
+    </header>
+
+    <!-- ============================================================
+         10.1 — Multi-Layer Perceptrons
+         ============================================================ -->
+    <section class="content-section" id="mlp">
+      <h2 class="section-heading"><span class="section-number">10.1</span> Multi-Layer Perceptrons</h2>
+
+      <p>
+        The XOR problem from Chapter 9 showed that a single neuron can only draw linear boundaries.
+        The fix is to stack neurons in <strong>layers</strong>:
+      </p>
+
+      <div class="card-grid" style="grid-template-columns: repeat(3, 1fr);">
+        <div class="concept-card" style="border-color: var(--color-dsp);">
+          <h3 class="concept-card__title">Input Layer</h3>
+          <p class="concept-card__body">
+            One neuron per feature. No computation &mdash; just passes the raw data to the next layer.
+            For 2D classification: 2 inputs.
+          </p>
+        </div>
+        <div class="concept-card" style="border-color: var(--color-bridge);">
+          <h3 class="concept-card__title">Hidden Layer(s)</h3>
+          <p class="concept-card__body">
+            Where the magic happens. Each neuron combines inputs nonlinearly.
+            More neurons = more complex boundaries. More layers = more levels of abstraction.
+          </p>
+        </div>
+        <div class="concept-card" style="border-color: var(--color-ai);">
+          <h3 class="concept-card__title">Output Layer</h3>
+          <p class="concept-card__body">
+            Produces the final prediction. For binary classification: 1 neuron with sigmoid.
+            For multi-class: N neurons with softmax.
+          </p>
+        </div>
+      </div>
+
+      <p>
+        A network with one hidden layer of N neurons can approximate any continuous function
+        (Universal Approximation Theorem). In practice, deeper networks with fewer neurons per
+        layer often work better than shallow-wide networks &mdash; depth enables hierarchical
+        feature learning.
+      </p>
+
+      <div class="math-block">
+        <div class="math-block__label">MLP Computation</div>
+        <p class="math-block__content">
+          <strong>h</strong><sup>(1)</sup> = &sigma;(<strong>W</strong><sup>(1)</sup><strong>x</strong> + <strong>b</strong><sup>(1)</sup>)<br>
+          <strong>h</strong><sup>(2)</sup> = &sigma;(<strong>W</strong><sup>(2)</sup><strong>h</strong><sup>(1)</sup> + <strong>b</strong><sup>(2)</sup>)<br>
+          &hellip;<br>
+          <strong>y</strong> = &sigma;<sub>out</sub>(<strong>W</strong><sup>(L)</sup><strong>h</strong><sup>(L-1)</sup> + <strong>b</strong><sup>(L)</sup>)
+        </p>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         10.2 — The Forward Pass
+         ============================================================ -->
+    <section class="content-section" id="forward-pass">
+      <h2 class="section-heading"><span class="section-number">10.2</span> The Forward Pass</h2>
+
+      <p>
+        The <strong>forward pass</strong> is the computation that flows from input to output.
+        Data enters at the input layer, gets transformed by each hidden layer&rsquo;s weights and
+        activation functions, and produces a prediction at the output.
+      </p>
+
+      <p>
+        For each layer l, the computation is:
+      </p>
+
+      <div class="math-block">
+        <div class="math-block__label">Layer l Computation</div>
+        <p class="math-block__content">
+          <strong>z</strong><sup>(l)</sup> = <strong>W</strong><sup>(l)</sup><strong>a</strong><sup>(l-1)</sup> + <strong>b</strong><sup>(l)</sup><br><br>
+          <strong>a</strong><sup>(l)</sup> = &sigma;(<strong>z</strong><sup>(l)</sup>)
+        </p>
+      </div>
+
+      <p>
+        Where <strong>z</strong> is the pre-activation (weighted sum) and <strong>a</strong> is the
+        activation (after nonlinearity). We save both values at each layer because
+        backpropagation needs them.
+      </p>
+    </section>
+
+    <!-- ============================================================
+         10.3 — Loss Functions
+         ============================================================ -->
+    <section class="content-section" id="loss">
+      <h2 class="section-heading"><span class="section-number">10.3</span> Loss Functions</h2>
+
+      <p>
+        The <strong>loss function</strong> measures how wrong the network&rsquo;s prediction is.
+        Training aims to minimize this number. The choice of loss function shapes what the
+        network learns:
+      </p>
+
+      <div class="card-grid" style="grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));">
+        <div class="concept-card">
+          <h3 class="concept-card__title">Mean Squared Error</h3>
+          <div class="math-block" style="margin: 0.5rem 0; padding: 0.5rem;">
+            <p class="math-block__content" style="font-size: 0.85rem;">
+              L = &frac12; &sum;(y<sub>i</sub> &minus; &ycirc;<sub>i</sub>)&sup2;
+            </p>
+          </div>
+          <p class="concept-card__body">
+            The default for regression. Penalizes large errors quadratically.
+            Gradient is proportional to the error: simple and well-behaved.
+          </p>
+        </div>
+        <div class="concept-card">
+          <h3 class="concept-card__title">Binary Cross-Entropy</h3>
+          <div class="math-block" style="margin: 0.5rem 0; padding: 0.5rem;">
+            <p class="math-block__content" style="font-size: 0.85rem;">
+              L = &minus;[y log &ycirc; + (1&minus;y) log(1&minus;&ycirc;)]
+            </p>
+          </div>
+          <p class="concept-card__body">
+            The default for binary classification. With sigmoid output, the
+            gradient simplifies beautifully to (&ycirc; &minus; y).
+          </p>
+        </div>
+        <div class="concept-card">
+          <h3 class="concept-card__title">Categorical Cross-Entropy</h3>
+          <div class="math-block" style="margin: 0.5rem 0; padding: 0.5rem;">
+            <p class="math-block__content" style="font-size: 0.85rem;">
+              L = &minus;&sum; y<sub>k</sub> log &ycirc;<sub>k</sub>
+            </p>
+          </div>
+          <p class="concept-card__body">
+            For multi-class classification with softmax output.
+            Used in virtually every language model &mdash; predicting the next token is a
+            classification problem over the vocabulary.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         10.4 — The Chain Rule
+         ============================================================ -->
+    <section class="content-section" id="chain-rule">
+      <h2 class="section-heading"><span class="section-number">10.4</span> The Chain Rule</h2>
+
+      <p>
+        Backpropagation is just the <strong>chain rule of calculus</strong> applied systematically.
+        If we have a composite function f(g(h(x))), the derivative with respect to x is:
+      </p>
+
+      <div class="math-block">
+        <div class="math-block__label">Chain Rule</div>
+        <p class="math-block__content">
+          &part;f/&part;x = (&part;f/&part;g) &middot; (&part;g/&part;h) &middot; (&part;h/&part;x)
+        </p>
+      </div>
+
+      <p>
+        A neural network is exactly such a composition: each layer is a function, and the full
+        network is a chain of functions. The loss depends on the output, which depends on the
+        last layer&rsquo;s weights, which depend on the previous layer&rsquo;s activations, and so on.
+      </p>
+
+      <div class="progressive-section">
+        <button class="progressive-section__toggle" aria-expanded="false">Show the Math &mdash; Computational Graphs</button>
+        <div class="progressive-section__content" hidden>
+          <p>
+            A <strong>computational graph</strong> represents the network as a directed acyclic graph (DAG)
+            where each node is an operation and edges carry intermediate values.
+          </p>
+          <p>For a simple two-layer network with loss L:</p>
+          <div class="math-block">
+            <p class="math-block__content">
+              x &rarr; z<sup>(1)</sup> = Wx + b &rarr; a<sup>(1)</sup> = &sigma;(z<sup>(1)</sup>) &rarr; z<sup>(2)</sup> = Va + c &rarr; &ycirc; = &sigma;(z<sup>(2)</sup>) &rarr; L
+            </p>
+          </div>
+          <p>
+            The forward pass computes left-to-right, storing intermediate values.
+            The backward pass computes right-to-left:
+          </p>
+          <div class="math-block">
+            <p class="math-block__content">
+              &part;L/&part;V = (&part;L/&part;&ycirc;) &middot; (&part;&ycirc;/&part;z<sup>(2)</sup>) &middot; (&part;z<sup>(2)</sup>/&part;V) = &delta;<sup>(2)</sup> &middot; a<sup>(1)T</sup><br><br>
+              &part;L/&part;W = (&part;L/&part;&ycirc;) &middot; (&part;&ycirc;/&part;z<sup>(2)</sup>) &middot; (&part;z<sup>(2)</sup>/&part;a<sup>(1)</sup>) &middot; (&part;a<sup>(1)</sup>/&part;z<sup>(1)</sup>) &middot; (&part;z<sup>(1)</sup>/&part;W) = &delta;<sup>(1)</sup> &middot; x<sup>T</sup>
+            </p>
+          </div>
+          <p>
+            Each &delta; is computed from the next layer&rsquo;s &delta; &mdash; that&rsquo;s why it&rsquo;s
+            called <em>back</em>propagation. The error signal flows backward through the network.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         10.5 — Backpropagation
+         ============================================================ -->
+    <section class="content-section" id="backprop">
+      <h2 class="section-heading"><span class="section-number">10.5</span> Backpropagation</h2>
+
+      <p>
+        The <strong>backpropagation algorithm</strong> (Rumelhart, Hinton, Williams, 1986) trains
+        a neural network in four steps, repeated for every training example:
+      </p>
+
+      <div class="card-grid" style="grid-template-columns: repeat(2, 1fr);">
+        <div class="concept-card" style="border-color: var(--color-dsp);">
+          <div class="concept-card__icon" style="color: var(--color-dsp);">1</div>
+          <h3 class="concept-card__title">Forward Pass</h3>
+          <p class="concept-card__body">
+            Compute activations layer by layer from input to output.
+            Store all intermediate values (z and a at each layer).
+          </p>
+        </div>
+        <div class="concept-card" style="border-color: var(--color-danger);">
+          <div class="concept-card__icon" style="color: var(--color-danger);">2</div>
+          <h3 class="concept-card__title">Compute Loss</h3>
+          <p class="concept-card__body">
+            Compare prediction to target using the loss function.
+            This single number encodes &ldquo;how wrong&rdquo; the network is.
+          </p>
+        </div>
+        <div class="concept-card" style="border-color: var(--color-ai);">
+          <div class="concept-card__icon" style="color: var(--color-ai);">3</div>
+          <h3 class="concept-card__title">Backward Pass</h3>
+          <p class="concept-card__body">
+            Compute gradients &part;L/&part;w for every weight by propagating
+            deltas backward through the chain rule.
+          </p>
+        </div>
+        <div class="concept-card" style="border-color: var(--color-math);">
+          <div class="concept-card__icon" style="color: var(--color-math);">4</div>
+          <h3 class="concept-card__title">Update Weights</h3>
+          <p class="concept-card__body">
+            w &larr; w &minus; &eta; &middot; &part;L/&part;w.
+            Each weight is nudged in the direction that reduces the loss.
+          </p>
+        </div>
+      </div>
+
+      <div class="progressive-section">
+        <button class="progressive-section__toggle" aria-expanded="false">Show the Math &mdash; Full Backprop Derivation</button>
+        <div class="progressive-section__content" hidden>
+          <p>For a network with L layers, define the error signal (delta) at each layer:</p>
+          <div class="math-block">
+            <div class="math-block__label">Output Layer Delta</div>
+            <p class="math-block__content">
+              &delta;<sup>(L)</sup> = (&part;L/&part;<strong>a</strong><sup>(L)</sup>) &odot; &sigma;'(<strong>z</strong><sup>(L)</sup>)
+            </p>
+          </div>
+          <div class="math-block">
+            <div class="math-block__label">Hidden Layer Delta (Backprop Rule)</div>
+            <p class="math-block__content">
+              &delta;<sup>(l)</sup> = (<strong>W</strong><sup>(l+1)T</sup> &delta;<sup>(l+1)</sup>) &odot; &sigma;'(<strong>z</strong><sup>(l)</sup>)
+            </p>
+          </div>
+          <div class="math-block">
+            <div class="math-block__label">Weight Gradients</div>
+            <p class="math-block__content">
+              &part;L/&part;<strong>W</strong><sup>(l)</sup> = &delta;<sup>(l)</sup> <strong>a</strong><sup>(l-1)T</sup><br><br>
+              &part;L/&part;<strong>b</strong><sup>(l)</sup> = &delta;<sup>(l)</sup>
+            </p>
+          </div>
+          <p>
+            The &odot; is element-wise multiplication (Hadamard product). Notice that each layer&rsquo;s
+            delta depends on the next layer&rsquo;s delta multiplied by the transposed weight matrix &mdash;
+            this is the &ldquo;backward&rdquo; flow that gives the algorithm its name.
+          </p>
+          <p>
+            <strong>Complexity:</strong> One forward + backward pass takes O(W) time where W is the
+            total number of weights. This is the same as one forward pass &mdash; backprop is
+            essentially &ldquo;free&rdquo; relative to inference.
+          </p>
+        </div>
+      </div>
+
+      <div class="insight-box">
+        <div class="insight-box__label">Key Insight</div>
+        <p>
+          Backpropagation does NOT search for weights. It computes exact gradients &mdash; the precise
+          direction in which each weight should change to reduce the loss. The only approximation
+          is using a finite learning rate step instead of an infinitesimal one. This efficiency
+          is why networks with billions of parameters can be trained at all.
+        </p>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         10.6 — Bridge: Cascade Systems
+         ============================================================ -->
+    <section class="content-section" id="bridge">
+      <h2 class="section-heading"><span class="section-number">10.6</span> Bridge: Cascade Systems in DSP</h2>
+
+      <div class="bridge-teaser">
+        <div class="bridge-teaser__label">DSP &rarr; AI Connection</div>
+        <p>
+          A multi-layer neural network is a <strong>cascade of nonlinear systems</strong>.
+          In DSP, we analyze cascaded linear systems by multiplying their transfer functions.
+          In AI, we analyze cascaded nonlinear layers by multiplying their Jacobian matrices.
+        </p>
+      </div>
+
+      <table class="comparison-table" style="width:100%; border-collapse: collapse; margin: 1.5rem 0;">
+        <thead>
+          <tr>
+            <th style="padding: 0.75rem; text-align: left; border-bottom: 2px solid var(--border); color: var(--color-dsp);">DSP: Cascaded Filters</th>
+            <th style="padding: 0.75rem; text-align: left; border-bottom: 2px solid var(--border); color: var(--color-ai);">AI: Multi-Layer Network</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style="padding: 0.6rem; border-bottom: 1px solid var(--border);">H(z) = H<sub>1</sub>(z) &middot; H<sub>2</sub>(z) &middot; &hellip;</td>
+            <td style="padding: 0.6rem; border-bottom: 1px solid var(--border);">y = f<sub>L</sub>(f<sub>L-1</sub>(&hellip;f<sub>1</sub>(x)))</td>
+          </tr>
+          <tr>
+            <td style="padding: 0.6rem; border-bottom: 1px solid var(--border);">Transfer functions multiply</td>
+            <td style="padding: 0.6rem; border-bottom: 1px solid var(--border);">Jacobians multiply (chain rule)</td>
+          </tr>
+          <tr>
+            <td style="padding: 0.6rem; border-bottom: 1px solid var(--border);">Poles accumulate &rarr; instability risk</td>
+            <td style="padding: 0.6rem; border-bottom: 1px solid var(--border);">Gradient products &rarr; vanishing/exploding risk</td>
+          </tr>
+          <tr>
+            <td style="padding: 0.6rem; border-bottom: 1px solid var(--border);">Biquad sections for stability</td>
+            <td style="padding: 0.6rem; border-bottom: 1px solid var(--border);">Residual connections for gradient flow</td>
+          </tr>
+          <tr>
+            <td style="padding: 0.6rem; border-bottom: 1px solid var(--border);">LMS adaptive filter: w += &mu;&middot;e&middot;x</td>
+            <td style="padding: 0.6rem; border-bottom: 1px solid var(--border);">SGD update: w &minus;= &eta;&middot;&nabla;L</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <p>
+        The analogy between cascaded filter stability and gradient flow through deep networks is deep:
+        poles with |p| &gt; 1 cause filter instability; Jacobian eigenvalues &gt; 1 cause exploding gradients.
+        Both are solved by keeping the system gains near unity &mdash; in DSP through careful pole placement,
+        in AI through residual connections and normalization layers.
+      </p>
+    </section>
+
+    <!-- ============================================================
+         Tool 10.1 — Neural Network Builder
+         ============================================================ -->
+    <section class="content-section" id="tool-builder">
+      <h2 class="section-heading"><span class="section-number">10.7</span> Tool: Neural Network Builder</h2>
+
+      <p>
+        Build a network, choose a dataset, and watch it learn. The decision boundary evolves
+        from a random partition to a precise classification. Try the spiral dataset &mdash;
+        it requires depth to solve.
+      </p>
+
+      <div class="tool-container" id="nnBuilderTool">
+        <div class="tool-header">
+          <span class="tool-header__label">Tool 10.1</span>
+          <span class="tool-header__title">Neural Network Builder</span>
+        </div>
+        <div class="tool-body">
+          <div class="tool-controls" style="display: flex; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 0.75rem;">
+            <label class="tool-control">
+              <span class="tool-control__label">Dataset</span>
+              <select data-control="nn-dataset" class="tool-select">
+                <option value="xor" selected>XOR</option>
+                <option value="circles">Circles</option>
+                <option value="moons">Moons</option>
+                <option value="spiral">Spiral</option>
+              </select>
+            </label>
+            <label class="tool-control">
+              <span class="tool-control__label">Architecture</span>
+              <select data-control="nn-arch" class="tool-select">
+                <option value="1x4">1 &times; 4</option>
+                <option value="2x4" selected>2 &times; 4</option>
+                <option value="2x8">2 &times; 8</option>
+                <option value="3x6">3 &times; 6</option>
+                <option value="4x4">4 &times; 4</option>
+              </select>
+            </label>
+            <label class="tool-control">
+              <span class="tool-control__label">Activation</span>
+              <select data-control="nn-activation" class="tool-select">
+                <option value="relu" selected>ReLU</option>
+                <option value="sigmoid">Sigmoid</option>
+                <option value="tanh">Tanh</option>
+              </select>
+            </label>
+            <label class="tool-control">
+              <span class="tool-control__label">Learning Rate</span>
+              <input type="range" data-control="nn-lr" min="0.001" max="0.3" step="0.001" value="0.03" class="tool-slider">
+              <span data-value="nn-lr" class="tool-value">0.03</span>
+            </label>
+          </div>
+
+          <div class="tool-canvas-wrapper"></div>
+
+          <div class="tool-actions" style="display: flex; gap: 0.5rem; margin-top: 0.5rem; flex-wrap: wrap;">
+            <button data-action="nn-train" class="tool-btn tool-btn--accent">&#9654; Train</button>
+            <button data-action="nn-step" class="tool-btn">Step (1 epoch)</button>
+            <button data-action="nn-reset" class="tool-btn tool-btn--muted">Reset</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="insight-box">
+        <div class="insight-box__label">Try This</div>
+        <ul>
+          <li><strong>XOR with 1&times;4:</strong> One hidden layer can solve XOR &mdash; watch the decision boundary bend into two regions</li>
+          <li><strong>Spiral with 2&times;4:</strong> The spiral dataset is hard! Try upgrading to 3&times;6 or 4&times;4 &mdash; depth helps</li>
+          <li><strong>Sigmoid vs ReLU:</strong> Switch activation to sigmoid and increase learning rate. ReLU typically trains faster</li>
+          <li><strong>Watch the loss curve:</strong> It should drop sharply then plateau. If it stays flat, increase the learning rate</li>
+          <li>Click <strong>Step</strong> to advance one epoch at a time and watch the boundary evolve gradually</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         Tool 10.2 — Backprop Step-Through
+         ============================================================ -->
+    <section class="content-section" id="tool-backprop">
+      <h2 class="section-heading"><span class="section-number">10.8</span> Tool: Backprop Step-Through</h2>
+
+      <p>
+        Walk through a single forward-backward pass on a tiny 2&rarr;2&rarr;1 network with exact
+        arithmetic. Every multiplication, every gradient, every weight update is shown explicitly.
+        This is the best way to truly understand what backprop does.
+      </p>
+
+      <div class="tool-container" id="backpropStepTool">
+        <div class="tool-header">
+          <span class="tool-header__label">Tool 10.2</span>
+          <span class="tool-header__title">Backprop Step-Through</span>
+        </div>
+        <div class="tool-body">
+          <div class="tool-canvas-wrapper"></div>
+
+          <div class="tool-actions" style="display: flex; gap: 0.5rem; margin-top: 0.5rem; flex-wrap: wrap;">
+            <button data-action="bp-prev" class="tool-btn">&larr; Previous</button>
+            <button data-action="bp-next" class="tool-btn tool-btn--accent">Next Step &rarr;</button>
+            <button data-action="bp-all" class="tool-btn">Show All</button>
+            <button data-action="bp-reset" class="tool-btn tool-btn--muted">Reset</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="insight-box">
+        <div class="insight-box__label">Try This</div>
+        <ul>
+          <li>Click <strong>Next Step</strong> repeatedly to walk through all 10 steps</li>
+          <li>Steps 1&ndash;5 are the <strong>forward pass</strong> (cyan progress bar): data flows input &rarr; output</li>
+          <li>Steps 6&ndash;10 are the <strong>backward pass</strong> (orange): gradients flow output &rarr; input</li>
+          <li>Watch the <strong>delta (&delta;)</strong> values appear below each neuron &mdash; these are the local error signals</li>
+          <li>In steps 9&ndash;10, see the weight updates in green (&Delta;) along each connection</li>
+          <li>Notice how the output delta is large (close to target-prediction error) while hidden deltas are smaller &mdash; this is the vanishing gradient effect</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         Chapter Navigation
+         ============================================================ -->
+    <!-- Further Reading -->
+    <section class="content-section" id="further-reading">
+      <h2 class="section-heading">Further Reading</h2>
+      <ul class="further-reading-list">
+        <li>
+          <a href="https://www.nature.com/articles/323533a0" target="_blank" rel="noopener">Learning representations by back-propagating errors</a>
+          <span class="further-reading__authors">Rumelhart, Hinton &amp; Williams, 1986 — Nature</span>
+          <span class="further-reading__note">The landmark paper that popularized backpropagation for training neural networks</span>
+        </li>
+        <li>
+          <a href="https://www.deeplearningbook.org/contents/mlp.html" target="_blank" rel="noopener">Deep Learning — Chapter 6.5: Back-Propagation</a>
+          <span class="further-reading__authors">Goodfellow, Bengio &amp; Courville, 2016</span>
+          <span class="further-reading__note">Modern derivation with computational graph perspective</span>
+        </li>
+        <li>
+          <a href="https://karpathy.medium.com/yes-you-should-understand-backprop-e2f06eab496b" target="_blank" rel="noopener">Yes you should understand backprop</a>
+          <span class="further-reading__authors">Karpathy, A., 2016 — Medium</span>
+          <span class="further-reading__note">Practical intuition for why understanding gradients matters beyond autograd</span>
+        </li>
+      </ul>
+    </section>
+
+    <nav class="chapter-nav" aria-label="Chapter navigation">
+      <a class="chapter-nav__prev" href="ch09-neuron.html">
+        <span class="chapter-nav__dir">&larr; Previous</span>
+        <span class="chapter-nav__title">Ch 9: The Neuron</span>
+      </a>
+      <a class="chapter-nav__next" href="ch11-training.html">
+        <span class="chapter-nav__dir">Next &rarr;</span>
+        <span class="chapter-nav__title">Ch 11: Training &amp; Optimization</span>
+      </a>
+    </nav>
+
+  </main>
+</div>
+
+<!-- Scripts -->
+<script src="../../js/core/navigation.js"></script>
+<script src="../../js/core/progressive-disclosure.js"></script>
+<script src="../../js/core/chapter-nav.js"></script>
+<script src="../../js/tools/shared/plot-utils.js"></script>
+<script src="../../js/tools/ch10-nn-builder.js"></script>
+<script src="../../js/tools/ch10-backprop-step.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    DSPtoAI.NNBuilder.init('nnBuilderTool');
+    DSPtoAI.BackpropStep.init('backpropStepTool');
+  });
+</script>
+
+<script src="../../js/core/search-index.js"></script>
+<script src="../../js/core/search.js"></script>
+</body>
+</html>
