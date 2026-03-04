@@ -56,6 +56,16 @@
           { id: 'ch22', num: '22', title: 'Hybrid Architectures', file: 'chapters/part4/ch22-hybrid-architectures.html' },
           { id: 'ch23', num: '23', title: 'Capstone Project', file: 'chapters/part4/ch23-capstone.html' },
         ]
+      },
+      {
+        id: 'part5', label: 'Part V', title: 'The Critical Lens',
+        color: 'var(--color-amber)',
+        chapters: [
+          { id: 'ch24', num: '24', title: 'Where Analogies Break', file: 'chapters/part5/ch24-analogy-limits.html' },
+          { id: 'ch25', num: '25', title: 'Honest Benchmarks', file: 'chapters/part5/ch25-honest-benchmarks.html' },
+          { id: 'ch26', num: '26', title: 'The Bigger Picture', file: 'chapters/part5/ch26-bigger-picture.html' },
+          { id: 'ch27', num: '27', title: 'The Experimental Frontier', file: 'chapters/part5/ch27-experimental-frontier.html' },
+        ]
       }
     ]
   };

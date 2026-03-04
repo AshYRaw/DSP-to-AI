@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ch 24: Where Analogies Break &mdash; DSP to AI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Outfit:wght@300;400;500;600;700;800;900&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../style/global.css">
+  <link rel="stylesheet" href="../../style/theme-dark.css">
+  <link rel="stylesheet" href="../../style/theme-light.css">
+  <link rel="stylesheet" href="../../style/components.css">
+  <link rel="stylesheet" href="../../style/chapter.css">
+  <script src="../../js/core/theme-switcher.js"></script>
+</head>
+<body>
+
+<div class="noise"></div>
+
+<!-- Navigation -->
+<nav class="site-nav">
+  <a href="../../index.html" class="site-nav__logo">DSP <span class="arrow">&rarr;</span> AI</a>
+  <ul class="site-nav__links">
+    <li><a href="../../index.html#part1">Part I</a></li>
+    <li><a href="../../index.html#part2">Part II</a></li>
+    <li><a href="../../index.html#part3">Part III</a></li>
+    <li><a href="../../index.html#part4">Part IV</a></li>
+    <li><a href="../../index.html#part5" class="active">Part V</a></li>
+    <li><a href="../../gallery/index.html">Gallery</a></li>
+    <li><a href="../../reference/glossary.html">Reference</a></li>
+  </ul>
+  <button class="theme-toggle" aria-label="Toggle theme"></button>
+  <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false">&#9776;</button>
+</nav>
+<div class="progress-bar"></div>
+
+<!-- Page Layout -->
+<div class="chapter-page" data-chapter-id="ch24">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar__part-label" style="color: var(--color-amber);">Part V: The Critical Lens</div>
+    <ul class="sidebar__chapters">
+      <li><a class="sidebar__chapter-link active" href="ch24-analogy-limits.html"><span class="sidebar__chapter-num">24</span> Where Analogies Break</a>
+        <ul class="sidebar__sections">
+          <li><a class="sidebar__section-link" href="#matched-filter">Matched Filter &harr; Attention</a></li>
+          <li><a class="sidebar__section-link" href="#iir-mamba">IIR &harr; Mamba</a></li>
+          <li><a class="sidebar__section-link" href="#fir-iir-incomplete">FIR/IIR Mapping Limits</a></li>
+          <li><a class="sidebar__section-link" href="#hippo-butterworth">HiPPO &harr; Butterworth</a></li>
+          <li><a class="sidebar__section-link" href="#tool-spectrum">Analogy Spectrum</a></li>
+          <li><a class="sidebar__section-link" href="#tool-ltv">LTI vs LTV Explorer</a></li>
+        </ul>
+      </li>
+      <li><a class="sidebar__chapter-link" href="ch25-honest-benchmarks.html"><span class="sidebar__chapter-num">25</span> Honest Benchmarks</a></li>
+      <li><a class="sidebar__chapter-link" href="ch26-bigger-picture.html"><span class="sidebar__chapter-num">26</span> The Bigger Picture</a></li>
+      <li><a class="sidebar__chapter-link" href="ch27-experimental-frontier.html"><span class="sidebar__chapter-num">27</span> The Experimental Frontier</a></li>
+    </ul>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="chapter-content">
+
+    <header class="chapter-header">
+      <div class="chapter-header__part" style="color: var(--color-amber);">Part V &mdash; The Critical Lens</div>
+      <div class="chapter-header__number">Chapter 24</div>
+      <h1 class="chapter-header__title">Where Analogies Break</h1>
+      <p class="chapter-header__subtitle">
+        Parts I&ndash;IV built elegant bridges between DSP and AI. Now we test them rigorously.
+        Every analogy has a domain of validity &mdash; and understanding where they break
+        is just as important as understanding where they hold. This chapter examines the
+        four deepest mathematical challenges to the DSP&harr;AI correspondence.
+      </p>
+    </header>
+
+    <!-- ============================================================
+         24.1 — Matched Filter ↔ Attention
+         ============================================================ -->
+    <section class="chapter-section content-section" id="matched-filter">
+      <h2 class="section-heading"><span class="section-number">24.1</span> The Matched Filter &harr; Attention Analogy</h2>
+
+      <p>
+        In Chapter 17, we showed that self-attention evolves from the classical matched filter.
+        The core claim: <strong>QK<sup>T</sup> is a cross-correlation matrix.</strong> This is
+        pedagogically powerful &mdash; but three compounding nonlinearities challenge the analogy:
+      </p>
+
+      <div class="card-grid" style="grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));">
+        <div class="concept-card" style="--card-accent: var(--color-amber);">
+          <h3 class="concept-card__title">1. Softmax normalization</h3>
+          <p class="concept-card__body">
+            The matched filter computes linear cross-correlation. Softmax attention adds
+            <strong>competitive normalization</strong>: &alpha;<sub>ij</sub> = exp(q<sub>i</sub>&middot;k<sub>j</sub>)/&Sigma; exp(q<sub>i</sub>&middot;k<sub>l</sub>).
+            The &ldquo;correlation&rdquo; at position (i,j) depends on <em>all other positions</em> &mdash;
+            this has no classical matched filter analogue.
+          </p>
+        </div>
+        <div class="concept-card" style="--card-accent: var(--color-amber);">
+          <h3 class="concept-card__title">2. Learned projections</h3>
+          <p class="concept-card__body">
+            W<sub>Q</sub>, W<sub>K</sub>, W<sub>V</sub> mean the &ldquo;template&rdquo; changes
+            via backpropagation. A matched filter with a <em>data-dependent template</em> is no
+            longer a matched filter &mdash; it&rsquo;s a <strong>nonlinear estimator</strong>.
+          </p>
+        </div>
+        <div class="concept-card" style="--card-accent: var(--color-amber);">
+          <h3 class="concept-card__title">3. The value pathway</h3>
+          <p class="concept-card__body">
+            In matched filtering, detection and estimation are one operation. In attention,
+            detection (QK<sup>T</sup>) and information extraction (weighting V) are
+            <strong>decoupled</strong> &mdash; closer to a two-stage detector-estimator.
+          </p>
+        </div>
+      </div>
+
+      <h3>The Spectrum of Validity</h3>
+      <p>
+        The analogy holds rigorously in one specific limit: <strong>linear attention</strong>.
+        Removing softmax gives Attn(Q,K,V) = (QK<sup>T</sup>)V &mdash; a pure linear operator
+        that IS cross-correlation in the projected space. This is actually the true matched filter
+        analogue. Softmax is the crucial departure that gives Transformers their power.
+      </p>
+
+      <table class="comparison-table">
+        <thead>
+          <tr>
+            <th>Variant</th>
+            <th>DSP Correspondence</th>
+            <th>Strength</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Linear attention (QK<sup>T</sup>)V</td>
+            <td>Cross-correlation in projected space</td>
+            <td style="color: var(--color-math);"><strong>Exact</strong></td>
+          </tr>
+          <tr>
+            <td>Scaled dot-product (pre-softmax)</td>
+            <td>Normalized cross-correlation</td>
+            <td style="color: var(--color-math);"><strong>Exact</strong></td>
+          </tr>
+          <tr>
+            <td>Full softmax attention</td>
+            <td>Competitive soft-selection over correlation scores</td>
+            <td style="color: var(--color-amber);"><strong>Analogy only</strong></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <details class="progressive-disclosure">
+        <summary>Show the Math &mdash; Detection Efficiency Analysis</summary>
+        <div class="disclosure-content">
+          <p>
+            The matched filter maximizes output SNR under AWGN via the Cauchy-Schwarz inequality:
+          </p>
+          <div class="math-block">
+            <code>SNR<sub>out</sub> = |&int; H(f)S(f)e<sup>j2&pi;fT</sup>df|&sup2; / (N<sub>0</sub>/2 &middot; &int;|H(f)|&sup2;df)</code>
+          </div>
+          <p>
+            Define <strong>detection efficiency</strong> &eta; = SNR<sub>attention</sub> / SNR<sub>matched filter</sub>.
+            As softmax temperature &tau; varies:
+          </p>
+          <ul>
+            <li>&tau; &rarr; 0 (hard argmax): &eta; drops &mdash; only one position selected, information lost</li>
+            <li>&tau; = 1/&radic;d<sub>k</sub> (standard scaling): &eta; &asymp; 0.85&ndash;0.95 under AWGN</li>
+            <li>&tau; &rarr; &infin; (uniform weighting): &eta; drops &mdash; all positions weighted equally, no discrimination</li>
+          </ul>
+          <p>
+            Under <em>non-Gaussian</em> noise (colored, impulsive, speech-shaped), attention can
+            <strong>exceed</strong> the matched filter (&eta; > 1) because learned projections adapt
+            to the noise structure. This is where the nonlinearity pays off.
+          </p>
+        </div>
+      </details>
+    </section>
+
+    <!-- ============================================================
+         24.2 — IIR ↔ Mamba
+         ============================================================ -->
+    <section class="chapter-section content-section" id="iir-mamba">
+      <h2 class="section-heading"><span class="section-number">24.2</span> The IIR &harr; Mamba Analogy</h2>
+
+      <p>
+        Chapter 18 showed that S4&rsquo;s state-space model is mathematically identical to an IIR filter:
+        H(z) = C(zI &minus; &Amacr;)<sup>&minus;1</sup>&Bmacr; + D. But Mamba introduces
+        <strong>input-dependent parameters</strong> (B<sub>t</sub>, C<sub>t</sub>, &Delta;<sub>t</sub>),
+        making the system <strong>Linear Time-Varying (LTV)</strong> &mdash; and this changes everything.
+      </p>
+
+      <div class="card-grid" style="grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));">
+        <div class="concept-card" style="--card-accent: var(--color-danger);">
+          <h3 class="concept-card__title">H(z) does not exist</h3>
+          <p class="concept-card__body">
+            The z-transform transfer function requires time-invariance. For LTV systems,
+            you need the time-varying impulse response h(k, m) &mdash; a 2D function.
+            There is no single H(z) for Mamba.
+          </p>
+        </div>
+        <div class="concept-card" style="--card-accent: var(--color-danger);">
+          <h3 class="concept-card__title">Poles shift continuously</h3>
+          <p class="concept-card__body">
+            When &Amacr;<sub>t</sub> = exp(&Delta;<sub>t</sub> &middot; A) changes at every timestep,
+            &ldquo;poles&rdquo; become instantaneous eigenvalues that shift with the input.
+            The system may be instantaneously unstable yet globally stable.
+          </p>
+        </div>
+        <div class="concept-card" style="--card-accent: var(--color-danger);">
+          <h3 class="concept-card__title">BIBO stability differs</h3>
+          <p class="concept-card__body">
+            For LTI: |&lambda;<sub>i</sub>| < 1 is necessary and sufficient. For LTV, eigenvalue
+            conditions are <em>neither</em>. Stability requires <strong>Lyapunov exponents</strong>
+            &Lambda; = lim (1/n) log ||&Phi;(n,0)|| < 0.
+          </p>
+        </div>
+      </div>
+
+      <h3>The Three-Regime Table</h3>
+      <table class="comparison-table">
+        <thead>
+          <tr><th>System</th><th>DSP Analogue</th><th>Transfer Function</th><th>Stability</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>S4 (LTI SSM)</td>
+            <td>Fixed IIR filter</td>
+            <td>H(z) = C(zI &minus; &Amacr;)<sup>&minus;1</sup>&Bmacr; + D</td>
+            <td>|&lambda;<sub>i</sub>| < 1</td>
+          </tr>
+          <tr>
+            <td>Mamba (LTV SSM)</td>
+            <td>Adaptive IIR / Kalman filter</td>
+            <td>No single H(z); use &ldquo;frozen&rdquo; H<sub>t</sub>(z)</td>
+            <td>Lyapunov exponents < 0</td>
+          </tr>
+          <tr>
+            <td>S4 conv mode</td>
+            <td>FIR truncation of IIR</td>
+            <td>&Kmacr; * u (truncated impulse response)</td>
+            <td>Always stable (finite kernel)</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>The &ldquo;Frozen Transfer Function&rdquo; &mdash; A Practical Compromise</h3>
+      <p>
+        At any time t, freeze B<sub>t</sub>, C<sub>t</sub>, &Delta;<sub>t</sub> to get an
+        instantaneous H<sub>t</sub>(z). Watching how H<sub>t</sub>(z) evolves over time connects
+        Mamba to <strong>short-time Fourier analysis</strong> &mdash; you&rsquo;re taking
+        &ldquo;snapshots&rdquo; of the filter, exactly like a spectrogram snapshots a signal&rsquo;s spectrum.
+      </p>
+
+      <p>
+        The correct DSP analogue for Mamba is not a fixed IIR filter but a <strong>Kalman filter</strong>
+        &mdash; a time-varying state estimator where gains adapt based on the signal. This is actually
+        a <em>more powerful</em> analogy, since Kalman filters are fundamental in DSP and controls.
+      </p>
+
+      <div class="callout callout--insight">
+        <h4>New Research: Hidden Attention of Mamba (ACL 2025)</h4>
+        <p>
+          Ali et al. showed that Mamba&rsquo;s SSM can be rewritten as <strong>implicit attention matrices</strong>.
+          The time-varying recurrence produces attention-like patterns without explicit QK<sup>T</sup>
+          computation. This bridges the IIR and attention interpretations &mdash; Mamba&rsquo;s
+          &ldquo;hidden attention&rdquo; emerges naturally from its state-space dynamics.
+        </p>
+      </div>
+
+      <details class="progressive-disclosure">
+        <summary>Show the Math &mdash; Lyapunov Exponent Analysis</summary>
+        <div class="disclosure-content">
+          <p>
+            For the time-varying system x<sub>k+1</sub> = A<sub>k</sub> x<sub>k</sub>, the maximal
+            Lyapunov exponent is:
+          </p>
+          <div class="math-block">
+            <code>&Lambda; = lim<sub>n&rarr;&infin;</sub> (1/n) log ||&Phi;(n,0)||<br>
+            where &Phi;(n,0) = A<sub>n-1</sub> A<sub>n-2</sub> &hellip; A<sub>0</sub></code>
+          </div>
+          <p>
+            For Mamba with diagonal A, the instantaneous poles are &lambda;<sub>i</sub>(t) = exp(&Delta;<sub>t</sub> &middot; a<sub>i</sub>).
+            Since Re(a<sub>i</sub>) < 0 by design and &Delta;<sub>t</sub> > 0 (softplus output),
+            we get |&lambda;<sub>i</sub>(t)| = exp(&Delta;<sub>t</sub> &middot; Re(a<sub>i</sub>)) < 1 for all t.
+          </p>
+          <p>
+            This was formally proven at ICLR 2025: <strong>Mamba&rsquo;s Lyapunov exponents are
+            non-positive by construction</strong>, making it stable without additional constraints.
+          </p>
+        </div>
+      </details>
+    </section>
+
+    <!-- ============================================================
+         24.3 — FIR/IIR Mapping Is Incomplete
+         ============================================================ -->
+    <section class="chapter-section content-section" id="fir-iir-incomplete">
+      <h2 class="section-heading"><span class="section-number">24.3</span> The FIR/IIR Mapping Is Incomplete</h2>
+
+      <p>
+        The elegant claim from Chapter 20: &ldquo;Attention = FIR (finite context, O(n&sup2;)),
+        Mamba = IIR (infinite memory, O(n)).&rdquo; While capturing the essential tradeoff, this
+        mapping has several problems:
+      </p>
+
+      <div class="card-grid" style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));">
+        <div class="concept-card" style="--card-accent: var(--color-amber);">
+          <h3 class="concept-card__title">KV-cache makes attention recursive</h3>
+          <p class="concept-card__body">
+            During autoregressive inference, attention maintains a growing KV-cache.
+            Each output depends on the entire cache &mdash; this is <em>not</em> FIR behavior.
+            An FIR filter has a fixed-length impulse response; attention&rsquo;s grows with the sequence.
+          </p>
+        </div>
+        <div class="concept-card" style="--card-accent: var(--color-amber);">
+          <h3 class="concept-card__title">Mamba&rsquo;s &ldquo;infinite memory&rdquo; is lossy</h3>
+          <p class="concept-card__body">
+            With state dimension N=16, Mamba has &asymp;512 bits to represent <em>all past information</em>,
+            regardless of sequence length. By the data processing inequality,
+            I(h<sub>t</sub>; x<sub>1:t</sub>) &le; N &middot; log<sub>2</sub>(precision).
+            This is fundamentally different from an IIR filter processing a deterministic signal.
+          </p>
+        </div>
+        <div class="concept-card" style="--card-accent: var(--color-amber);">
+          <h3 class="concept-card__title">O(n&sup2;) vs O(n) elides constants</h3>
+          <p class="concept-card__body">
+            For short sequences (n < 256), attention is often <em>faster</em> because matrix
+            multiplication is supremely optimized on GPUs (tensor cores), while Mamba&rsquo;s
+            parallel scan has higher constant factors.
+          </p>
+        </div>
+      </div>
+
+      <h3>A More Precise Framework</h3>
+      <table class="comparison-table">
+        <thead>
+          <tr><th>Property</th><th>Attention</th><th>Mamba</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Memory type</td><td>Explicit (stores all K,V)</td><td>Compressed (fixed-size state)</td></tr>
+          <tr><td>Memory capacity</td><td>O(n&middot;d) &mdash; grows, lossless</td><td>O(N&middot;d) &mdash; fixed, lossy</td></tr>
+          <tr><td>Retrieval</td><td>Content-addressable (hash table)</td><td>State-based (running average)</td></tr>
+          <tr><td>Computation</td><td>O(n&sup2;d) per layer</td><td>O(nNd) per layer</td></tr>
+          <tr><td>Better analogy</td><td>Gram matrix / correlation matrix</td><td>Kalman filter / adaptive filter</td></tr>
+        </tbody>
+      </table>
+
+      <details class="progressive-disclosure">
+        <summary>Show the Math &mdash; Information Bottleneck</summary>
+        <div class="disclosure-content">
+          <p>
+            By the data processing inequality, the mutual information between Mamba&rsquo;s state
+            and the input history is bounded:
+          </p>
+          <div class="math-block">
+            <code>I(h<sub>t</sub> ; x<sub>1:t</sub>) &le; H(h<sub>t</sub>) &le; N &middot; log<sub>2</sub>(precision) bits</code>
+          </div>
+          <p>
+            For float32 with N=16, this is at most ~512 bits. In contrast, attention&rsquo;s KV-cache
+            stores the full sequence with O(n &middot; d &middot; 32) bits. The FIR/IIR framing
+            should be presented as a <strong>first-order approximation</strong> that captures
+            the essential tradeoff, with explicit acknowledgment of these limits.
+          </p>
+        </div>
+      </details>
+    </section>
+
+    <!-- ============================================================
+         24.4 — HiPPO ↔ Butterworth
+         ============================================================ -->
+    <section class="chapter-section content-section" id="hippo-butterworth">
+      <h2 class="section-heading"><span class="section-number">24.4</span> HiPPO &harr; Butterworth: Different Optimization Spaces</h2>
+
+      <p>
+        Chapter 18 drew a connection: &ldquo;HiPPO places poles optimized for memory, just as
+        Butterworth places poles optimized for frequency response.&rdquo; While both involve
+        pole placement, they operate in <strong>fundamentally different mathematical spaces</strong>.
+      </p>
+
+      <div class="card-grid" style="grid-template-columns: 1fr 1fr;">
+        <div class="concept-card" style="--card-accent: var(--color-dsp);">
+          <h3 class="concept-card__title">Butterworth</h3>
+          <p class="concept-card__body">
+            Optimizes in the <strong>frequency domain</strong>: minimizes |H(j&omega;)|&sup2; deviation
+            from 1 in the passband, subject to monotonicity (maximally flat). Poles are
+            uniformly distributed on a circle in the s-plane, yielding <em>complex</em> z-plane poles.
+          </p>
+        </div>
+        <div class="concept-card" style="--card-accent: var(--color-ai);">
+          <h3 class="concept-card__title">HiPPO</h3>
+          <p class="concept-card__body">
+            Optimizes in the <strong>approximation theory domain</strong>: minimizes weighted L&sup2;
+            error of history reconstruction from state coefficients. HiPPO-LegS eigenvalues
+            are at &minus;(n+&frac12;) on the <em>negative real axis</em> &mdash; all real,
+            nothing like Butterworth&rsquo;s circle.
+          </p>
+        </div>
+      </div>
+
+      <h3>The Resolution</h3>
+      <p>
+        The analogy should emphasize the <strong>shared methodology</strong> (principled pole placement
+        in state-space systems) rather than implying the results are similar. The strongest
+        bridge case: <strong>HiPPO-FouT</strong> (the Fourier variant) places poles on a circle,
+        which <em>does</em> resemble Butterworth. This variant is the true bridge between
+        the two optimization spaces.
+      </p>
+    </section>
+
+    <!-- ============================================================
+         TOOL 24.1 — Analogy Spectrum
+         ============================================================ -->
+    <section class="chapter-section content-section" id="tool-spectrum">
+      <h2 class="section-heading"><span class="section-number">Tool 24.1</span> Analogy Spectrum</h2>
+
+      <p>
+        Explore the matched filter &rarr; attention continuum. Adjust the softmax temperature &tau;
+        and see how detection efficiency changes. At what point does the analogy break?
+      </p>
+
+      <div class="tool-container" id="tool-analogy-spectrum">
+        <div class="tool-header">
+          <span class="tool-header__label" style="background: var(--color-amber); color: #000;">Tool 24.1</span>
+          <span class="tool-header__title">Analogy Spectrum &mdash; Matched Filter to Attention</span>
+        </div>
+        <div class="tool-body">
+          <div class="tool-controls">
+            <div class="control-group">
+              <label class="control-label">Temperature &tau;</label>
+              <input type="range" min="0.05" max="5" value="1" step="0.05" data-control="as-temp">
+              <span class="control-value" data-value="as-temp">1.00</span>
+            </div>
+            <div class="control-group">
+              <label class="control-label">Noise Level</label>
+              <input type="range" min="0" max="1" value="0.3" step="0.05" data-control="as-noise">
+              <span class="control-value" data-value="as-noise">0.30</span>
+            </div>
+            <div class="control-group">
+              <label class="control-label">Templates</label>
+              <input type="range" min="1" max="5" value="3" step="1" data-control="as-templates">
+              <span class="control-value" data-value="as-templates">3</span>
+            </div>
+          </div>
+          <div class="tool-canvas-wrapper"></div>
+        </div>
+      </div>
+
+      <div class="insight-box">
+        <h3 class="insight-box__title">Try This</h3>
+        <ul>
+          <li>Set &tau; &asymp; 1.0 (standard scaling) &mdash; the &ldquo;matched filter regime&rdquo; where the analogy is strongest.</li>
+          <li>Push &tau; &rarr; 0.05 (hard argmax) &mdash; detection efficiency drops. Only one position selected.</li>
+          <li>Push &tau; &rarr; 5.0 (uniform) &mdash; efficiency drops. All positions weighted equally, no discrimination.</li>
+          <li>Increase noise level &mdash; at high noise, the matched filter regime narrows.</li>
+          <li>Watch the side-by-side: linear attention (left) is always exact cross-correlation; softmax (right) departs as &tau; moves away from the optimal range.</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         TOOL 24.2 — LTI vs LTV Explorer
+         ============================================================ -->
+    <section class="chapter-section content-section" id="tool-ltv">
+      <h2 class="section-heading"><span class="section-number">Tool 24.2</span> LTI vs LTV Explorer</h2>
+
+      <p>
+        See the fundamental difference between S4 (fixed IIR) and Mamba (adaptive IIR).
+        On the left, S4&rsquo;s poles stay fixed on the z-plane. On the right, Mamba&rsquo;s
+        poles move as the input changes &mdash; exactly like a spectrogram captures a
+        time-varying spectrum.
+      </p>
+
+      <div class="tool-container" id="tool-lti-vs-ltv">
+        <div class="tool-header">
+          <span class="tool-header__label" style="background: var(--color-amber); color: #000;">Tool 24.2</span>
+          <span class="tool-header__title">LTI vs LTV Explorer &mdash; Fixed vs Adaptive Poles</span>
+        </div>
+        <div class="tool-body">
+          <div class="tool-controls">
+            <div class="control-group">
+              <label class="control-label">Signal Type</label>
+              <select class="tool-select" data-control="ltv-signal">
+                <option value="speech">Speech-like</option>
+                <option value="music">Music-like</option>
+                <option value="transient">Transients</option>
+                <option value="noise">White Noise</option>
+              </select>
+            </div>
+            <div class="control-group">
+              <label class="control-label">Speed</label>
+              <input type="range" min="0.2" max="3" value="1" step="0.1" data-control="ltv-speed">
+              <span class="control-value" data-value="ltv-speed">1.0</span>
+            </div>
+            <div class="control-group">
+              <label class="control-label">Action</label>
+              <button class="tool-btn" data-control="ltv-toggle">Pause</button>
+            </div>
+          </div>
+          <div class="tool-canvas-wrapper"></div>
+        </div>
+      </div>
+
+      <div class="insight-box">
+        <h3 class="insight-box__title">Try This</h3>
+        <ul>
+          <li><strong>Speech-like</strong>: Watch Mamba&rsquo;s poles cluster near formant frequencies during vowels, then scatter during consonants.</li>
+          <li><strong>Transients</strong>: See poles rapidly shift between near-unit-circle (long memory) and damped (quick forget).</li>
+          <li><strong>White noise</strong>: Mamba&rsquo;s poles jitter randomly &mdash; no structure to lock onto. S4&rsquo;s poles are unchanged.</li>
+          <li>The bottom strip shows the &ldquo;frozen H<sub>t</sub>(z)&rdquo; magnitude response at the current timestep &mdash; Mamba&rsquo;s spectrogram slice.</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- Chapter Navigation -->
+    <nav class="chapter-nav">
+      <a class="chapter-nav__prev" href="../part4/ch23-capstone.html">
+        <span class="chapter-nav__dir">&larr; Previous</span>
+        <span class="chapter-nav__label">Ch 23: Capstone Project</span>
+      </a>
+      <a class="chapter-nav__next" href="ch25-honest-benchmarks.html">
+        <span class="chapter-nav__dir">Next &rarr;</span>
+        <span class="chapter-nav__label">Ch 25: Honest Benchmarks</span>
+      </a>
+    </nav>
+
+  </main>
+</div>
+
+<!-- Scripts -->
+<script src="../../js/core/navigation.js"></script>
+<script src="../../js/core/progressive-disclosure.js"></script>
+<script src="../../js/core/chapter-nav.js"></script>
+<script src="../../js/tools/shared/plot-utils.js"></script>
+<script src="../../js/tools/ch24-analogy-spectrum.js"></script>
+<script src="../../js/tools/ch24-lti-vs-ltv.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    if (window.DSPtoAI && window.DSPtoAI.AnalogySpectrum) {
+      window.DSPtoAI.AnalogySpectrum.init('tool-analogy-spectrum');
+    }
+    if (window.DSPtoAI && window.DSPtoAI.LTIvsLTV) {
+      window.DSPtoAI.LTIvsLTV.init('tool-lti-vs-ltv');
+    }
+  });
+</script>
+
+<script src="../../js/core/search-index.js"></script>
+<script src="../../js/core/search.js"></script>
+</body>
+</html>

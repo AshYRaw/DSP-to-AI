@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ch 27: The Experimental Frontier &mdash; DSP to AI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Outfit:wght@300;400;500;600;700;800;900&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../style/global.css">
+  <link rel="stylesheet" href="../../style/theme-dark.css">
+  <link rel="stylesheet" href="../../style/theme-light.css">
+  <link rel="stylesheet" href="../../style/components.css">
+  <link rel="stylesheet" href="../../style/chapter.css">
+  <script src="../../js/core/theme-switcher.js"></script>
+</head>
+<body>
+
+<div class="noise"></div>
+
+<!-- Navigation -->
+<nav class="site-nav">
+  <a href="../../index.html" class="site-nav__logo">DSP <span class="arrow">&rarr;</span> AI</a>
+  <ul class="site-nav__links">
+    <li><a href="../../index.html#part1">Part I</a></li>
+    <li><a href="../../index.html#part2">Part II</a></li>
+    <li><a href="../../index.html#part3">Part III</a></li>
+    <li><a href="../../index.html#part4">Part IV</a></li>
+    <li><a href="../../index.html#part5" class="active">Part V</a></li>
+    <li><a href="../../gallery/index.html">Gallery</a></li>
+    <li><a href="../../reference/glossary.html">Reference</a></li>
+  </ul>
+  <button class="theme-toggle" aria-label="Toggle theme"></button>
+  <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false">&#9776;</button>
+</nav>
+<div class="progress-bar"></div>
+
+<!-- Page Layout -->
+<div class="chapter-page" data-chapter-id="ch27">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar__part-label" style="color: var(--color-amber);">Part V: The Critical Lens</div>
+    <ul class="sidebar__chapters">
+      <li><a class="sidebar__chapter-link" href="ch24-analogy-limits.html"><span class="sidebar__chapter-num">24</span> Where Analogies Break</a></li>
+      <li><a class="sidebar__chapter-link" href="ch25-honest-benchmarks.html"><span class="sidebar__chapter-num">25</span> Honest Benchmarks</a></li>
+      <li><a class="sidebar__chapter-link" href="ch26-bigger-picture.html"><span class="sidebar__chapter-num">26</span> The Bigger Picture</a></li>
+      <li><a class="sidebar__chapter-link active" href="ch27-experimental-frontier.html"><span class="sidebar__chapter-num">27</span> The Experimental Frontier</a>
+        <ul class="sidebar__sections">
+          <li><a class="sidebar__section-link" href="#filter-probe">The Filter Probe</a></li>
+          <li><a class="sidebar__section-link" href="#mamba-vocoder">Mamba-Vocoder</a></li>
+          <li><a class="sidebar__section-link" href="#dsp-arch-search">DSP Architecture Search</a></li>
+          <li><a class="sidebar__section-link" href="#stability-analysis">Stability Analysis</a></li>
+          <li><a class="sidebar__section-link" href="#dsp-mamba">DSP-Mamba</a></li>
+          <li><a class="sidebar__section-link" href="#tool-filter-probe">Filter Probe Sim</a></li>
+          <li><a class="sidebar__section-link" href="#tool-dsp-mamba">DSP-Mamba Architect</a></li>
+        </ul>
+      </li>
+    </ul>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="chapter-content">
+
+    <header class="chapter-header">
+      <div class="chapter-header__part" style="color: var(--color-amber);">Part V &mdash; The Critical Lens</div>
+      <div class="chapter-header__number">Chapter 27</div>
+      <h1 class="chapter-header__title">The Experimental Frontier</h1>
+      <p class="chapter-header__subtitle">
+        Chapters 24&ndash;26 identified where the DSP&harr;AI analogies hold and where they break.
+        This final chapter proposes <strong>five experimental programs</strong> to rigorously test
+        every claim. These are not thought experiments &mdash; they&rsquo;re research blueprints
+        for the next generation of DSP-informed AI.
+      </p>
+    </header>
+
+    <!-- ============================================================
+         27.1 — The Filter Probe
+         ============================================================ -->
+    <section class="chapter-section content-section" id="filter-probe">
+      <h2 class="section-heading"><span class="section-number">27.1</span> Program A: The Filter Probe</h2>
+
+      <p>
+        <strong>Goal:</strong> Reverse-engineer the frequency selectivity of trained SSM channels.
+        If the IIR analogy is deep, trained Mamba channels should learn interpretable filter
+        characteristics.
+      </p>
+
+      <div class="card-grid" style="grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));">
+        <div class="concept-card" style="--card-accent: var(--color-dsp);">
+          <h3 class="concept-card__title">Step 1: Extract</h3>
+          <p class="concept-card__body">
+            Train Mamba on speech &rarr; extract learned (A, B, C) parameters per channel &rarr;
+            compute frozen H<sub>i</sub>(z) for each channel.
+          </p>
+        </div>
+        <div class="concept-card" style="--card-accent: var(--color-dsp);">
+          <h3 class="concept-card__title">Step 2: Classify</h3>
+          <p class="concept-card__body">
+            Classify channels: low-pass (pole near z=1), band-pass (complex poles near unit circle),
+            high-pass (pole near z=&minus;1), all-pass (poles = conjugate of zeros).
+          </p>
+        </div>
+        <div class="concept-card" style="--card-accent: var(--color-dsp);">
+          <h3 class="concept-card__title">Step 3: Validate</h3>
+          <p class="concept-card__body">
+            Do band-pass channels have formant-like center frequencies? Do deeper layers have
+            higher Q (narrower bandwidth)? If yes, Mamba IS discovering filter bank structure.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         27.2 — Mamba-Vocoder
+         ============================================================ -->
+    <section class="chapter-section content-section" id="mamba-vocoder">
+      <h2 class="section-heading"><span class="section-number">27.2</span> Program B: Mamba-Vocoder</h2>
+
+      <p>
+        <strong>Hypothesis:</strong> If Mamba IS an IIR filter bank, driving trained SSM channels
+        with white noise or impulse trains should produce speech-like formant structure &mdash;
+        exactly like a classical LP vocoder.
+      </p>
+
+      <div class="callout callout--insight">
+        <h4>The Radical Test</h4>
+        <p>
+          Extract the learned SSM from a speech-trained Mamba. Drive each channel with
+          excitation signals (white noise for unvoiced, impulse trains for voiced). If the
+          output has formant-like spectral peaks, Mamba has literally learned a
+          <strong>parametric speech model</strong>. If not, the IIR analogy, while
+          mathematically correct, doesn&rsquo;t capture the functional role.
+        </p>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         27.3 — DSP-Guided Architecture Search
+         ============================================================ -->
+    <section class="chapter-section content-section" id="dsp-arch-search">
+      <h2 class="section-heading"><span class="section-number">27.3</span> Program C: DSP-Guided Architecture Search</h2>
+
+      <p>
+        <strong>Goal:</strong> Use autocorrelation analysis R(&tau;) to predict the optimal
+        attention-to-Mamba ratio <em>without</em> exhaustive search.
+      </p>
+
+      <p>
+        The key insight: compute R(&tau;) of input features, decompose into local (IIR-capturable)
+        and long-range (needs attention) components. The ratio of long-range energy
+        &eta; = E[R<sub>long</sub>] / E[R<sub>total</sub>] should predict the optimal architecture mix.
+      </p>
+
+      <table class="comparison-table">
+        <thead>
+          <tr><th>Signal Type</th><th>Expected &eta;</th><th>Prediction</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Read speech</td><td>Low</td><td>Mamba-dominant (few attention layers)</td></tr>
+          <tr><td>Conversational</td><td>Medium</td><td>Balanced hybrid</td></tr>
+          <tr><td>Music</td><td>High</td><td>More attention (strong long-range periodicity)</td></tr>
+          <tr><td>Code</td><td>Very high</td><td>Attention-dominant (nested structure)</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- ============================================================
+         27.4 — Stability Analysis
+         ============================================================ -->
+    <section class="chapter-section content-section" id="stability-analysis">
+      <h2 class="section-heading"><span class="section-number">27.4</span> Program D: Stability Analysis of Trained Models</h2>
+
+      <p>
+        <strong>Goal:</strong> Verify that Mamba maintains stability in practice and characterize
+        its stability margins with real speech input.
+      </p>
+
+      <div class="card-grid" style="grid-template-columns: 1fr 1fr;">
+        <div class="concept-card" style="--card-accent: var(--color-math);">
+          <h3 class="concept-card__title">What to Measure</h3>
+          <p class="concept-card__body">
+            <strong>1.</strong> Lyapunov exponents &Lambda;<sub>i</sub> (must be negative for stability). <br>
+            <strong>2.</strong> Max eigenvalue magnitude &rho;(t) over time. <br>
+            <strong>3.</strong> How close do poles get to the unit circle? (Stability margin)
+          </p>
+        </div>
+        <div class="concept-card" style="--card-accent: var(--color-math);">
+          <h3 class="concept-card__title">Recent Confirmation</h3>
+          <p class="concept-card__body">
+            ICLR 2025 workshop paper proved Mamba&rsquo;s Lyapunov exponents are
+            <strong>non-positive by construction</strong>. Since Re(a<sub>i</sub>) < 0 and
+            &Delta;<sub>t</sub> > 0, |&lambda;<sub>i</sub>(t)| < 1 always. The DSP stability
+            analysis from Chapter 6 applies directly.
+          </p>
+        </div>
+      </div>
+
+      <p>
+        <strong>Prediction:</strong> Well-trained Mamba models operate with stability margins of
+        0.05&ndash;0.15 (poles at |&lambda;| = 0.85&ndash;0.95), with brief excursions closer to 1.0
+        during semantically important moments (onsets, boundaries).
+      </p>
+    </section>
+
+    <!-- ============================================================
+         27.5 — DSP-Mamba: The Ultimate Test
+         ============================================================ -->
+    <section class="chapter-section content-section" id="dsp-mamba">
+      <h2 class="section-heading"><span class="section-number">27.5</span> Program E: DSP-Mamba &mdash; The Ultimate Test</h2>
+
+      <p>
+        <strong>The big question:</strong> Do DSP priors <em>help</em>, or does end-to-end learning
+        find better solutions? Build a Mamba variant where <em>every design choice</em> is
+        DSP-motivated:
+      </p>
+
+      <table class="comparison-table">
+        <thead>
+          <tr><th>Component</th><th>DSP-Mamba Design</th><th>Standard Mamba</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Initialization</strong></td>
+            <td>HiPPO (1/3) + Butterworth (1/3) + Bessel (1/3)</td>
+            <td>HiPPO only</td>
+          </tr>
+          <tr>
+            <td><strong>Pre-SSM conv</strong></td>
+            <td>kernel=15 (150ms coarticulation span)</td>
+            <td>kernel=4</td>
+          </tr>
+          <tr>
+            <td><strong>Stability</strong></td>
+            <td>r&middot;exp(j&theta;) with r = sigmoid(&alpha;)</td>
+            <td>Softplus on &Delta;</td>
+          </tr>
+          <tr>
+            <td><strong>Gating</strong></td>
+            <td>Explicit bandwidth control: BW<sub>t</sub> = &sigma;(Linear(x<sub>t</sub>))&middot;BW<sub>max</sub></td>
+            <td>SiLU gating</td>
+          </tr>
+          <tr>
+            <td><strong>Output</strong></td>
+            <td>Cepstral projection (DCT on SSM outputs)</td>
+            <td>Linear projection</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="callout callout--insight">
+        <h4>Why This Matters</h4>
+        <p>
+          If DSP-Mamba outperforms standard Mamba, it proves that 70 years of filter design
+          wisdom can directly improve modern AI. If it doesn&rsquo;t, it proves that
+          end-to-end learning discovers representations that surpass hand-designed DSP priors.
+          Either answer is valuable &mdash; and either answer is a victory for understanding.
+        </p>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         TOOL 27.1 — Filter Probe Simulator
+         ============================================================ -->
+    <section class="chapter-section content-section" id="tool-filter-probe">
+      <h2 class="section-heading"><span class="section-number">Tool 27.1</span> Filter Probe Simulator</h2>
+
+      <p>
+        Explore a simulated SSM filter bank. Each channel shows its pole-zero plot, magnitude
+        response, and impulse response. Change the initialization and see how the learned filters differ.
+      </p>
+
+      <div class="tool-container" id="tool-filter-probe-viz">
+        <div class="tool-header">
+          <span class="tool-header__label" style="background: var(--color-amber); color: #000;">Tool 27.1</span>
+          <span class="tool-header__title">Filter Probe &mdash; SSM Filter Bank Analysis</span>
+        </div>
+        <div class="tool-body">
+          <div class="tool-controls">
+            <div class="control-group">
+              <label class="control-label">Initialization</label>
+              <select class="tool-select" data-control="fp-init">
+                <option value="hippo" selected>HiPPO-LegS</option>
+                <option value="butterworth">Butterworth</option>
+                <option value="random">Random</option>
+                <option value="mixed">Mixed (DSP-Mamba)</option>
+              </select>
+            </div>
+            <div class="control-group">
+              <label class="control-label">Channels</label>
+              <select class="tool-select" data-control="fp-channels">
+                <option value="8" selected>8</option>
+                <option value="12">12</option>
+                <option value="16">16</option>
+              </select>
+            </div>
+            <div class="control-group">
+              <label class="control-label">Training Stage</label>
+              <input type="range" min="0" max="1" value="0" step="0.05" data-control="fp-stage">
+              <span class="control-value" data-value="fp-stage">Untrained</span>
+            </div>
+          </div>
+          <div class="tool-canvas-wrapper"></div>
+        </div>
+      </div>
+
+      <div class="insight-box">
+        <h3 class="insight-box__title">Try This</h3>
+        <ul>
+          <li>Start with <strong>HiPPO, untrained</strong>: all poles on the real axis. Slide the training stage to see them spread into the complex plane.</li>
+          <li>Switch to <strong>Butterworth</strong>: poles start on a circle. After training, they reorganize toward mel-like spacing.</li>
+          <li>Try <strong>Mixed (DSP-Mamba)</strong>: the diverse initialization covers more of the frequency range from the start.</li>
+          <li><strong>Random</strong> initialization: slower convergence, but end result is surprisingly similar to the DSP-informed ones.</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         TOOL 27.2 — DSP-Mamba Architect
+         ============================================================ -->
+    <section class="chapter-section content-section" id="tool-dsp-mamba">
+      <h2 class="section-heading"><span class="section-number">Tool 27.2</span> DSP-Mamba Architect</h2>
+
+      <p>
+        Design your own DSP-informed Mamba variant. Choose each component, then compare
+        predicted performance metrics against standard Mamba.
+      </p>
+
+      <div class="tool-container" id="tool-dsp-mamba-viz">
+        <div class="tool-header">
+          <span class="tool-header__label" style="background: var(--color-amber); color: #000;">Tool 27.2</span>
+          <span class="tool-header__title">DSP-Mamba Architect &mdash; Design &amp; Compare</span>
+        </div>
+        <div class="tool-body">
+          <div class="tool-controls">
+            <div class="control-group">
+              <label class="control-label">Init Strategy</label>
+              <select class="tool-select" data-control="dm-init">
+                <option value="hippo">HiPPO Only</option>
+                <option value="butterworth">Butterworth Only</option>
+                <option value="bessel">Bessel Only</option>
+                <option value="mixed" selected>Mixed (H+B+Bs)</option>
+              </select>
+            </div>
+            <div class="control-group">
+              <label class="control-label">Conv Kernel</label>
+              <input type="range" min="1" max="31" value="15" step="2" data-control="dm-kernel">
+              <span class="control-value" data-value="dm-kernel">15</span>
+            </div>
+          </div>
+          <div class="tool-controls" style="padding-top: 0;">
+            <div class="control-group">
+              <label class="control-label">Stability Margin</label>
+              <input type="range" min="0.01" max="0.2" value="0.05" step="0.01" data-control="dm-margin">
+              <span class="control-value" data-value="dm-margin">0.05</span>
+            </div>
+            <div class="control-group">
+              <label class="control-label">Gating Mode</label>
+              <select class="tool-select" data-control="dm-gating">
+                <option value="silu">SiLU (Standard)</option>
+                <option value="bandwidth" selected>Bandwidth Control</option>
+              </select>
+            </div>
+          </div>
+          <div class="tool-canvas-wrapper"></div>
+        </div>
+      </div>
+
+      <div class="insight-box">
+        <h3 class="insight-box__title">Try This</h3>
+        <ul>
+          <li><strong>Mixed init + kernel 15 + bandwidth gating</strong>: the full DSP-Mamba design. Compare the metrics to standard Mamba.</li>
+          <li>Set kernel to <strong>4</strong> (standard Mamba) vs <strong>31</strong> (Conformer-like): see the local context tradeoff.</li>
+          <li>Increase <strong>stability margin</strong> to 0.15: safer but shorter memory span. Decrease to 0.01: longer memory but riskier.</li>
+          <li>The <strong>frequency coverage</strong> plot shows which bands each initialization covers from the start.</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- Chapter Navigation -->
+    <nav class="chapter-nav">
+      <a class="chapter-nav__prev" href="ch26-bigger-picture.html">
+        <span class="chapter-nav__dir">&larr; Previous</span>
+        <span class="chapter-nav__label">Ch 26: The Bigger Picture</span>
+      </a>
+      <a class="chapter-nav__next" href="../../index.html">
+        <span class="chapter-nav__dir">Back to Home &rarr;</span>
+        <span class="chapter-nav__label">DSP &rarr; AI</span>
+      </a>
+    </nav>
+
+  </main>
+</div>
+
+<!-- Scripts -->
+<script src="../../js/core/navigation.js"></script>
+<script src="../../js/core/progressive-disclosure.js"></script>
+<script src="../../js/core/chapter-nav.js"></script>
+<script src="../../js/tools/shared/plot-utils.js"></script>
+<script src="../../js/tools/ch27-filter-probe.js"></script>
+<script src="../../js/tools/ch27-dsp-mamba.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    if (window.DSPtoAI && window.DSPtoAI.FilterProbe) {
+      window.DSPtoAI.FilterProbe.init('tool-filter-probe-viz');
+    }
+    if (window.DSPtoAI && window.DSPtoAI.DSPMamba) {
+      window.DSPtoAI.DSPMamba.init('tool-dsp-mamba-viz');
+    }
+  });
+</script>
+
+<script src="../../js/core/search-index.js"></script>
+<script src="../../js/core/search.js"></script>
+</body>
+</html>

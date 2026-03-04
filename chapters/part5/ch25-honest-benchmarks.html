@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ch 25: Honest Benchmarks &mdash; DSP to AI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Outfit:wght@300;400;500;600;700;800;900&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../style/global.css">
+  <link rel="stylesheet" href="../../style/theme-dark.css">
+  <link rel="stylesheet" href="../../style/theme-light.css">
+  <link rel="stylesheet" href="../../style/components.css">
+  <link rel="stylesheet" href="../../style/chapter.css">
+  <script src="../../js/core/theme-switcher.js"></script>
+</head>
+<body>
+
+<div class="noise"></div>
+
+<!-- Navigation -->
+<nav class="site-nav">
+  <a href="../../index.html" class="site-nav__logo">DSP <span class="arrow">&rarr;</span> AI</a>
+  <ul class="site-nav__links">
+    <li><a href="../../index.html#part1">Part I</a></li>
+    <li><a href="../../index.html#part2">Part II</a></li>
+    <li><a href="../../index.html#part3">Part III</a></li>
+    <li><a href="../../index.html#part4">Part IV</a></li>
+    <li><a href="../../index.html#part5" class="active">Part V</a></li>
+    <li><a href="../../gallery/index.html">Gallery</a></li>
+    <li><a href="../../reference/glossary.html">Reference</a></li>
+  </ul>
+  <button class="theme-toggle" aria-label="Toggle theme"></button>
+  <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false">&#9776;</button>
+</nav>
+<div class="progress-bar"></div>
+
+<!-- Page Layout -->
+<div class="chapter-page" data-chapter-id="ch25">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar__part-label" style="color: var(--color-amber);">Part V: The Critical Lens</div>
+    <ul class="sidebar__chapters">
+      <li><a class="sidebar__chapter-link" href="ch24-analogy-limits.html"><span class="sidebar__chapter-num">24</span> Where Analogies Break</a></li>
+      <li><a class="sidebar__chapter-link active" href="ch25-honest-benchmarks.html"><span class="sidebar__chapter-num">25</span> Honest Benchmarks</a>
+        <ul class="sidebar__sections">
+          <li><a class="sidebar__section-link" href="#convolution-helps">Why Convolution Helps</a></li>
+          <li><a class="sidebar__section-link" href="#apples-to-apples">Apples-to-Apples</a></li>
+          <li><a class="sidebar__section-link" href="#expressiveness">Expressiveness Hierarchy</a></li>
+          <li><a class="sidebar__section-link" href="#numbers-context">Numbers Need Context</a></li>
+          <li><a class="sidebar__section-link" href="#tool-benchmark">Benchmark Dissector</a></li>
+          <li><a class="sidebar__section-link" href="#tool-express">Expressiveness</a></li>
+        </ul>
+      </li>
+      <li><a class="sidebar__chapter-link" href="ch26-bigger-picture.html"><span class="sidebar__chapter-num">26</span> The Bigger Picture</a></li>
+      <li><a class="sidebar__chapter-link" href="ch27-experimental-frontier.html"><span class="sidebar__chapter-num">27</span> The Experimental Frontier</a></li>
+    </ul>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="chapter-content">
+
+    <header class="chapter-header">
+      <div class="chapter-header__part" style="color: var(--color-amber);">Part V &mdash; The Critical Lens</div>
+      <div class="chapter-header__number">Chapter 25</div>
+      <h1 class="chapter-header__title">Honest Benchmarks</h1>
+      <p class="chapter-header__subtitle">
+        Numbers without context are just numbers. This chapter scrutinizes the empirical claims
+        made throughout Parts III&ndash;IV &mdash; parameter mismatches, bidirectional cheating,
+        saturated benchmarks, and the contested expressiveness hierarchy. The goal: teach you
+        to read ML papers with a critical eye.
+      </p>
+    </header>
+
+    <!-- ============================================================
+         25.1 — Why Convolution Helps Mamba
+         ============================================================ -->
+    <section class="chapter-section content-section" id="convolution-helps">
+      <h2 class="section-heading"><span class="section-number">25.1</span> Why Convolution Helps Mamba</h2>
+
+      <p>
+        Chapter 19 noted that Mamba includes a 1D convolution (kernel=4) before the SSM scan.
+        The claim that &ldquo;convolution provides local nonlinear feature extraction that
+        Mamba&rsquo;s linear recurrence lacks&rdquo; conflates <strong>two distinct effects</strong>:
+      </p>
+
+      <div class="card-grid" style="grid-template-columns: 1fr 1fr;">
+        <div class="concept-card" style="--card-accent: var(--color-dsp);">
+          <h3 class="concept-card__title">Nonlinearity Injection</h3>
+          <p class="concept-card__body">
+            The SSM core is <em>linear in the state</em>: h<sub>t</sub> = A<sub>t</sub>h<sub>t-1</sub> + B<sub>t</sub>x<sub>t</sub>.
+            While the Mamba <em>block</em> is nonlinear (SiLU, gating, input-dependent params),
+            the recurrence itself applies no nonlinear activation to the state. Conv + activation
+            provides additional nonlinear mixing <em>before</em> the SSM.
+          </p>
+        </div>
+        <div class="concept-card" style="--card-accent: var(--color-ai);">
+          <h3 class="concept-card__title">Local Feature Extraction</h3>
+          <p class="concept-card__body">
+            Mamba&rsquo;s kernel=4 provides ~40ms of local context (at 10ms stride).
+            Conformer uses kernel=31 (~310ms). These are <em>fundamentally different scales</em>
+            of local processing. The conv captures local coarticulation patterns &mdash;
+            phone transitions, local edges &mdash; that the SSM processes sequentially.
+          </p>
+        </div>
+      </div>
+
+      <p>
+        The key insight: the Mamba block IS a nonlinear dynamical system at the block level.
+        But the SSM core&rsquo;s linearity means it needs external nonlinearity for
+        <strong>hierarchical feature learning</strong>. Separating these concerns makes the
+        architecture clearer.
+      </p>
+    </section>
+
+    <!-- ============================================================
+         25.2 — Benchmark Comparisons
+         ============================================================ -->
+    <section class="chapter-section content-section" id="apples-to-apples">
+      <h2 class="section-heading"><span class="section-number">25.2</span> Benchmark Comparisons Are Not Apples-to-Apples</h2>
+
+      <p>
+        When we said &ldquo;ConMamba achieves 3.9%/10.3% WER vs Conformer&rsquo;s 4.3%/11.3%&rdquo;
+        in Chapter 20, several critical caveats were missing:
+      </p>
+
+      <table class="comparison-table">
+        <thead>
+          <tr><th>Issue</th><th>Detail</th><th>Impact</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style="color: var(--color-amber);"><strong>Parameter mismatch</strong></td>
+            <td>ConMamba: 31.6M vs Conformer: 28.8M (10% more params)</td>
+            <td>Improvement may be entirely from extra capacity</td>
+          </tr>
+          <tr>
+            <td style="color: var(--color-amber);"><strong>Bidirectional Mamba</strong></td>
+            <td>ConMamba uses bidir Mamba (forward + backward), doubling SSM compute</td>
+            <td>Violates the causal/streaming advantage we claimed for Mamba</td>
+          </tr>
+          <tr>
+            <td style="color: var(--color-amber);"><strong>Benchmark saturation</strong></td>
+            <td>LibriSpeech is saturated at ~3&ndash;4% WER</td>
+            <td>Small differences may not be statistically significant</td>
+          </tr>
+          <tr>
+            <td style="color: var(--color-math);"><strong>The real story</strong></td>
+            <td>At 115M params, ConMamba &asymp; Conformer</td>
+            <td>Equivalence at scale is the informative data point</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <p>
+        The proper comparison requires <strong>iso-parameter</strong> and <strong>iso-FLOP</strong>
+        budgets, controlling for training data, augmentation, optimizer, and decoding method.
+        The efficiency metrics (training time, memory, inference speed) are more robust than
+        WER on saturated benchmarks.
+      </p>
+    </section>
+
+    <!-- ============================================================
+         25.3 — Expressiveness Hierarchy
+         ============================================================ -->
+    <section class="chapter-section content-section" id="expressiveness">
+      <h2 class="section-heading"><span class="section-number">25.3</span> The Expressiveness Hierarchy Is Contested</h2>
+
+      <p>
+        The Mamba-2 paper established a hierarchy: <strong>Selective SSMs > SSD > Linear Attention >
+        Softmax Attention</strong> (in terms of representable functions). This is theoretically
+        correct but practically misleading:
+      </p>
+
+      <div class="card-grid" style="grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));">
+        <div class="concept-card" style="--card-accent: var(--color-amber);">
+          <h3 class="concept-card__title">More expressive &ne; better</h3>
+          <p class="concept-card__body">
+            Softmax attention at the &ldquo;bottom&rdquo; doesn&rsquo;t mean worst &mdash;
+            it means <em>most constrained</em>. Constraints = regularization = better
+            generalization with limited data. The bias-variance tradeoff applies to architectures too.
+          </p>
+        </div>
+        <div class="concept-card" style="--card-accent: var(--color-amber);">
+          <h3 class="concept-card__title">Both are limited to TC&deg;</h3>
+          <p class="concept-card__body">
+            Merrill et al. (ICML 2024) and Sarrof et al. (NeurIPS 2024) showed that
+            <strong>both Transformers and SSMs are limited to TC&deg;</strong> (threshold circuits
+            of constant depth) in practice. Neither is Turing-complete in finite precision.
+          </p>
+        </div>
+        <div class="concept-card" style="--card-accent: var(--color-amber);">
+          <h3 class="concept-card__title">Definition matters</h3>
+          <p class="concept-card__body">
+            If &ldquo;expressiveness&rdquo; means set of representable functions, the hierarchy holds.
+            If it means sample efficiency at learning useful representations, the ordering may
+            <strong>reverse</strong> &mdash; attention&rsquo;s content-addressable memory may
+            be more useful than raw approximation power.
+          </p>
+        </div>
+      </div>
+
+      <details class="progressive-disclosure">
+        <summary>Show the Math &mdash; Bias-Variance for Architectures</summary>
+        <div class="disclosure-content">
+          <p>
+            The expected test error decomposes as:
+          </p>
+          <div class="math-block">
+            <code>E[L<sub>test</sub>] = Bias&sup2; + Variance + Irreducible noise</code>
+          </div>
+          <p>
+            More expressive architectures (Mamba-1 > Mamba-2 > Linear Attn > Softmax Attn) have
+            <strong>lower bias</strong> but <strong>higher variance</strong>. With limited training
+            data, higher-variance models overfit. With massive data, lower-bias models dominate.
+            The crossover point where &ldquo;more expressive beats more constrained&rdquo; depends
+            on dataset size.
+          </p>
+        </div>
+      </details>
+    </section>
+
+    <!-- ============================================================
+         25.4 — Numbers Need Context
+         ============================================================ -->
+    <section class="chapter-section content-section" id="numbers-context">
+      <h2 class="section-heading"><span class="section-number">25.4</span> Numbers Need Context</h2>
+
+      <p>
+        Samba-ASR&rsquo;s impressive 1.17%/2.48% WER was cited alongside ConMamba&rsquo;s
+        ~3.9%/10.3% without adequate context:
+      </p>
+
+      <div class="card-grid" style="grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));">
+        <div class="concept-card" style="--card-accent: var(--color-danger);">
+          <h3 class="concept-card__title">16&times; data gap</h3>
+          <p class="concept-card__body">
+            Samba-ASR trains on <strong>15,460 hours</strong> (LibriLight + VoxPopuli + more).
+            ConMamba trains on <strong>960 hours</strong> (LibriSpeech only). The fair comparison
+            would be ConMamba at 15,460 hours.
+          </p>
+        </div>
+        <div class="concept-card" style="--card-accent: var(--color-danger);">
+          <h3 class="concept-card__title">External language model</h3>
+          <p class="concept-card__body">
+            At sub-2% WER, most systems use external LMs for decoding. This inflates results
+            beyond what the acoustic model alone achieves.
+          </p>
+        </div>
+        <div class="concept-card" style="--card-accent: var(--color-danger);">
+          <h3 class="concept-card__title">&ldquo;No attention&rdquo; needs scrutiny</h3>
+          <p class="concept-card__body">
+            Samba-ASR&rsquo;s &ldquo;no attention&rdquo; claim requires examining the
+            cross-connection mechanism, which may be functionally similar to cross-attention
+            through Mamba-based routing.
+          </p>
+        </div>
+      </div>
+
+      <div class="callout callout--insight">
+        <h4>The Lesson for Reading Papers</h4>
+        <p>
+          Always check: (1) parameter count, (2) training data scale, (3) bidirectional vs causal,
+          (4) decoding method, (5) confidence intervals. A result without these is a number
+          without meaning. The best comparisons are <strong>iso-parameter, iso-FLOP,
+          same-data, same-decoder</strong>.
+        </p>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         TOOL 25.1 — Benchmark Dissector
+         ============================================================ -->
+    <section class="chapter-section content-section" id="tool-benchmark">
+      <h2 class="section-heading"><span class="section-number">Tool 25.1</span> Benchmark Dissector</h2>
+
+      <p>
+        Set a parameter budget and data budget, then see how architectures compare at the
+        <strong>same scale</strong>. The fairness meter shows how controlled the comparison is.
+      </p>
+
+      <div class="tool-container" id="tool-benchmark-dissector">
+        <div class="tool-header">
+          <span class="tool-header__label" style="background: var(--color-amber); color: #000;">Tool 25.1</span>
+          <span class="tool-header__title">Benchmark Dissector &mdash; Fair Comparisons</span>
+        </div>
+        <div class="tool-body">
+          <div class="tool-controls">
+            <div class="control-group">
+              <label class="control-label">Parameter Budget</label>
+              <select class="tool-select" data-control="bd-params">
+                <option value="10">10M</option>
+                <option value="30" selected>30M</option>
+                <option value="100">100M</option>
+                <option value="300">300M</option>
+              </select>
+            </div>
+            <div class="control-group">
+              <label class="control-label">Training Data</label>
+              <select class="tool-select" data-control="bd-data">
+                <option value="960" selected>960h (LibriSpeech)</option>
+                <option value="5000">5,000h</option>
+                <option value="15000">15,000h</option>
+              </select>
+            </div>
+            <div class="control-group">
+              <label class="control-label">Metric</label>
+              <select class="tool-select" data-control="bd-metric">
+                <option value="wer" selected>WER (%)</option>
+                <option value="speed">Inference Speed</option>
+                <option value="memory">Memory Usage</option>
+              </select>
+            </div>
+          </div>
+          <div class="tool-canvas-wrapper"></div>
+        </div>
+      </div>
+
+      <div class="insight-box">
+        <h3 class="insight-box__title">Try This</h3>
+        <ul>
+          <li>At <strong>30M params, 960h</strong>: see the parameter mismatch between ConMamba and Conformer.</li>
+          <li>At <strong>100M params</strong>: the gap narrows &mdash; this is the real story.</li>
+          <li>Switch to <strong>15,000h</strong>: data scale matters more than architecture at this point.</li>
+          <li>Switch metric to <strong>Speed</strong>: Mamba&rsquo;s O(n) advantage shows clearly at long sequences.</li>
+          <li>Note the <strong>fairness meter</strong> &mdash; green = well-controlled, amber = caveats, red = misleading.</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         TOOL 25.2 — Expressiveness vs Generalization
+         ============================================================ -->
+    <section class="chapter-section content-section" id="tool-express">
+      <h2 class="section-heading"><span class="section-number">Tool 25.2</span> Expressiveness vs Generalization</h2>
+
+      <p>
+        The bias-variance tradeoff across architectures. More expressive models can fit more
+        complex functions, but may overfit with limited data. Watch the crossing points where
+        more expressive models overtake constrained ones.
+      </p>
+
+      <div class="tool-container" id="tool-expressiveness">
+        <div class="tool-header">
+          <span class="tool-header__label" style="background: var(--color-amber); color: #000;">Tool 25.2</span>
+          <span class="tool-header__title">Expressiveness vs Generalization</span>
+        </div>
+        <div class="tool-body">
+          <div class="tool-controls">
+            <div class="control-group">
+              <label class="control-label">Task Type</label>
+              <select class="tool-select" data-control="ex-task">
+                <option value="speech" selected>Speech (ASR)</option>
+                <option value="language">Language Modeling</option>
+                <option value="music">Music Generation</option>
+              </select>
+            </div>
+            <div class="control-group">
+              <label class="control-label">Data Range</label>
+              <select class="tool-select" data-control="ex-range">
+                <option value="small">100h &mdash; 1,000h</option>
+                <option value="medium" selected>100h &mdash; 50,000h</option>
+                <option value="large">100h &mdash; 500,000h</option>
+              </select>
+            </div>
+          </div>
+          <div class="tool-canvas-wrapper"></div>
+        </div>
+      </div>
+
+      <div class="insight-box">
+        <h3 class="insight-box__title">Try This</h3>
+        <ul>
+          <li><strong>Speech, medium range</strong>: softmax attention wins at small data, Mamba catches up around 5K&ndash;10K hours.</li>
+          <li><strong>Language modeling</strong>: the crossover happens later (more data needed for Mamba to dominate).</li>
+          <li><strong>Music</strong>: Mamba shines earlier due to strong periodicity (IIR-friendly signals).</li>
+          <li>The <strong>hybrid line</strong> is consistently near the top &mdash; combining strengths avoids worst-case of either alone.</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- Chapter Navigation -->
+    <nav class="chapter-nav">
+      <a class="chapter-nav__prev" href="ch24-analogy-limits.html">
+        <span class="chapter-nav__dir">&larr; Previous</span>
+        <span class="chapter-nav__label">Ch 24: Where Analogies Break</span>
+      </a>
+      <a class="chapter-nav__next" href="ch26-bigger-picture.html">
+        <span class="chapter-nav__dir">Next &rarr;</span>
+        <span class="chapter-nav__label">Ch 26: The Bigger Picture</span>
+      </a>
+    </nav>
+
+  </main>
+</div>
+
+<!-- Scripts -->
+<script src="../../js/core/navigation.js"></script>
+<script src="../../js/core/progressive-disclosure.js"></script>
+<script src="../../js/core/chapter-nav.js"></script>
+<script src="../../js/tools/shared/plot-utils.js"></script>
+<script src="../../js/tools/ch25-benchmark-dissector.js"></script>
+<script src="../../js/tools/ch25-expressiveness.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    if (window.DSPtoAI && window.DSPtoAI.BenchmarkDissector) {
+      window.DSPtoAI.BenchmarkDissector.init('tool-benchmark-dissector');
+    }
+    if (window.DSPtoAI && window.DSPtoAI.Expressiveness) {
+      window.DSPtoAI.Expressiveness.init('tool-expressiveness');
+    }
+  });
+</script>
+
+<script src="../../js/core/search-index.js"></script>
+<script src="../../js/core/search.js"></script>
+</body>
+</html>

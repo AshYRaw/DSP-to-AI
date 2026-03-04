@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ch 26: The Bigger Picture &mdash; DSP to AI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Outfit:wght@300;400;500;600;700;800;900&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../style/global.css">
+  <link rel="stylesheet" href="../../style/theme-dark.css">
+  <link rel="stylesheet" href="../../style/theme-light.css">
+  <link rel="stylesheet" href="../../style/components.css">
+  <link rel="stylesheet" href="../../style/chapter.css">
+  <script src="../../js/core/theme-switcher.js"></script>
+</head>
+<body>
+
+<div class="noise"></div>
+
+<!-- Navigation -->
+<nav class="site-nav">
+  <a href="../../index.html" class="site-nav__logo">DSP <span class="arrow">&rarr;</span> AI</a>
+  <ul class="site-nav__links">
+    <li><a href="../../index.html#part1">Part I</a></li>
+    <li><a href="../../index.html#part2">Part II</a></li>
+    <li><a href="../../index.html#part3">Part III</a></li>
+    <li><a href="../../index.html#part4">Part IV</a></li>
+    <li><a href="../../index.html#part5" class="active">Part V</a></li>
+    <li><a href="../../gallery/index.html">Gallery</a></li>
+    <li><a href="../../reference/glossary.html">Reference</a></li>
+  </ul>
+  <button class="theme-toggle" aria-label="Toggle theme"></button>
+  <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false">&#9776;</button>
+</nav>
+<div class="progress-bar"></div>
+
+<!-- Page Layout -->
+<div class="chapter-page" data-chapter-id="ch26">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar__part-label" style="color: var(--color-amber);">Part V: The Critical Lens</div>
+    <ul class="sidebar__chapters">
+      <li><a class="sidebar__chapter-link" href="ch24-analogy-limits.html"><span class="sidebar__chapter-num">24</span> Where Analogies Break</a></li>
+      <li><a class="sidebar__chapter-link" href="ch25-honest-benchmarks.html"><span class="sidebar__chapter-num">25</span> Honest Benchmarks</a></li>
+      <li><a class="sidebar__chapter-link active" href="ch26-bigger-picture.html"><span class="sidebar__chapter-num">26</span> The Bigger Picture</a>
+        <ul class="sidebar__sections">
+          <li><a class="sidebar__section-link" href="#one-framework">One Framework?</a></li>
+          <li><a class="sidebar__section-link" href="#attn-advantages">Attention&rsquo;s Advantages</a></li>
+          <li><a class="sidebar__section-link" href="#honest-summary">Honest Summary</a></li>
+          <li><a class="sidebar__section-link" href="#landscape-2025">2025&ndash;2026 Landscape</a></li>
+          <li><a class="sidebar__section-link" href="#tool-map">Analogy Map</a></li>
+          <li><a class="sidebar__section-link" href="#tool-icl">ICL Comparator</a></li>
+        </ul>
+      </li>
+      <li><a class="sidebar__chapter-link" href="ch27-experimental-frontier.html"><span class="sidebar__chapter-num">27</span> The Experimental Frontier</a></li>
+    </ul>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="chapter-content">
+
+    <header class="chapter-header">
+      <div class="chapter-header__part" style="color: var(--color-amber);">Part V &mdash; The Critical Lens</div>
+      <div class="chapter-header__number">Chapter 26</div>
+      <h1 class="chapter-header__title">The Bigger Picture</h1>
+      <p class="chapter-header__subtitle">
+        Does &ldquo;one framework, two languages&rdquo; overstate the connection? What can
+        attention do that SSMs genuinely cannot? This chapter gives the honest summary of what
+        holds, what breaks, and what the latest research (2025&ndash;2026) reveals about the
+        convergence of these architectures.
+      </p>
+    </header>
+
+    <!-- ============================================================
+         26.1 — One Framework, Two Languages?
+         ============================================================ -->
+    <section class="chapter-section content-section" id="one-framework">
+      <h2 class="section-heading"><span class="section-number">26.1</span> Does &ldquo;One Framework, Two Languages&rdquo; Overstate the Connection?</h2>
+
+      <p>
+        The concluding claim of Part III &mdash; that DSP and modern AI &ldquo;share the same
+        mathematics&rdquo; &mdash; risks conflating <strong>structural isomorphisms</strong>
+        with <strong>functional equivalences</strong>. The state-space recurrence
+        h<sub>k</sub> = &Amacr;h<sub>k-1</sub> + &Bmacr;u<sub>k</sub> appears in:
+      </p>
+
+      <table class="comparison-table">
+        <thead>
+          <tr><th>System</th><th>Role of h</th><th>What We Care About</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>IIR Filter</td>
+            <td>Means to compute y = Cx</td>
+            <td>The output (filtered signal)</td>
+          </tr>
+          <tr>
+            <td>Kalman Filter</td>
+            <td>The goal (state estimate)</td>
+            <td>The state itself</td>
+          </tr>
+          <tr>
+            <td>Mamba</td>
+            <td>Information bottleneck</td>
+            <td>Compressed history for downstream tasks</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <p>
+        The mathematical correspondence is <strong>exact</strong>. The <em>semantic</em> correspondence
+        is <strong>approximate</strong>. Same equation, different meaning. Acknowledging this
+        distinction is intellectual honesty &mdash; and it&rsquo;s what separates understanding
+        from pattern matching.
+      </p>
+    </section>
+
+    <!-- ============================================================
+         26.2 — What Attention Can Do That SSMs Can't
+         ============================================================ -->
+    <section class="chapter-section content-section" id="attn-advantages">
+      <h2 class="section-heading"><span class="section-number">26.2</span> What Attention Can Do That SSMs Can&rsquo;t</h2>
+
+      <p>
+        Parts III&ndash;IV focused on Mamba&rsquo;s advantages. Here are attention&rsquo;s unique
+        strengths &mdash; updated with the latest research:
+      </p>
+
+      <div class="card-grid" style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));">
+        <div class="concept-card" style="--card-accent: var(--color-ai);">
+          <h3 class="concept-card__title">In-Context Learning = Adaptive Filtering!</h3>
+          <p class="concept-card__body">
+            Transformers implement <strong>batch gradient descent</strong> in their forward pass
+            (Akyurek et al., 2023). Mamba does <strong>online gradient descent</strong> (= LMS
+            adaptive filter!). This is actually the <em>strongest</em> DSP analogy:
+            Mamba&rsquo;s ICL is literally the LMS algorithm from Ch 8.
+          </p>
+        </div>
+        <div class="concept-card" style="--card-accent: var(--color-ai);">
+          <h3 class="concept-card__title">Compositionality &amp; Variable Binding</h3>
+          <p class="concept-card__body">
+            Attention&rsquo;s content-addressable memory supports variable binding &mdash; associating
+            arbitrary keys with arbitrary values. SSMs&rsquo; compressed state struggles with
+            compositional tasks. &ldquo;Illusion of State&rdquo; (ICML 2024) confirmed:
+            SSM state doesn&rsquo;t help with compositional reasoning.
+          </p>
+        </div>
+        <div class="concept-card" style="--card-accent: var(--color-ai);">
+          <h3 class="concept-card__title">Both Limited to TC&deg;</h3>
+          <p class="concept-card__body">
+            The old claim that &ldquo;Transformers are Turing-complete but SSMs are not&rdquo;
+            is outdated. Merrill et al. (ICML 2024) showed both are limited to TC&deg; in practice.
+            The real difference is in <em>how efficiently</em> they use their limited computational class.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         26.3 — The Honest Summary
+         ============================================================ -->
+    <section class="chapter-section content-section" id="honest-summary">
+      <h2 class="section-heading"><span class="section-number">26.3</span> The Honest Summary: What DSP Teaches Us</h2>
+
+      <table class="comparison-table">
+        <thead>
+          <tr>
+            <th style="width: 30%;">Strength</th>
+            <th>What Holds</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style="color: var(--color-math);"><strong>Exact</strong></td>
+            <td>Linear attention = cross-correlation &middot; S4 = IIR filter &middot; Convolution mode = FIR &middot; Mamba ICL = LMS adaptive filter</td>
+          </tr>
+          <tr>
+            <td style="color: var(--color-amber);"><strong>Approximate</strong></td>
+            <td>Softmax attention &asymp; competitive matched filtering &middot; Mamba &asymp; adaptive IIR / Kalman filter &middot; HiPPO &asymp; principled pole placement</td>
+          </tr>
+          <tr>
+            <td style="color: var(--color-danger);"><strong>Breaks</strong></td>
+            <td>Time-varying transfer functions don&rsquo;t exist &middot; Information bottleneck limits IIR analogy &middot; Both limited to TC&deg; &middot; Compositional reasoning</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="callout callout--insight">
+        <h4>The Real Value of the DSP Lens</h4>
+        <p>
+          DSP doesn&rsquo;t give us <em>exact</em> equivalences for everything. What it gives is:
+          <strong>(1)</strong> intuition for why architectures work,
+          <strong>(2)</strong> initialization strategies (HiPPO, Butterworth poles),
+          <strong>(3)</strong> stability guarantees (Lyapunov analysis), and
+          <strong>(4)</strong> a vocabulary for reasoning about memory, filtering, and adaptation.
+          That&rsquo;s not everything, but it&rsquo;s a lot.
+        </p>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         26.4 — Updated Landscape 2025-2026
+         ============================================================ -->
+    <section class="chapter-section content-section" id="landscape-2025">
+      <h2 class="section-heading"><span class="section-number">26.4</span> Updated Landscape (2025&ndash;2026)</h2>
+
+      <table class="comparison-table">
+        <thead>
+          <tr><th>Development</th><th>What It Means</th><th>Source</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Mamba-2 SSD</strong></td>
+            <td>SSM with scalar A = masked attention via semiseparable matrices. The theoretical bridge is now exact for this subclass.</td>
+            <td>Dao &amp; Gu, ICML 2024</td>
+          </tr>
+          <tr>
+            <td><strong>Mamba-3</strong></td>
+            <td>Complex-valued dynamics produce oscillatory modes = resonant filter poles. Direct connection to DSP resonators.</td>
+            <td>OpenReview 2025</td>
+          </tr>
+          <tr>
+            <td><strong>Hidden Attention</strong></td>
+            <td>Mamba&rsquo;s SSM can be rewritten as implicit attention matrices &mdash; bridging interpretability between paradigms.</td>
+            <td>Ali et al., ACL 2025</td>
+          </tr>
+          <tr>
+            <td><strong>Lyapunov Stability</strong></td>
+            <td>Mamba proven stable by construction: all Lyapunov exponents non-positive. Validates DSP stability analysis.</td>
+            <td>ICLR 2025 workshop</td>
+          </tr>
+          <tr>
+            <td><strong>Hybrid Convergence</strong></td>
+            <td>Jamba (1:7), Griffin (local attention), Zamba (shared attention), Bamba (enterprise) &mdash; all converging on hybrid designs.</td>
+            <td>Multiple 2024&ndash;2025</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <p>
+        The field is converging: SSMs and attention are not rivals but complementary tools.
+        The DSP lens predicted this &mdash; FIR and IIR filters have been cascaded for 70 years
+        because each solves different problems. The hybrid future is the DSP past.
+      </p>
+    </section>
+
+    <!-- ============================================================
+         TOOL 26.1 — Analogy Map
+         ============================================================ -->
+    <section class="chapter-section content-section" id="tool-map">
+      <h2 class="section-heading"><span class="section-number">Tool 26.1</span> Analogy Map</h2>
+
+      <p>
+        Every DSP&harr;AI analogy in the project, color-coded by strength. Click any cell to
+        see where the claim holds, where it breaks, and how to resolve the tension.
+      </p>
+
+      <div class="tool-container" id="tool-analogy-map">
+        <div class="tool-header">
+          <span class="tool-header__label" style="background: var(--color-amber); color: #000;">Tool 26.1</span>
+          <span class="tool-header__title">Analogy Map &mdash; The Complete Picture</span>
+        </div>
+        <div class="tool-body">
+          <div class="tool-controls">
+            <div class="control-group">
+              <label class="control-label">Filter</label>
+              <select class="tool-select" data-control="am-filter">
+                <option value="all" selected>All Analogies</option>
+                <option value="exact">Exact Only</option>
+                <option value="approximate">Approximate Only</option>
+                <option value="breaks">Breaks Only</option>
+              </select>
+            </div>
+          </div>
+          <div class="tool-canvas-wrapper"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         TOOL 26.2 — ICL Mechanism Comparator
+         ============================================================ -->
+    <section class="chapter-section content-section" id="tool-icl">
+      <h2 class="section-heading"><span class="section-number">Tool 26.2</span> ICL Mechanism Comparator</h2>
+
+      <p>
+        How do Transformers and Mamba solve the same in-context learning task?
+        The Transformer does batch least-squares; Mamba does online gradient descent
+        (= the LMS adaptive filter from Chapter 8). Watch the difference in real time.
+      </p>
+
+      <div class="tool-container" id="tool-icl-comparator">
+        <div class="tool-header">
+          <span class="tool-header__label" style="background: var(--color-amber); color: #000;">Tool 26.2</span>
+          <span class="tool-header__title">ICL Comparator &mdash; Batch vs Online Learning</span>
+        </div>
+        <div class="tool-body">
+          <div class="tool-controls">
+            <div class="control-group">
+              <label class="control-label">Examples</label>
+              <input type="range" min="3" max="20" value="8" step="1" data-control="icl-examples">
+              <span class="control-value" data-value="icl-examples">8</span>
+            </div>
+            <div class="control-group">
+              <label class="control-label">Noise</label>
+              <input type="range" min="0" max="1" value="0.2" step="0.05" data-control="icl-noise">
+              <span class="control-value" data-value="icl-noise">0.20</span>
+            </div>
+            <div class="control-group">
+              <label class="control-label">Action</label>
+              <button class="tool-btn" data-control="icl-reset">New Data</button>
+            </div>
+          </div>
+          <div class="tool-canvas-wrapper"></div>
+        </div>
+      </div>
+
+      <div class="insight-box">
+        <h3 class="insight-box__title">Try This</h3>
+        <ul>
+          <li>With <strong>few examples (3&ndash;5)</strong>: Transformer&rsquo;s batch solution may overfit; Mamba&rsquo;s online estimate is smoother.</li>
+          <li>With <strong>many examples (15+)</strong>: both converge, but Transformer converges in one pass while Mamba accumulates gradually.</li>
+          <li>Increase <strong>noise</strong>: Mamba&rsquo;s online learning is more robust (LMS adaptive filter property).</li>
+          <li>This is the <strong>strongest DSP analogy</strong>: Mamba&rsquo;s ICL is literally the LMS algorithm in a neural wrapper.</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- Chapter Navigation -->
+    <nav class="chapter-nav">
+      <a class="chapter-nav__prev" href="ch25-honest-benchmarks.html">
+        <span class="chapter-nav__dir">&larr; Previous</span>
+        <span class="chapter-nav__label">Ch 25: Honest Benchmarks</span>
+      </a>
+      <a class="chapter-nav__next" href="ch27-experimental-frontier.html">
+        <span class="chapter-nav__dir">Next &rarr;</span>
+        <span class="chapter-nav__label">Ch 27: The Experimental Frontier</span>
+      </a>
+    </nav>
+
+  </main>
+</div>
+
+<!-- Scripts -->
+<script src="../../js/core/navigation.js"></script>
+<script src="../../js/core/progressive-disclosure.js"></script>
+<script src="../../js/core/chapter-nav.js"></script>
+<script src="../../js/tools/shared/plot-utils.js"></script>
+<script src="../../js/tools/ch26-analogy-map.js"></script>
+<script src="../../js/tools/ch26-icl-comparator.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    if (window.DSPtoAI && window.DSPtoAI.AnalogyMap) {
+      window.DSPtoAI.AnalogyMap.init('tool-analogy-map');
+    }
+    if (window.DSPtoAI && window.DSPtoAI.ICLComparator) {
+      window.DSPtoAI.ICLComparator.init('tool-icl-comparator');
+    }
+  });
+</script>
+
+<script src="../../js/core/search-index.js"></script>
+<script src="../../js/core/search.js"></script>
+</body>
+</html>

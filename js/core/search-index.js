@@ -197,5 +197,39 @@ window.DSPtoAI.searchIndex = [
     sections: ['The Challenge', 'The Complete Pipeline', 'The 12 Full-Circle Connections', 'Reflection'],
     keywords: 'capstone project pipeline DSP AI full circle connection sampling tokenization convolution attention state space',
     tools: ['Capstone Integrator']
+  },
+
+  // ── Part V: The Critical Lens ──────────────────────────────
+  {
+    id: 'ch24', part: 'Part V', partId: 'part5', num: '24',
+    title: 'Where Analogies Break',
+    file: 'chapters/part5/ch24-analogy-limits.html',
+    sections: ['The Matched Filter ↔ Attention Analogy', 'The IIR ↔ Mamba Analogy', 'The FIR/IIR Mapping Is Incomplete', 'HiPPO ↔ Butterworth: Different Optimization Spaces'],
+    keywords: 'analogy limits matched filter attention softmax linear nonlinearity IIR LTV LTI Mamba Kalman Lyapunov stability HiPPO Butterworth pole placement FIR information bottleneck KV-cache',
+    tools: ['Analogy Spectrum', 'LTI vs LTV Explorer']
+  },
+  {
+    id: 'ch25', part: 'Part V', partId: 'part5', num: '25',
+    title: 'Honest Benchmarks',
+    file: 'chapters/part5/ch25-honest-benchmarks.html',
+    sections: ['Why Convolution Helps Mamba', 'Benchmark Comparisons Are Not Apples-to-Apples', 'The Expressiveness Hierarchy Is Contested', 'Numbers Need Context'],
+    keywords: 'benchmark comparison parameter count bidirectional causal WER LibriSpeech expressiveness hierarchy bias variance TC0 Turing complete ConMamba Conformer Samba-ASR training data fairness iso-parameter iso-FLOP',
+    tools: ['Benchmark Dissector', 'Expressiveness vs Generalization']
+  },
+  {
+    id: 'ch26', part: 'Part V', partId: 'part5', num: '26',
+    title: 'The Bigger Picture',
+    file: 'chapters/part5/ch26-bigger-picture.html',
+    sections: ['Does "One Framework, Two Languages" Overstate the Connection?', 'What Attention Can Do That SSMs Cannot', 'The Honest Summary: What DSP Teaches Us', 'Updated Landscape (2025-2026)'],
+    keywords: 'structural isomorphism functional equivalence in-context learning ICL LMS adaptive filter compositionality variable binding Mamba-2 SSD Mamba-3 hidden attention Lyapunov Jamba Griffin Zamba Bamba hybrid convergence',
+    tools: ['Analogy Map', 'ICL Mechanism Comparator']
+  },
+  {
+    id: 'ch27', part: 'Part V', partId: 'part5', num: '27',
+    title: 'The Experimental Frontier',
+    file: 'chapters/part5/ch27-experimental-frontier.html',
+    sections: ['The Filter Probe', 'Mamba-Vocoder', 'DSP-Guided Architecture Search', 'Stability Analysis of Trained Models', 'DSP-Mamba: The Ultimate Test'],
+    keywords: 'filter probe formant vocoder IIR synthesis architecture search autocorrelation stability Lyapunov exponent DSP-Mamba initialization Butterworth Bessel HiPPO bandwidth control cepstral experimental research program',
+    tools: ['Filter Probe Simulator', 'DSP-Mamba Architect']
   }
 ];
