@@ -68,9 +68,9 @@ window.DSPtoAI.searchIndex = [
     id: 'ch08', part: 'Part I', partId: 'part1', num: '08',
     title: 'Adaptive Filters & Filter Banks',
     file: 'chapters/part1/ch08-advanced-dsp.html',
-    sections: ['Adaptive Filters', 'Filter Banks'],
-    keywords: 'adaptive LMS RLS Wiener filter bank sub-band decomposition multirate polyphase noise cancellation',
-    tools: ['Adaptive Noise Canceller', 'Filter Bank Decomposer']
+    sections: ['Adaptive Filters', 'The Matched Filter', 'Filter Banks'],
+    keywords: 'adaptive LMS RLS Wiener filter bank sub-band decomposition multirate polyphase noise cancellation matched filter cross-correlation detection SNR optimal template radar sonar',
+    tools: ['Adaptive Noise Canceller', 'Matched Filter Detector', 'Filter Bank Decomposer']
   },
 
   // ── Part II: AI Foundations ──────────────────────────────

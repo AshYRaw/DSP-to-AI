@@ -54,10 +54,12 @@
           <li><a class="sidebar__section-link" href="#when-fixed-fail">When Fixed Filters Fail</a></li>
           <li><a class="sidebar__section-link" href="#lms">The LMS Algorithm</a></li>
           <li><a class="sidebar__section-link" href="#beyond-lms">Beyond LMS</a></li>
+          <li><a class="sidebar__section-link" href="#matched-filter">The Matched Filter</a></li>
           <li><a class="sidebar__section-link" href="#filter-banks">Filter Banks</a></li>
           <li><a class="sidebar__section-link" href="#mel-scale">The Mel Scale</a></li>
           <li><a class="sidebar__section-link" href="#bridge">Bridge: Adaptation in AI</a></li>
           <li><a class="sidebar__section-link" href="#tool-adaptive">Adaptive Noise Canceller</a></li>
+          <li><a class="sidebar__section-link" href="#tool-matched">Matched Filter Detector</a></li>
           <li><a class="sidebar__section-link" href="#tool-bank">Filter Bank Decomposer</a></li>
         </ul>
       </li>
@@ -302,10 +304,152 @@
     </section>
 
     <!-- ============================================================
-         8.4 — Filter Banks
+         8.4 — The Matched Filter
+         ============================================================ -->
+    <section class="content-section" id="matched-filter">
+      <h2 class="section-heading"><span class="section-number">8.4</span> The Matched Filter</h2>
+
+      <p>
+        Adaptive filters handle the case where you <em>don&rsquo;t know</em> the optimal filter.
+        But what if you <em>do</em> know exactly what you&rsquo;re looking for? You have a known
+        template signal &mdash; a radar pulse, a sonar ping, a barcode waveform &mdash; and you need
+        to detect whether it&rsquo;s present in a noisy received signal. This is the
+        <strong>detection problem</strong>, and the optimal solution is the <strong>matched filter</strong>.
+      </p>
+
+      <h3>Why Cross-Correlation Is Optimal</h3>
+
+      <p>
+        Given a known template s[n] of length L, the matched filter is simply the
+        <strong>time-reversed template</strong> used as a filter:
+      </p>
+
+      <div class="math-block">
+        <div class="math-block__label">Matched Filter</div>
+        <p class="math-block__content">
+          h[n] = s[L &minus; 1 &minus; n], &ensp; n = 0, 1, &hellip;, L&minus;1
+        </p>
+      </div>
+
+      <p>
+        Convolving the received signal with this filter computes the <strong>cross-correlation</strong>
+        between the received signal and the template. At the point where the template aligns
+        perfectly with itself in the noisy signal, the output produces a <strong>peak</strong> &mdash;
+        the detection point.
+      </p>
+
+      <div class="math-block">
+        <div class="math-block__label">Optimal Output SNR</div>
+        <p class="math-block__content">
+          SNR<sub>out</sub> = 2E / N<sub>0</sub>
+        </p>
+      </div>
+
+      <p>
+        Where E is the signal energy and N<sub>0</sub> is the noise spectral density. This is
+        <em>the best any linear filter can achieve</em> &mdash; proven by the
+        Cauchy&ndash;Schwarz inequality.
+      </p>
+
+      <div class="card-grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));">
+        <div class="concept-card">
+          <div class="concept-card__icon" style="color: var(--color-dsp);">&#x1f4e1;</div>
+          <h3 class="concept-card__title">Radar</h3>
+          <p class="concept-card__body">
+            Radar transmits a known pulse and correlates the return with the transmitted
+            waveform. The matched filter maximizes the probability of detecting the target.
+          </p>
+        </div>
+        <div class="concept-card">
+          <div class="concept-card__icon" style="color: var(--color-bridge);">&#x1f30a;</div>
+          <h3 class="concept-card__title">Sonar</h3>
+          <p class="concept-card__body">
+            Underwater acoustic detection uses chirp pulses and matched filtering to find
+            submarines and map the ocean floor, even in heavy ambient noise.
+          </p>
+        </div>
+        <div class="concept-card">
+          <div class="concept-card__icon" style="color: var(--color-ai);">&#x1f4f1;</div>
+          <h3 class="concept-card__title">Communications</h3>
+          <p class="concept-card__body">
+            Every digital receiver uses matched filtering to detect transmitted symbols.
+            Your phone runs matched filters billions of times per second.
+          </p>
+        </div>
+      </div>
+
+      <h3>Connection to Convolution</h3>
+
+      <p>
+        Matched filtering <em>is</em> cross-correlation, which is convolution with a time-reversed
+        kernel. This connects directly back to <a href="ch03-convolution.html">Chapter 3</a>:
+        convolution slides a kernel over a signal and accumulates products. When the kernel is the
+        time-reversed template, the output peaks where signal and template match best.
+      </p>
+
+      <h3>The Limitation</h3>
+
+      <p>
+        The matched filter is optimal only under strict assumptions: <strong>additive white Gaussian
+        noise (AWGN)</strong> and a <strong>perfectly known template</strong>. When the template is
+        unknown, or when the noise is colored, or when you need to detect <em>any relevant pattern</em>
+        rather than one specific shape &mdash; you need something more flexible.
+        This is exactly why <strong>attention</strong> (Chapter 14) generalizes the matched filter:
+        it <em>learns</em> what to correlate with, from data.
+      </p>
+
+      <div class="progressive-section">
+        <button class="progressive-section__toggle" aria-expanded="false">Show the Math &mdash; Cauchy&ndash;Schwarz Proof</button>
+        <div class="progressive-section__content" hidden>
+          <p>We want to find the filter h[n] that maximizes the output SNR at the detection time n<sub>0</sub>:</p>
+          <div class="math-block">
+            <div class="math-block__label">Output SNR</div>
+            <p class="math-block__content">
+              SNR<sub>out</sub> = |&sum;<sub>k</sub> h[k] &middot; s[n<sub>0</sub> &minus; k]|&sup2; / (N<sub>0</sub>/2 &middot; &sum;<sub>k</sub> |h[k]|&sup2;)
+            </p>
+          </div>
+          <p>By the Cauchy&ndash;Schwarz inequality, |&sum; a<sub>k</sub>b<sub>k</sub>|&sup2; &le; (&sum; |a<sub>k</sub>|&sup2;)(&sum; |b<sub>k</sub>|&sup2;), with equality when a<sub>k</sub> = c &middot; b<sub>k</sub><sup>*</sup>.</p>
+          <p>Setting h[k] = s<sup>*</sup>[n<sub>0</sub> &minus; k] (the time-reversed, conjugated template) achieves equality:</p>
+          <div class="math-block">
+            <p class="math-block__content">
+              SNR<sub>out,max</sub> = (2 / N<sub>0</sub>) &middot; &sum;<sub>k</sub> |s[k]|&sup2; = 2E / N<sub>0</sub>
+            </p>
+          </div>
+          <p>
+            The maximum output SNR depends <em>only on the signal energy E and the noise level</em>,
+            not on the shape of the template. A chirp and a pulse with the same energy give the same
+            output SNR, but the chirp achieves it with lower peak power (pulse compression).
+          </p>
+          <p>
+            <strong>Detection probability:</strong> Under H<sub>1</sub> (signal present) the matched filter output
+            follows a Gaussian distribution with mean proportional to &radic;E. The probability of detection
+            P<sub>D</sub> for a given false alarm rate P<sub>FA</sub> is:
+          </p>
+          <div class="math-block">
+            <p class="math-block__content">
+              P<sub>D</sub> = Q(Q<sup>&minus;1</sup>(P<sub>FA</sub>) &minus; &radic;(2E/N<sub>0</sub>))
+            </p>
+          </div>
+          <p>where Q(&middot;) is the Gaussian tail probability function.</p>
+        </div>
+      </div>
+
+      <div class="insight-box">
+        <div class="insight-box__label">The AI Connection</div>
+        <p>
+          The matched filter computes a <em>dot product</em> between a template and the signal &mdash;
+          exactly what attention does with queries and keys. The difference: in DSP, the template is
+          fixed and known; in attention, the &ldquo;templates&rdquo; (keys) are <em>learned from data</em>
+          and the &ldquo;matching&rdquo; (softmax) is nonlinear. Chapter 17 traces this evolution in detail.
+        </p>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         8.5 — Filter Banks
          ============================================================ -->
     <section class="content-section" id="filter-banks">
-      <h2 class="section-heading"><span class="section-number">8.4</span> Filter Banks</h2>
+      <h2 class="section-heading"><span class="section-number">8.5</span> Filter Banks</h2>
 
       <p>
         A <strong>filter bank</strong> is a collection of bandpass filters that decompose a signal
@@ -369,10 +513,10 @@
     </section>
 
     <!-- ============================================================
-         8.5 — The Mel Scale
+         8.6 — The Mel Scale
          ============================================================ -->
     <section class="content-section" id="mel-scale">
-      <h2 class="section-heading"><span class="section-number">8.5</span> The Mel Scale</h2>
+      <h2 class="section-heading"><span class="section-number">8.6</span> The Mel Scale</h2>
 
       <p>
         Human hearing doesn&rsquo;t perceive frequency linearly. The difference between
@@ -418,10 +562,10 @@
     </section>
 
     <!-- ============================================================
-         8.6 — Bridge: Adaptation in AI
+         8.7 — Bridge: Adaptation in AI
          ============================================================ -->
     <section class="content-section" id="bridge">
-      <h2 class="section-heading"><span class="section-number">8.6</span> Bridge: Adaptation in AI</h2>
+      <h2 class="section-heading"><span class="section-number">8.7</span> Bridge: Adaptation in AI</h2>
 
       <div class="bridge-teaser">
         <div class="bridge-teaser__label">DSP &rarr; AI Connection</div>
@@ -487,7 +631,7 @@
          Tool 8.1 — Adaptive Noise Canceller
          ============================================================ -->
     <section class="content-section" id="tool-adaptive">
-      <h2 class="section-heading"><span class="section-number">8.7</span> Tool: Adaptive Noise Canceller</h2>
+      <h2 class="section-heading"><span class="section-number">8.8</span> Tool: Adaptive Noise Canceller</h2>
 
       <p>
         Watch an LMS filter learn to cancel noise in real time. The filter has <em>no knowledge</em>
@@ -558,10 +702,69 @@
     </section>
 
     <!-- ============================================================
+         Tool 8.3 — Matched Filter Detector
+         ============================================================ -->
+    <section class="content-section" id="tool-matched">
+      <h2 class="section-heading"><span class="section-number">8.9</span> Tool: Matched Filter Detector</h2>
+
+      <p>
+        A known template is hidden at a random position inside noise. The matched filter
+        (cross-correlation) produces a clear peak at the detection point. Adjust the SNR to see
+        how the filter performs at different noise levels.
+      </p>
+
+      <div class="tool-container" id="matchedFilterTool">
+        <div class="tool-header">
+          <span class="tool-header__label">Tool 8.3</span>
+          <span class="tool-header__title">Matched Filter Detector</span>
+        </div>
+        <div class="tool-body">
+          <div class="tool-controls" style="display: flex; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 0.75rem;">
+            <label class="tool-control">
+              <span class="tool-control__label">Template</span>
+              <select data-control="mf-template" class="tool-select">
+                <option value="pulse" selected>Pulse</option>
+                <option value="chirp">Chirp</option>
+                <option value="sinc">Sinc Burst</option>
+                <option value="gaussian">Gaussian</option>
+              </select>
+            </label>
+            <label class="tool-control">
+              <span class="tool-control__label">Input SNR (dB)</span>
+              <input type="range" data-control="mf-snr" min="-15" max="15" step="1" value="-3" class="tool-slider">
+              <span data-value="mf-snr" class="tool-value">-3</span>
+            </label>
+            <label class="tool-control">
+              <span class="tool-control__label">Template Length</span>
+              <input type="range" data-control="mf-length" min="16" max="256" step="8" value="64" class="tool-slider">
+              <span data-value="mf-length" class="tool-value">64</span>
+            </label>
+          </div>
+
+          <div class="tool-canvas-wrapper"></div>
+
+          <div class="tool-actions" style="display: flex; gap: 0.5rem; margin-top: 0.5rem; flex-wrap: wrap;">
+            <button data-action="mf-regenerate" class="tool-btn tool-btn--accent">&#x21bb; New Trial</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="insight-box">
+        <div class="insight-box__label">Try This</div>
+        <ul>
+          <li>Set SNR to &minus;10 dB &mdash; the template is invisible in the noisy signal, but the matched filter still finds it</li>
+          <li>Increase the template length from 32 to 256 &mdash; watch the detection probability climb (processing gain = 10&middot;log<sub>10</sub>(L))</li>
+          <li>Switch between pulse and chirp templates &mdash; the chirp has the same detection performance but spreads energy over time (pulse compression)</li>
+          <li>Click &ldquo;New Trial&rdquo; multiple times at a marginal SNR to see the statistical nature of detection</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ============================================================
          Tool 8.2 — Filter Bank Decomposer
          ============================================================ -->
     <section class="content-section" id="tool-bank">
-      <h2 class="section-heading"><span class="section-number">8.8</span> Tool: Filter Bank Decomposer</h2>
+      <h2 class="section-heading"><span class="section-number">8.10</span> Tool: Filter Bank Decomposer</h2>
 
       <p>
         Decompose any signal into frequency bands and selectively reconstruct from chosen bands.
@@ -673,10 +876,12 @@
 <script src="../../js/tools/shared/plot-utils.js"></script>
 <script src="../../js/tools/shared/audio-engine.js"></script>
 <script src="../../js/tools/ch08-adaptive-filter.js"></script>
+<script src="../../js/tools/ch08-matched-filter.js"></script>
 <script src="../../js/tools/ch08-filter-bank.js"></script>
 <script>
   document.addEventListener('DOMContentLoaded', function () {
     DSPtoAI.AdaptiveFilter.init('adaptiveFilterTool');
+    DSPtoAI.MatchedFilter.init('matchedFilterTool');
     DSPtoAI.FilterBank.init('filterBankTool');
   });
 </script>
