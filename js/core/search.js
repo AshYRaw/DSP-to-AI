@@ -89,7 +89,7 @@
       countEl.textContent = query.length >= 2 ? 'No results' : '';
       resultsList.innerHTML = query.length >= 2
         ? '<li class="search-no-results">No chapters match \u201C' + escapeHtml(query) + '\u201D</li>'
-        : '<li class="search-hint">Type at least 2 characters to search across all 23 chapters</li>';
+        : '<li class="search-hint">Type at least 2 characters to search across all 27 chapters</li>';
       return;
     }
 
