@@ -348,7 +348,7 @@
   <header class="glossary-page__header">
     <div class="badge" style="margin-bottom: 16px;">REFERENCE</div>
     <h1>Glossary</h1>
-    <p>Every concept in the book, mapped between its DSP name and its AI name. Search, filter, or browse alphabetically.</p>
+    <p>Every concept in the book, mapped between its DSP name and its AI name. Search, filter by domain, or browse by section (Rosetta Stone, DSP, AI, Bridge, Frontier, Critical Lens, Math).</p>
   </header>
 
   <!-- Search -->
@@ -1054,6 +1054,80 @@
   </section>
 
   <!-- ============================================================
+       SECTION 5b: THE CRITICAL LENS (PART V)
+       ============================================================ -->
+  <section class="glossary-category" id="cat-critical">
+    <h2 class="glossary-category__title">
+      <span class="cat-dot" style="background: var(--color-amber);"></span>
+      The Critical Lens &mdash; Limits, Benchmarks &amp; Experiments
+      <span class="cat-count"></span>
+    </h2>
+    <div class="glossary-grid">
+
+      <div class="glossary-term" style="--term-color: var(--color-amber);" data-tags="dsp bridge math" data-search="lti ltv linear time-invariant time-varying input-dependent parameters transfer function h(z) does not exist mamba selective">
+        <div class="glossary-term__name">LTI vs LTV<span class="alias">Time-Invariant vs Time-Varying</span></div>
+        <div class="glossary-term__tags"><span class="glossary-term__tag glossary-term__tag--dsp">DSP</span><span class="glossary-term__tag glossary-term__tag--bridge">BRIDGE</span></div>
+        <div class="glossary-term__def">An <strong>LTI</strong> system has fixed coefficients, so it has a transfer function H(z) and a single impulse response. Mamba&rsquo;s input-dependent B<sub>t</sub>, C<sub>t</sub>, &Delta;<sub>t</sub> make it <strong>Linear Time-Varying</strong>: H(z) does not exist, and you need the two-dimensional impulse response h(k, m) or a &ldquo;frozen&rdquo; H<sub>t</sub>(z) snapshot instead.</div>
+        <div class="glossary-term__dual">
+          <div class="glossary-term__dual-item dual-ai"><span class="label">AI</span> S4 (LTI) vs Mamba (LTV)</div>
+        </div>
+        <div class="glossary-term__chapter"><a href="../chapters/part5/ch24-analogy-limits.html">Ch 24</a></div>
+      </div>
+
+      <div class="glossary-term" style="--term-color: var(--color-amber);" data-tags="math bridge" data-search="lyapunov exponent stability ltv time-varying state transition matrix asymptotic marginal pole magnitude">
+        <div class="glossary-term__name">Lyapunov Exponent<span class="alias">&Lambda;</span></div>
+        <div class="glossary-term__tags"><span class="glossary-term__tag glossary-term__tag--math">MATH</span><span class="glossary-term__tag glossary-term__tag--bridge">BRIDGE</span></div>
+        <div class="glossary-term__def">The stability measure for time-varying systems: &Lambda; = lim (1/n) log ||A<sub>n&minus;1</sub> &hellip; A<sub>0</sub>||. Replaces the pole-magnitude test, which is neither necessary nor sufficient for LTV systems. <strong>Strictly negative</strong> means asymptotically stable; zero is only marginally stable.</div>
+        <div class="glossary-term__dual">
+          <div class="glossary-term__dual-item dual-dsp"><span class="label">DSP</span> |pole| &lt; 1 (the LTI special case)</div>
+        </div>
+        <div class="glossary-term__chapter"><a href="../chapters/part5/ch24-analogy-limits.html">Ch 24</a>, <a href="../chapters/part5/ch27-experimental-frontier.html">Ch 27</a></div>
+      </div>
+
+      <div class="glossary-term" style="--term-color: var(--color-amber);" data-tags="ai math" data-search="expressiveness hierarchy representable functions selective ssm ssd linear attention softmax tc0 threshold circuits mamba-2 contested">
+        <div class="glossary-term__name">Expressiveness Hierarchy<span class="alias">Mamba-2</span></div>
+        <div class="glossary-term__tags"><span class="glossary-term__tag glossary-term__tag--ai">AI</span><span class="glossary-term__tag glossary-term__tag--math">MATH</span></div>
+        <div class="glossary-term__def">The Mamba-2 ordering <strong>Selective SSM &gt; SSD &gt; Linear Attention &gt; Softmax Attention</strong> by set of representable functions. Correct but easily misread: more expressive is not better (constraints regularize), and both Transformers and SSMs are limited to TC&deg; in finite precision.</div>
+        <div class="glossary-term__dual">
+          <div class="glossary-term__dual-item dual-dsp"><span class="label">DSP</span> Filter order vs generalization (bias&ndash;variance)</div>
+        </div>
+        <div class="glossary-term__chapter"><a href="../chapters/part5/ch25-honest-benchmarks.html">Ch 25</a></div>
+      </div>
+
+      <div class="glossary-term" style="--term-color: var(--color-amber);" data-tags="ai bridge" data-search="in-context learning icl adaptive filter lms online gradient descent batch forward pass prompt few-shot">
+        <div class="glossary-term__name">In-Context Learning<span class="alias">ICL</span></div>
+        <div class="glossary-term__tags"><span class="glossary-term__tag glossary-term__tag--ai">AI</span><span class="glossary-term__tag glossary-term__tag--bridge">BRIDGE</span></div>
+        <div class="glossary-term__def">Learning from examples inside the prompt with no weight updates. Transformers implement <strong>batch gradient descent</strong> in their forward pass; Mamba implements <strong>online gradient descent</strong>, which is the LMS update from Ch 8. One of the strongest DSP analogies in the book.</div>
+        <div class="glossary-term__dual">
+          <div class="glossary-term__dual-item dual-dsp"><span class="label">DSP</span> LMS adaptive filter</div>
+        </div>
+        <div class="glossary-term__chapter"><a href="../chapters/part1/ch08-advanced-dsp.html">Ch 8</a>, <a href="../chapters/part5/ch26-bigger-picture.html">Ch 26</a></div>
+      </div>
+
+      <div class="glossary-term" style="--term-color: var(--color-amber);" data-tags="dsp bridge" data-search="filter probe program a reverse engineer frequency selectivity trained ssm channels poles classify low-pass band-pass high-pass all-pass formant">
+        <div class="glossary-term__name">Filter Probe<span class="alias">Program A</span></div>
+        <div class="glossary-term__tags"><span class="glossary-term__tag glossary-term__tag--dsp">DSP</span><span class="glossary-term__tag glossary-term__tag--bridge">BRIDGE</span></div>
+        <div class="glossary-term__def">An experiment that reverse-engineers the frequency selectivity of trained SSM channels: extract each channel&rsquo;s poles, classify it as low-pass, band-pass, high-pass or all-pass, then check for formant-like center frequencies. If the IIR analogy is deep, trained Mamba channels should look like an interpretable filter bank.</div>
+        <div class="glossary-term__dual">
+          <div class="glossary-term__dual-item dual-ai"><span class="label">AI</span> Mechanistic interpretability of SSM channels</div>
+        </div>
+        <div class="glossary-term__chapter"><a href="../chapters/part5/ch27-experimental-frontier.html">Ch 27</a></div>
+      </div>
+
+      <div class="glossary-term" style="--term-color: var(--color-amber);" data-tags="bridge ai" data-search="dsp-mamba program e dsp priors initialization hippo butterworth bessel bandwidth control end-to-end learning ultimate test">
+        <div class="glossary-term__name">DSP-Mamba<span class="alias">Program E</span></div>
+        <div class="glossary-term__tags"><span class="glossary-term__tag glossary-term__tag--bridge">BRIDGE</span><span class="glossary-term__tag glossary-term__tag--ai">AI</span></div>
+        <div class="glossary-term__def">A proposed Mamba variant where <strong>every design choice is DSP-motivated</strong>: a mixed HiPPO / Butterworth / Bessel initialization instead of HiPPO only, plus explicit bandwidth and stability-margin controls. The test: do DSP priors help, or does end-to-end learning find better solutions on its own?</div>
+        <div class="glossary-term__dual">
+          <div class="glossary-term__dual-item dual-dsp"><span class="label">DSP</span> Classical filter-design priors as initialization</div>
+        </div>
+        <div class="glossary-term__chapter"><a href="../chapters/part5/ch27-experimental-frontier.html">Ch 27</a></div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ============================================================
        SECTION 6: MATHEMATICAL FOUNDATIONS
        ============================================================ -->
   <section class="glossary-category" id="cat-math">
@@ -1196,6 +1270,8 @@
         <tr><td><strong>RoPE</strong></td><td>Rotary Position Embedding</td><td>AI</td></tr>
         <tr><td><strong>GLR</strong></td><td>Gated Linear Recurrence</td><td>Bridge</td></tr>
         <tr><td><strong>RWKV</strong></td><td>Receptance Weighted Key Value</td><td>AI/Bridge</td></tr>
+        <tr><td><strong>ICL</strong></td><td>In-Context Learning</td><td>AI/Bridge</td></tr>
+        <tr><td><strong>TC&deg;</strong></td><td>Constant-depth threshold circuits (expressiveness class)</td><td>Math</td></tr>
       </tbody>
     </table>
     </div>
