@@ -102,7 +102,7 @@
           <h3 class="concept-card__title">Step 2: Classify</h3>
           <p class="concept-card__body">
             Classify channels: low-pass (pole near z=1), band-pass (complex poles near unit circle),
-            high-pass (pole near z=&minus;1), all-pass (poles = conjugate of zeros).
+            high-pass (pole near z=&minus;1), all-pass (poles at the conjugate reciprocals of the zeros, p = 1/z*).
           </p>
         </div>
         <div class="concept-card" style="--card-accent: var(--color-dsp);">
@@ -184,7 +184,7 @@
         <div class="concept-card" style="--card-accent: var(--color-math);">
           <h3 class="concept-card__title">What to Measure</h3>
           <p class="concept-card__body">
-            <strong>1.</strong> Lyapunov exponents &Lambda;<sub>i</sub> (must be negative for stability). <br>
+            <strong>1.</strong> Lyapunov exponents &Lambda;<sub>i</sub> (strictly negative for asymptotic stability; &le; 0 is only marginally stable). <br>
             <strong>2.</strong> Max eigenvalue magnitude &rho;(t) over time. <br>
             <strong>3.</strong> How close do poles get to the unit circle? (Stability margin)
           </p>
@@ -192,10 +192,12 @@
         <div class="concept-card" style="--card-accent: var(--color-math);">
           <h3 class="concept-card__title">Recent Confirmation</h3>
           <p class="concept-card__body">
-            ICLR 2025 workshop paper proved Mamba&rsquo;s Lyapunov exponents are
+            <!-- TODO: cite -->
+            Recent work has argued that Mamba&rsquo;s Lyapunov exponents are
             <strong>non-positive by construction</strong>. Since Re(a<sub>i</sub>) < 0 and
-            &Delta;<sub>t</sub> > 0, |&lambda;<sub>i</sub>(t)| < 1 always. The DSP stability
-            analysis from Chapter 6 applies directly.
+            &Delta;<sub>t</sub> > 0, |&lambda;<sub>i</sub>(t)| < 1 always, so the exponents are
+            strictly negative (asymptotically stable), not merely &le; 0 (which would be only
+            marginally stable). The DSP stability analysis from Chapter 6 applies directly.
           </p>
         </div>
       </div>

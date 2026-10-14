@@ -433,7 +433,7 @@
         <ul>
           <li>Start with <strong>Hybrid Light (1:7)</strong> on <strong>Mixed signal</strong>. The visualization shows SSM layers handling long-range propagation and the sparse attention layers handling retrieval.</li>
           <li>Switch to <strong>Pure SSM</strong> &mdash; retrieval performance drops (no attention to look back), but efficiency is maximum.</li>
-          <li>Switch to <strong>Pure Attention</strong> &mdash; retrieval is perfect, but compute bars grow quadratically with layer count.</li>
+          <li>Switch to <strong>Pure Attention</strong> &mdash; retrieval is perfect, but attention compute grows quadratically with sequence length (and only linearly with layer count).</li>
           <li>Try <strong>Hybrid Heavy (1:3)</strong> &mdash; more attention = better quality but higher cost. Compare the tradeoff curve.</li>
           <li>Increase <strong>State Dim N</strong> from 4 to 16 in SSM mode &mdash; more state = better memory compression = closer to attention quality.</li>
           <li><strong>This is the DSP-to-AI principle in action</strong>: choose your filter types (FIR/IIR), choose your cascade order, optimize for your task. Engineering, not magic.</li>

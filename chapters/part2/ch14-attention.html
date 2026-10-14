@@ -186,14 +186,14 @@
 
       <div class="math-block" style="font-size: 1.1em; text-align: center;">
         <code>
-          Attention(Q, K, V) = softmax(Q K&sup1; / &radic;d_k) &middot; V
+          Attention(Q, K, V) = softmax(Q K<sup>T</sup> / &radic;d_k) &middot; V
         </code>
       </div>
 
       <p>Step by step:</p>
 
       <ol style="line-height: 1.8;">
-        <li><strong>Dot products</strong> &mdash; <code>Q K&sup1;</code> gives a T&times;T matrix where entry (i,j) measures how much query <em>i</em> matches key <em>j</em>.</li>
+        <li><strong>Dot products</strong> &mdash; <code>Q K<sup>T</sup></code> gives a T&times;T matrix where entry (i,j) measures how much query <em>i</em> matches key <em>j</em>.</li>
         <li><strong>Scale</strong> &mdash; divide by &radic;d_k to prevent dot products from growing too large (which would push softmax into saturation).</li>
         <li><strong>Softmax</strong> &mdash; normalize each row to a probability distribution. Now entry (i,j) is the <em>attention weight</em>: how much position <em>i</em> attends to position <em>j</em>.</li>
         <li><strong>Weighted sum</strong> &mdash; multiply by V. Each output is a weighted combination of all value vectors, weighted by attention.</li>
@@ -353,7 +353,7 @@
           </tr>
           <tr>
             <td>Cross-correlation R_{xh}[n]</td>
-            <td>QK&sup1; scores</td>
+            <td>QK<sup>T</sup> scores</td>
             <td>Similarity at every position</td>
           </tr>
           <tr>

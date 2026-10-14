@@ -305,7 +305,7 @@
           <div class="math-block">
             <code>
               M_{ij} = 0 if i &ge; j, else &minus;&infin;<br><br>
-              Attention = softmax((QK&sup1; + M) / &radic;d_k) &middot; V
+              Attention = softmax((QK<sup>T</sup> + M) / &radic;d_k) &middot; V
             </code>
           </div>
           <p>
@@ -397,7 +397,7 @@
             <td>Inject position via sinusoids of different frequencies</td>
           </tr>
           <tr>
-            <td>Self-attention (QK&sup1;V)</td>
+            <td>Self-attention (QK<sup>T</sup>V)</td>
             <td>Adaptive FIR filter bank</td>
             <td>Data-dependent, finite-range weighted averaging</td>
           </tr>

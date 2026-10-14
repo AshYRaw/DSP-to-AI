@@ -940,7 +940,7 @@
       <div class="glossary-term" style="--term-color: var(--color-bridge);" data-tags="bridge ai" data-search="gated linear recurrence glr simplified ssm gate sigmoid real diagonal griffin hawk retention">
         <div class="glossary-term__name">Gated Linear Recurrence<span class="alias">GLR</span></div>
         <div class="glossary-term__tags"><span class="glossary-term__tag glossary-term__tag--bridge">BRIDGE</span><span class="glossary-term__tag glossary-term__tag--ai">AI</span></div>
-        <div class="glossary-term__def">A simplified form of SSM using a real-valued diagonal recurrence with input-dependent gating: x<sub>t</sub> = &alpha;<sub>t</sub> &middot; x<sub>t-1</sub> + (1&minus;&alpha;<sub>t</sub>) &middot; u<sub>t</sub>. Used in Griffin and Hawk. Simpler than Mamba&rsquo;s complex-valued diagonal, but effective when paired with local attention.</div>
+        <div class="glossary-term__def">A simplified form of SSM using a real-valued diagonal recurrence with input-dependent gating: x<sub>t</sub> = &alpha;<sub>t</sub> &middot; x<sub>t-1</sub> + (1&minus;&alpha;<sub>t</sub>) &middot; u<sub>t</sub>. Used in Griffin and Hawk. Simpler than the complex-valued diagonal of S4D (Mamba itself uses a real diagonal A; Mamba-2 reduces it to a scalar times identity), but effective when paired with local attention.</div>
         <div class="glossary-term__dual">
           <div class="glossary-term__dual-item dual-dsp"><span class="label">DSP</span> First-order adaptive IIR with real pole</div>
         </div>
@@ -1109,7 +1109,7 @@
       <div class="glossary-term" style="--term-color: var(--color-math);" data-tags="math" data-search="complexity big-o quadratic linear logarithmic flops compute scaling asymptotic">
         <div class="glossary-term__name">Computational Complexity<span class="alias">O(n&sup2;) vs O(n)</span></div>
         <div class="glossary-term__tags"><span class="glossary-term__tag glossary-term__tag--math">MATH</span></div>
-        <div class="glossary-term__def">How resource usage scales with input size. Attention: <strong>O(T&sup2;&middot;d)</strong> &mdash; every token attends to every other. Mamba: <strong>O(T&middot;d&middot;N)</strong> &mdash; linear in sequence length. At T=131K, this means 131,000&times; less compute for the sequence-mixing step.</div>
+        <div class="glossary-term__def">How resource usage scales with input size. Attention: <strong>O(T&sup2;&middot;d)</strong> &mdash; every token attends to every other. Mamba: <strong>O(T&middot;d&middot;N)</strong> &mdash; linear in sequence length. The ratio is T&sup2;&middot;d / (T&middot;d&middot;N) = T/N: at T=131K with N=16, that is 131,072 / 16 &asymp; 8,000&times; less compute for the sequence-mixing step.</div>
         <div class="glossary-term__chapter"><a href="../chapters/part3/ch20-attn-vs-mamba.html">Ch 20</a></div>
       </div>
 
