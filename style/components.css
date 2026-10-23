@@ -552,3 +552,66 @@ input[type="range"]::-webkit-slider-thumb {
   margin-top: 4px;
   font-style: italic;
 }
+
+/* --- Cite this box (js/core/citation.js) --- */
+.cite-box {
+  max-width: 900px;
+  margin: var(--sp-xl) auto;
+  padding: var(--sp-lg);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+.cite-box__title {
+  font-family: var(--font-code);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-bottom: var(--sp-sm);
+}
+.cite-box__apa {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text);
+  margin-bottom: var(--sp-sm);
+  overflow-wrap: anywhere;
+}
+.cite-box__bibtex-wrap { position: relative; }
+.cite-box__bibtex {
+  font-family: var(--font-code);
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--text-dim);
+  background: rgba(127, 127, 127, 0.08);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm, 6px);
+  padding: var(--sp-md);
+  padding-right: 120px;
+  margin: 0;
+  overflow-x: auto;
+  white-space: pre;
+}
+.cite-box__copy {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  font-family: var(--font-code);
+  font-size: 11px;
+  padding: 4px 10px;
+  border-radius: var(--radius-pill, 999px);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+}
+.cite-box__copy:hover { border-color: var(--text-dim); }
+.cite-box__cff {
+  margin-top: var(--sp-sm);
+  font-size: 12px;
+  color: var(--text-dim);
+}
+@media (max-width: 640px) {
+  .cite-box__bibtex { padding-right: var(--sp-md); padding-top: 40px; }
+}
