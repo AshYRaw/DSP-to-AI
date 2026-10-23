@@ -16,7 +16,7 @@
   'use strict';
 
   // GoatCounter site code: the dashboard lives at https://<CODE>.goatcounter.com
-  var CODE = 'YOURCODE';
+  var CODE = 'ashyraw';
 
   if (!CODE || CODE === 'YOURCODE') return;           // not configured: do nothing
   if (document.querySelector('script[data-goatcounter]')) return;  // already loaded
