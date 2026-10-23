@@ -1,0 +1,22 @@
+{
+  "upload_type": "lesson",
+  "title": "DSP to AI: From Signal Processing to Deep Learning",
+  "creators": [
+    {
+      "name": "Rawat, Ashish",
+      "orcid": "0009-0000-4052-9097"
+    }
+  ],
+  "description": "<p>An interactive educational website bridging classical Digital Signal Processing with modern AI. 27 chapters and 51 interactive tools trace the path from signals, convolution and IIR filters to attention, state-space models and Mamba, and then examine where the analogies hold and where they break.</p><p>Live site: <a href=\"https://ashyraw.github.io/DSP-to-AI/\">https://ashyraw.github.io/DSP-to-AI/</a>. Source: <a href=\"https://github.com/AshYRaw/DSP-to-AI\">https://github.com/AshYRaw/DSP-to-AI</a>.</p>",
+  "license": "cc-by-nc-sa-4.0",
+  "access_right": "open",
+  "keywords": [
+    "digital signal processing",
+    "deep learning",
+    "attention",
+    "transformers",
+    "state-space models",
+    "mamba",
+    "interactive education"
+  ]
+}
