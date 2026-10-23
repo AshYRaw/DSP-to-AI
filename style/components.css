@@ -615,3 +615,12 @@ input[type="range"]::-webkit-slider-thumb {
 @media (max-width: 640px) {
   .cite-box__bibtex { padding-right: var(--sp-md); padding-top: 40px; }
 }
+
+/* --- Analytics disclosure line --- */
+.analytics-note {
+  margin-top: 8px;
+  font-size: 12px;
+  opacity: 0.6;
+}
+.site-footer .analytics-note a,
+.analytics-note a { color: inherit; text-decoration: underline; }
