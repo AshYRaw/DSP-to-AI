@@ -11,3 +11,6 @@ Thumbs.db
 
 # Claude Code
 .claude/
+
+# Redundant archive of DSP_AI_infographics/ (kept locally, not in the repo)
+DSP_AI_infographics.zip
