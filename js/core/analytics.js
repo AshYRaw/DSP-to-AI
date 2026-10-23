@@ -3,6 +3,7 @@
    Privacy-friendly, cookie-free pageview counting plus a few
    usage events. Loaded on every page; standalone-safe (does not
    depend on navigation.js or any other site module).
+   count.js is self-hosted from js/vendor/goatcounter-count.js.
 
    Events (visible under "Events" in the GoatCounter dashboard):
      cite-copy-bibtex     Copy BibTeX button, or a copy from the BibTeX block
@@ -22,11 +23,15 @@
 
   var ENDPOINT = 'https://' + CODE + '.goatcounter.com/count';
 
-  /* --- Load count.js (async). It picks up data-goatcounter from this tag. --- */
+  /* --- Load count.js (async) from our own copy in js/vendor/.
+         The path is derived from this script's own src so it works at any
+         page depth. count.js picks up data-goatcounter from this tag. --- */
+  var me = document.currentScript || document.querySelector('script[src$="js/core/analytics.js"]');
+  var base = me && me.src ? me.src.replace(/js\/core\/analytics\.js(\?.*)?$/, '') : '';
   var queue = [];
   var s = document.createElement('script');
   s.async = true;
-  s.src = 'https://gc.zgo.at/count.js';
+  s.src = base + 'js/vendor/goatcounter-count.js';
   s.setAttribute('data-goatcounter', ENDPOINT);
   s.addEventListener('load', function () {
     var q = queue; queue = null;

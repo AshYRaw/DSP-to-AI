@@ -1,0 +1,85 @@
+name: Traffic snapshot
+
+# Weekly snapshot of the GitHub traffic API (views, clones, popular referrers,
+# popular paths). GitHub only keeps 14 days of traffic data, so this preserves it.
+# Results are appended as one JSON line per run to traffic/traffic-log.jsonl on
+# the "traffic-data" branch, never on main, so the site and Zenodo archives are
+# unaffected.
+#
+# Requires a repository secret TRAFFIC_TOKEN: a fine-grained personal access
+# token scoped to this repository with "Administration: Read-only" permission
+# (the traffic endpoints need it). Pushing uses the built-in GITHUB_TOKEN.
+
+on:
+  schedule:
+    - cron: '0 6 * * 1'   # Mondays 06:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: traffic-snapshot
+  cancel-in-progress: false
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Switch to traffic-data branch (create as orphan if missing)
+        run: |
+          set -euo pipefail
+          if git ls-remote --exit-code --heads origin traffic-data >/dev/null 2>&1; then
+            git fetch origin traffic-data
+            git switch traffic-data
+          else
+            git switch --orphan traffic-data
+            printf '%s\n' \
+              '# Traffic data' \
+              '' \
+              'Weekly snapshots of the GitHub traffic API for this repository,' \
+              'appended by the traffic-snapshot workflow. One JSON object per line' \
+              'in `traffic/traffic-log.jsonl`, each with `fetched_at`, `views`,' \
+              '`clones`, `referrers`, and `paths` exactly as the API returned them.' \
+              > README.md
+          fi
+          mkdir -p traffic
+
+      - name: Fetch traffic from the GitHub API
+        env:
+          GH_TOKEN: ${{ secrets.TRAFFIC_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          if [ -z "${GH_TOKEN}" ]; then
+            echo "::error::Repository secret TRAFFIC_TOKEN is not set." >&2
+            exit 1
+          fi
+          views=$(gh api "repos/${REPO}/traffic/views")
+          clones=$(gh api "repos/${REPO}/traffic/clones")
+          referrers=$(gh api "repos/${REPO}/traffic/popular/referrers")
+          paths=$(gh api "repos/${REPO}/traffic/popular/paths")
+          jq -c -n \
+            --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            --arg repo "${REPO}" \
+            --argjson views "${views}" \
+            --argjson clones "${clones}" \
+            --argjson referrers "${referrers}" \
+            --argjson paths "${paths}" \
+            '{fetched_at: $ts, repo: $repo, views: $views, clones: $clones, referrers: $referrers, paths: $paths}' \
+            >> traffic/traffic-log.jsonl
+          echo "Appended snapshot; log now has $(wc -l < traffic/traffic-log.jsonl) line(s)."
+
+      - name: Commit and push to traffic-data
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add README.md traffic/traffic-log.jsonl
+          git commit -m "Traffic snapshot $(date -u +%Y-%m-%d)"
+          git push origin traffic-data
