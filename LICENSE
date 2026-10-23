@@ -1,19 +1,55 @@
-Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International
+DSP to AI: From Signal Processing to Deep Learning
+Copyright (c) 2026 Ashish Rawat
 
-Copyright (c) 2026 Ashish Rawat (AshYRaw)
+This project is dual-licensed. Content and code are under different licenses.
 
-This work is licensed under the Creative Commons
-Attribution-NonCommercial-ShareAlike 4.0 International License.
+1. CONTENT: Creative Commons Attribution 4.0 International (CC BY 4.0)
+   Full text: LICENSE-CONTENT
+   Summary:   https://creativecommons.org/licenses/by/4.0/
 
-You are free to:
-  - Share: copy and redistribute the material in any medium or format
-  - Adapt: remix, transform, and build upon the material
+   Applies to the educational content of the site: all prose, figures,
+   diagrams, infographics, glossary text, and the text and markup of the
+   HTML pages. In this repository that means:
+     index.html, chapters/, gallery/, reference/, DSP_AI_infographics/,
+     README.md, and the text of any other documentation file.
 
-Under the following terms:
-  - Attribution: You must give appropriate credit, provide a link to the
-    license, and indicate if changes were made.
-  - NonCommercial: You may not use the material for commercial purposes.
-  - ShareAlike: If you remix, transform, or build upon the material, you
-    must distribute your contributions under the same license.
+   You may share and adapt this material for any purpose, including
+   commercially, as long as you give appropriate credit (see "Attribution"
+   below), link to the license, and indicate if changes were made.
 
-Full license text: https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode
+2. CODE: MIT License
+   Full text: LICENSE-CODE
+
+   Applies to all source code: JavaScript, CSS, and scripts. In this
+   repository that means:
+     js/core/, js/tools/, style/, scripts/, .github/,
+     and the inline <script> and <style> blocks inside the HTML pages.
+
+   Third-party code under js/vendor/ keeps its own license (see below).
+
+Attribution
+   Please cite as:
+     Rawat, A. (2026). DSP to AI: From Signal Processing to Deep Learning.
+     https://doi.org/10.5281/zenodo.23585849
+   Machine-readable citation metadata is in CITATION.cff, and every page of
+   the site has a "Cite this" box with BibTeX.
+
+Third-party components and notices
+   - js/vendor/goatcounter-count.js
+     GoatCounter count.js, copyright the GoatCounter authors, ISC License.
+     https://www.goatcounter.com  https://opensource.org/licenses/ISC
+     Vendored unmodified; its license header is preserved in the file.
+
+   - Web fonts (JetBrains Mono, Outfit, Playfair Display, Space Grotesk,
+     DM Serif Display, Sora) are loaded at runtime from Google Fonts and are
+     not redistributed in this repository. They are published by their
+     authors under the SIL Open Font License 1.1.
+
+   - KaTeX CSS (katex@0.16.9) is loaded at runtime from jsdelivr on two pages
+     and is not redistributed in this repository. KaTeX is MIT licensed,
+     copyright Khan Academy and other contributors.
+
+License history
+   Versions 1.0.0 and 1.0.1 (October 2026) were released under
+   CC BY-NC-SA 4.0. From version 1.1.0 the project uses the split above:
+   CC BY 4.0 for content and MIT for code.

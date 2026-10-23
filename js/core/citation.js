@@ -14,8 +14,9 @@
     authorApa: 'Rawat, A.',
     title: 'DSP to AI: From Signal Processing to Deep Learning',
     year: '2026',
-    version: '1.0.1',
+    version: '1.1.0',
     url: 'https://ashyraw.github.io/DSP-to-AI/',
+    license: 'Content CC BY 4.0; code MIT',
     doi: '10.5281/zenodo.23585849'  // Zenodo concept DOI (resolves to the latest version)
   };
 
@@ -53,7 +54,7 @@
       (META.doi ? '  doi          = {' + META.doi + '},\n' : '') +
       '  url          = {' + url + '},\n' +
       '  howpublished = {Interactive web resource},\n' +
-      '  note         = {Licensed CC BY-NC-SA 4.0}\n' +
+      '  note         = {' + META.license + '}\n' +
       '}';
 
     var box = document.createElement('aside');

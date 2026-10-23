@@ -1,7 +1,8 @@
 # DSP to AI: From Signal Processing to Deep Learning
 
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23585849.svg)](https://doi.org/10.5281/zenodo.23585849)
-[![License: CC BY-NC-SA 4.0](https://img.shields.io/badge/License-CC_BY--NC--SA_4.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc-sa/4.0/)
+[![Content: CC BY 4.0](https://img.shields.io/badge/Content-CC_BY_4.0-lightgrey.svg)](https://creativecommons.org/licenses/by/4.0/)
+[![Code: MIT](https://img.shields.io/badge/Code-MIT-lightgrey.svg)](LICENSE-CODE)
 
 **Live site:** https://ashyraw.github.io/DSP-to-AI/
 
@@ -55,10 +56,15 @@ resolves to the latest archived release.
   doi          = {10.5281/zenodo.23585849},
   url          = {https://ashyraw.github.io/DSP-to-AI/},
   howpublished = {Interactive web resource},
-  note         = {Licensed CC BY-NC-SA 4.0}
+  note         = {Content CC BY 4.0; code MIT}
 }
 ```
 
 ## License
 
-[CC BY-NC-SA 4.0](LICENSE). Copyright (c) 2026 Ashish Rawat.
+Copyright (c) 2026 Ashish Rawat. Dual-licensed, see [LICENSE](LICENSE) for the split:
+
+- **Content** (text, figures, infographics, HTML pages): [CC BY 4.0](LICENSE-CONTENT)
+- **Code** (JavaScript, CSS, scripts): [MIT](LICENSE-CODE)
+
+Third-party notices (GoatCounter count.js, Google Fonts, KaTeX) are listed in LICENSE.

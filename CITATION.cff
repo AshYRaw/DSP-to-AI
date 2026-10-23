@@ -19,11 +19,15 @@ authors:
   - family-names: Rawat
     given-names: Ashish
     orcid: "https://orcid.org/0009-0000-4052-9097"
-version: 1.0.1
+version: 1.1.0
 date-released: 2026-10-23
 url: "https://ashyraw.github.io/DSP-to-AI/"
 repository-code: "https://github.com/AshYRaw/DSP-to-AI"
-license: CC-BY-NC-SA-4.0
+# Content (text, figures, infographics, HTML pages) is CC BY 4.0;
+# code (JavaScript, CSS, scripts) is MIT. See LICENSE for the split.
+license:
+  - CC-BY-4.0
+  - MIT
 keywords:
   - digital signal processing
   - deep learning
