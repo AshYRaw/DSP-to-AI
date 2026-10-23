@@ -14,9 +14,9 @@
     authorApa: 'Rawat, A.',
     title: 'DSP to AI: From Signal Processing to Deep Learning',
     year: '2026',
-    version: '1.0.0',
+    version: '1.0.1',
     url: 'https://ashyraw.github.io/DSP-to-AI/',
-    doi: ''            // e.g. '10.5281/zenodo.1234567' once Zenodo issues one
+    doi: '10.5281/zenodo.23585849'  // Zenodo concept DOI (resolves to the latest version)
   };
 
   function esc(s) {
